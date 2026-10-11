@@ -107,8 +107,9 @@ ships.
 ### The pack manifest
 
 Slab knows a pack by its manifest, `<id>.pack.json`. Manifests ship
-with slab in `factory:packs/` (`vcsl`, `drum-machines`, `cmi` and
-`extract`, the stems model, docs/30 §Stems, read by src/packs.zig), and more can come from the online repository:
+with slab in `factory:packs/` (`vcsl`, `karoryfer`, `vsco`,
+`drum-machines`, `cmi` and `extract`, the stems model, docs/30 §Stems,
+read by src/packs.zig), and more can come from the online repository:
 
 ```json
 {"id": "vcsl", "name": "Versilian Community Sample Library", "version": "2024.1",
@@ -181,7 +182,8 @@ What's built (the PACKS tab, src/packs.zig):
   for each. Once they are found, **IMPORT** appears; slab doesn't start
   an import on its own.
 - **Importing** still runs the pack's tool from `tools/library/`
-  (`vcsl.py`, `drums.py`, `cmi.py --collection disks _sources`) with
+  (`vcsl.py`, `karoryfer.py`, `vsco.py`, `drums.py`,
+  `cmi.py --collection disks _sources`) with
   Python 3, as a child process. Its output goes to
   `Cache/packs/<id>.log`, and the card shows the last line, with CANCEL
   and LOG. **DOWNLOAD** on VCSL runs `vcsl.py`, which fetches the
