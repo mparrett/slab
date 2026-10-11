@@ -6,6 +6,12 @@ GitHub are its section here (`tools/release.sh` copies them), so add to
 
 ## Unreleased
 
+- **Fretwire, a modeled electric bass.** A new instrument that plays a
+  bass string rather than a recording of one: each note's pluck, decay,
+  pitch glide and tone depend on how hard you play, where the string is
+  plucked and heard, and which string and fret the note falls on.
+  Presets for fingers, the bridge pickup, pick, slap, pop, flatwounds and
+  palm muting. Its tone is a direct recording's; put an amp after it.
 - **FLAC files import as audio clips**: Import audio… and the sampler's
   file picker accept .flac, and the browser lists FLAC samples in your
   Samples folder, a project's audio and library packs.

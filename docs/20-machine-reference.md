@@ -8,6 +8,7 @@ project or preset stores (docs/19): real units for knobs, the option
 
 | id | name | kind | voices | prefix |
 |---|---|---|---|---|
+| [`bass`](#bass) | Fretwire | instrument | 4 | `bs-` |
 | [`concoction`](#concoction) | Concoction | instrument | 8 | `cn-` |
 | [`cream`](#cream) | Mog Passenger | instrument | mono | `cr-` |
 | [`drum2`](#drum2) | DS-404 Drums | instrument | mono | `—` |
@@ -33,6 +34,39 @@ project or preset stores (docs/19): real units for knobs, the option
 | [`sat2`](#sat2) | Saturator | effect | — | `sat-` |
 | [`tape2`](#tape2) | Tape | effect | — | `tape-` |
 | [`verb2`](#verb2) | Verb | effect | — | `verb-` |
+
+## bass
+
+**Fretwire**, instrument, 4 voices.
+
+| param | section | label | range | default | notes |
+|---|---|---|---|---|---|
+| `bs-decay` | STRING | DECAY | 0.3 … 40 | 12 | exp |
+| `bs-hfdec` | STRING | HF DEC | 0.05 … 10 | 1.2 | exp |
+| `bs-knee` | STRING | KNEE | 1 … 32 | 9 | exp |
+| `bs-stiff` | STRING | STIFF | 0 … 10 | 4 | linear |
+| `bs-release` | STRING | RELEASE | 0.02 … 2 | 0.12 | exp |
+| `bs-pos` | PLUCK | POS | 0.04 … 0.5 | 0.14 | linear |
+| `bs-soft` | PLUCK | SOFT | 0.05 … 6 | 2 | exp |
+| `bs-shape` | PLUCK | SHAPE | 0 … 1 | 0 | linear |
+| `bs-noise` | PLUCK | NOISE | 0 … 1 | 0.15 | pow |
+| `bs-pickup` | PICKUP | POS | 0.04 … 0.5 | 0.2 | linear |
+| `bs-hand` | PICKUP | HAND | 0 … 12 | 5 | linear |
+| `bs-tone` | PICKUP | TONE | 300 … 12000 | 3200 | exp |
+| `bs-res` | PICKUP | RES | 0 … 1 | 0.3 | linear |
+| `bs-thump` | FEEL | THUMP | 0 … 1 | 0.5 | linear |
+| `bs-buzz` | FEEL | BUZZ | 0 … 1 | 0 | linear |
+| `bs-level` | FEEL | LEVEL | 0 … 1 | 0.6 | pow |
+
+Presets:
+
+- `default` — Fingers on the neck pickup: roundwounds, direct
+- `fingers-bridge` — Fingers over the bridge pickup: nasal, growly, more mids
+- `flatwound` — Old flatwounds, tone rolled off: short, thumpy, dub and Motown
+- `palm-mute` — Muted with the palm: a short pick thud
+- `pick` — Played with a pick near the bridge: bright attack, click, rounder sustain
+- `pop` — Popped string: pulled and snapped, hard push, buzz
+- `slap` — Thumb slap over the end of the neck: narrow strike, fret rattle, bright
 
 ## concoction
 

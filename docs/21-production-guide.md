@@ -215,14 +215,16 @@ Passenger, `ms20` SM-24 Mono, `juno2` Ju-Know, `profit5` Profit-5 (a Prophet-5 w
 parameters are the DX7's own, 0..99, and .syx voices import byte for byte
 into your library, never the repository; factory presets are Slab's own,
 e.g. `slab/glass-lead`),
-`rhodes` Rhodes E-Piano, `sampler` Sampler, `concoction` Concoction (a
+`rhodes` Rhodes E-Piano, `bass` Fretwire (a waveguide electric bass:
+the string, pluck and pickup are modeled, HAND picks the string a note is
+played on), `sampler` Sampler, `concoction` Concoction (a
 clean digital wavetable synth after Serum: fixed oscillator phase, a
 built-in table bank or any Serum wavetable, an 8-slot mod matrix).
 
 | Role | Slab machines and starting presets |
 |---|---|
 | drums | `drum2`: `gated-snare-kit` (80s pop), `polite-studio-kit`, `909-punch`, `808-boom`, `tight-funk-kit`, `light-disco-kit` |
-| bass | `concoction`: `crisp-saw-bass`, `clean-sine-bass`, `pluck-bass`, `kick-bass`, `reese`, `wobble` (the clean, punchy digital basses). `cream`: `outstanding-funk-bass`, `synthwave-bass`, `deep-sub-bass`. `profit5`: `heavy-bass`, `clang-fm-bass`. `ms20`: `rubber-bass`, `acid-bass`, `octave-night-bass`. `fm86`: `bass-1` (DX slap) |
+| bass | `bass` (the electric bass guitar): `default` (fingers, neck pickup), `fingers-bridge`, `pick`, `slap`, `pop`, `flatwound`, `palm-mute`. `concoction`: `crisp-saw-bass`, `clean-sine-bass`, `pluck-bass`, `kick-bass`, `reese`, `wobble` (the clean, punchy digital basses). `cream`: `outstanding-funk-bass`, `synthwave-bass`, `deep-sub-bass`. `profit5`: `heavy-bass`, `clang-fm-bass`. `ms20`: `rubber-bass`, `acid-bass`, `octave-night-bass`. `fm86`: `bass-1` (DX slap) |
 | harmonic bed | `juno2`: `wide-sunny-pad`, `lush-pad`, `strings`, `string-machine-wash`. `profit5`: `poly-strings`, `ob-pad`. `fm86`: `strings-1` |
 | rhythmic comping | `fm86`: `e-piano-1` (the DX7 ballad piano), `clav-1`. `rhodes`: `default`, `mellow`. `juno2`: `warm-chord-plucks`, `polite-synth-pop-keys`. `profit5`: `pluck-keys` |
 | lead / vocal line | `cream`: `cream-lead`, `whistle`. `ms20`: `vibrato-lead`, `portamento-highway-lead`. `fm86`: `syn-lead-1`, `flute-1`. `profit5`: `sync-lead`, `shred-lead` |

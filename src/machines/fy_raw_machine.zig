@@ -6543,6 +6543,27 @@ test "raw DSP2 delay machine: two rings, injected once into the stereo region" {
     }
 }
 
+test "raw DSP2 voice machine with a buffer: one ring per voice" {
+    const inst = try FyRawMachine.create(testing.allocator, "machines/bass/bass.fy");
+    const mach = inst.machineInterface();
+    defer mach.deinit.?(mach.state, testing.allocator);
+
+    // Fretwire's strings are each a delay loop: every voice region gets
+    // its own ring, injected at the request's offsets, and none share one.
+    try testing.expectEqual(@as(usize, 1), inst.desc.buffer_count);
+    const req = inst.desc.buffers[0];
+    const voices = inst.desc.voices;
+    try testing.expect(voices > 1);
+    for (0..voices) |v| {
+        const ring = inst.buffer_mem[0][v];
+        try testing.expect(ring.len > 0);
+        const ptr_bits: *align(8) const usize = @ptrCast(@alignCast(&inst.state_buf[v * MAX_STATE + req.ptr_offset]));
+        try testing.expectEqual(@intFromPtr(ring.ptr), ptr_bits.*);
+        if (v > 0) try testing.expect(ring.ptr != inst.buffer_mem[0][v - 1].ptr);
+    }
+    try testing.expectEqual(@as(usize, 0), inst.buffer_mem[0][voices].len);
+}
+
 /// Render `n` samples of an effect fed one impulse (`amp_l`, `amp_r`) at
 /// sample 0, after applying `sets` (control id, value). Caller frees.
 const ParamSet = struct { []const u8, f64 };
