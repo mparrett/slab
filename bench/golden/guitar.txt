@@ -1,0 +1,6 @@
+# bench goldens for guitar: case sha256(f32 L ++ f32 R) [nonharm_db thd_db]
+notes f27519fbf925fbf57bf4fd274367307371289a1fdf90937b267b14889ebcf57d
+velocity 089cd20ccd61b8cddcbb6afefe6152e92a7a17da4f780ce44941e5443067fa0c
+held aaac8b719a9606f6517274cd64d52951f0b01b0f3be3fda4a29eaec92efcf8eb -73.6 -3.3
+high 8cadbe64df4d354ea25f585a7be87a4014bfc5e93a637802ac220d588d9ebe04 -73.0 -14.6
+chord 8a259ffabb8aff4de7e3ee795a06933fd11fc4b31f8c588182e32ad9ba398807 2.2 0.8

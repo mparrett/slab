@@ -65,6 +65,7 @@ pub const builtin_machines = [_][]const u8{
     "machines/profit5/profit5.fy",
     "machines/rhodes/rhodes.fy",
     "machines/bass/bass.fy",
+    "machines/guitar/guitar.fy",
     "machines/funk/funk.fy",
     "machines/sampler/sampler.fy",
     "machines/concoction/concoction.fy",

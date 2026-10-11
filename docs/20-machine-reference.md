@@ -13,6 +13,7 @@ project or preset stores (docs/19): real units for knobs, the option
 | [`cream`](#cream) | Mog Passenger | instrument | mono | `cr-` |
 | [`drum2`](#drum2) | DS-404 Drums | instrument | mono | `—` |
 | [`fm86`](#fm86) | FM-7.11 | instrument | 8 | `—` |
+| [`guitar`](#guitar) | Fretwire Guitar | instrument | 6 | `gt-` |
 | [`juno2`](#juno2) | Ju-Know | instrument | 8 | `jn-` |
 | [`ms20`](#ms20) | SM-24 Mono | instrument | mono | `—` |
 | [`profit5`](#profit5) | Profit-5 | instrument | 8 | `p5-` |
@@ -57,7 +58,9 @@ project or preset stores (docs/19): real units for knobs, the option
 | `bs-res` | PICKUP | RES | 0 … 1 | 0.3 | linear |
 | `bs-thump` | FEEL | THUMP | 0 … 1 | 0.5 | linear |
 | `bs-buzz` | FEEL | BUZZ | 0 … 1 | 0 | linear |
-| `bs-level` | FEEL | LEVEL | 0 … 1 | 0.6 | pow |
+| `bs-motion` | FEEL | MOTION | 0 AUTO / 1 BEND / 2 SLIDE | 0 | switch |
+| `bs-slide` | FEEL | SLIDE | 0 … 1 | 0.4 | linear |
+| `bs-level` | FEEL | LEVEL | 0 … 1 | 0.55 | pow |
 
 Presets:
 
@@ -492,6 +495,41 @@ Presets:
 - `slab/tubular-bells` — Slab: tubular bells. A clangorous strike that settles into a long, slightly sour hum while the key is held.
 - `slab/vibes` — Slab: vibraphone. A bright mallet bar with a ringing high partial, a tink on the strike and a steady motor tremolo.
 
+## guitar
+
+**Fretwire Guitar**, instrument, 6 voices.
+
+| param | section | label | range | default | notes |
+|---|---|---|---|---|---|
+| `gt-decay` | STRING | DECAY | 0.3 … 40 | 12 | exp |
+| `gt-hfdec` | STRING | HF DEC | 0.05 … 10 | 0.8 | exp |
+| `gt-knee` | STRING | KNEE | 1 … 32 | 5 | exp |
+| `gt-stiff` | STRING | STIFF | 0 … 10 | 1.2 | linear |
+| `gt-release` | STRING | RELEASE | 0.02 … 2 | 0.12 | exp |
+| `gt-pos` | PLUCK | POS | 0.04 … 0.5 | 0.17 | linear |
+| `gt-soft` | PLUCK | SOFT | 0.05 … 6 | 1 | exp |
+| `gt-shape` | PLUCK | SHAPE | 0 … 1 | 0.4 | linear |
+| `gt-noise` | PLUCK | NOISE | 0 … 1 | 0.15 | pow |
+| `gt-pickup` | PICKUP | POS | 0.04 … 0.5 | 0.24 | linear |
+| `gt-hand` | PICKUP | HAND | 0 … 12 | 0 | linear |
+| `gt-tone` | PICKUP | TONE | 300 … 12000 | 4500 | exp |
+| `gt-res` | PICKUP | RES | 0 … 1 | 0.4 | linear |
+| `gt-thump` | FEEL | THUMP | 0 … 1 | 0.3 | linear |
+| `gt-buzz` | FEEL | BUZZ | 0 … 1 | 0 | linear |
+| `gt-motion` | FEEL | MOTION | 0 AUTO / 1 BEND / 2 SLIDE | 0 | switch |
+| `gt-slide` | FEEL | SLIDE | 0 … 1 | 0.4 | linear |
+| `gt-level` | FEEL | LEVEL | 0 … 1 | 0.5 | pow |
+
+Presets:
+
+- `bridge` — Picked on the bridge pickup: thin, bright, cutting; for crunch and leads into an amp
+- `default` — Picked, neck pickup, open position: the clean electric
+- `fingers` — Fingerstyle, thumb and fingers over the neck: round and soft
+- `funk` — Bright, tight, short: bridge-and-middle funk chops
+- `jazz` — Archtop jazz: neck pickup, tone rolled off, flatwound thump
+- `palm-mute` — Palm-muted picking: a short chug, give it a high-gain amp
+- `slide` — Bottleneck slide: long sustain, pitch curves glide fret by fret with the rasp
+
 ## juno2
 
 **Ju-Know**, instrument, 8 voices.
@@ -741,6 +779,10 @@ Presets:
 - `octave-down` — Pitched an octave down, longer tail
 - `raw` — Clean one-shot, no loop
 - `sp1200-kit` — SP-1200 drums: 12-bit drop-sample, pitched-down grit, fixed filter
+- `karoryfer/emilyguitar` — Emily, Epiphone electric with flatwounds, direct, clean (Karoryfer, CC0)
+- `karoryfer/fashionbass` — Fashionbass, fingered electric bass direct, five velocity layers (Karoryfer, CC0)
+- `karoryfer/growlybass` — Growlybass, Squier Jazz Bass fingered, clean (Karoryfer, CC0)
+- `karoryfer/weresax-alto` — Weresax alto saxophone, condenser mic, piano and forte layers (Karoryfer, CC0)
 - `vcsl/acoustic-kit` — VCSL acoustic kit on GM keys
 - `vcsl/fm-piano` — VCSL FM Piano
 - `vcsl/grand-piano` — VCSL Grand Piano, Kawai / Sustains, with release samples
@@ -751,6 +793,17 @@ Presets:
 - `vcsl/ocarina` — VCSL Ocarina, Typical / Sustains / Sus, with release samples
 - `vcsl/studio-kit` — VCSL concert drums as a kit on GM keys
 - `vcsl/upright-piano` — VCSL Upright Piano, Yamaha / Sustains, with release samples
+- `vsco-brass/tenor-trombone-stac` — VSCO 2 CE Brass / Tenor Trombone / stac
+- `vsco-brass/tenor-trombone-sus` — VSCO 2 CE Brass / Tenor Trombone / sus
+- `vsco-brass/tenor-trombone-vib` — VSCO 2 CE Brass / Tenor Trombone / vib
+- `vsco-brass/trumpet-stac` — VSCO 2 CE Brass / Trumpet / stac
+- `vsco-brass/trumpet-sus` — VSCO 2 CE Brass / Trumpet / sus
+- `vsco-brass/trumpet-susvib` — VSCO 2 CE Brass / Trumpet / susvib
+- `vsco-strings/cello-section-susvib` — VSCO 2 CE Strings / Cello Section / susvib
+- `vsco-strings/solo-contrabass-pizz` — VSCO 2 CE Strings / Solo Contrabass / Pizz
+- `vsco-strings/viola-section-susvib` — VSCO 2 CE Strings / Viola Section / susvib
+- `vsco-strings/violin-section-spic` — VSCO 2 CE Strings / Violin Section / Spic
+- `vsco-strings/violin-section-susvib` — VSCO 2 CE Strings / Violin Section / susVib
 
 ## unfairlight
 

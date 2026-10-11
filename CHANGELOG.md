@@ -12,7 +12,10 @@ GitHub are its section here (`tools/release.sh` copies them), so add to
   plucked and heard, and which string and fret the note falls on.
   Presets for fingers, the bridge pickup, pick, slap, pop, flatwounds and
   palm muting. Its tone is a direct recording's; put an amp after it.
-- **Fretwire bends and slides.** A note's pitch curve bends the
+- **Fretwire Guitar.** The waveguide string strung as a six-string
+  electric guitar, fitted to a sampled guitar, with presets for the neck
+  and bridge pickups, fingerstyle, funk, jazz, palm muting and slide.
+- **Bass and guitar bend and slide.** A note's pitch curve bends the
   string smoothly, or with MOTION on SLIDE moves it fret by fret with the
   rasp of a finger on the windings. AUTO tells them apart: a curve that
   goes further than a string can bend becomes a slide.

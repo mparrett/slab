@@ -8,14 +8,14 @@ effect is a short file you can open and change.**
 ![Slab: the arrangement, the piano roll and the Mog Passenger synth](docs/images/slab.png)
 
 Slab (the Slab Audio Workstation) is a complete place to make music: lay
-out a song, write parts in the piano roll, play eleven instruments through
+out a song, write parts in the piano roll, play twelve instruments through
 fifteen effects, automate anything, and mix it down to a WAV. It looks
 like a rack of 2000s studio hardware and runs like native code, because
 it is.
 
 ## What you get
 
-- **Eleven instruments with a lineage.** Each is modeled on the instrument
+- **Twelve instruments with a lineage.** Each is modeled on the instrument
   it's named after:
   - **Mog Passenger**, after the Moog Prodigy and Messenger: three
     oscillators into a driven transistor ladder
@@ -30,8 +30,8 @@ it is.
     8-bit voice RAM, grit included
   - **DS-404**, an 808/909-style drum machine
   - **Rhodes**, a modeled electric piano
-  - **Fretwire**, a physically modeled electric bass: fingers, pick,
-    slap and pop on a waveguide string
+  - **Fretwire** bass and guitar, physically modeled strings: fingers,
+    pick, slap and pop, and pitch curves that bend or slide fret by fret
   - **Sampler**, for WAV, FLAC, SFZ and folder kits
 - **Sixteen effects:** EQ, graphic EQ, compressor, bus compressor,
   multiband, a character compressor, saturator, tape, chorus, delay,
