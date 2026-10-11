@@ -402,6 +402,10 @@ pub const Desc = struct {
     /// sound, beyond its buffers (docs/04 §Idle skipping); negative = never
     /// idle-skip it.
     tail_s: f64 = 0,
+    /// Poly legato (manifest `legato-span!`): a note starting while exactly
+    /// one note is held, within this many semitones of it and at least
+    /// LEGATO_GAP_S after it, plays legato on that note's voice. 0 = off.
+    legato_span: f64 = 0,
     // Generic derived-params hook: a dsp2 word (params derive-data --) the host
     // calls each block, plus an opaque machine-built data pointer. Lets a
     // machine keep all its specific logic in fy (e.g. FM-86 algorithm routing)
@@ -551,6 +555,7 @@ const MachineDescRaw = extern struct {
     mods: Fy.Value,
     matrix: Fy.Value,
     matrix_slots: Fy.Value,
+    legato_span: Fy.Value,
 };
 
 const ModRaw = extern struct { next: Fy.Value, kind: Fy.Value, name: Fy.Value, index: Fy.Value, offset: Fy.Value, flag: Fy.Value };
@@ -683,6 +688,7 @@ pub fn read(host: *FyHost) !Desc {
     d.key_flag = @intCast(asInt(md.key_flag));
     d.latency_sel = @intCast(asInt(md.latency));
     d.tail_s = asF64(md.tail);
+    if (d.mode == .voice_sample) d.legato_span = @max(0, asF64(md.legato_span));
     d.control_word_len = try copyBuf(d.control_word[0..], cstrSlice(md.control));
     d.control_period = @intCast(asInt(md.control_period));
     if (d.control_word_len > 0 and (d.mode != .voice_sample or d.control_period == 0)) return error.InvalidMachineDesc;

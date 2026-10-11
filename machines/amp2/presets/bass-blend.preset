@@ -1,0 +1,1 @@
+{"slab": "preset", "schema": 1, "machine": "amp2", "note": "Bass: a tube head into an 8x10 with the DI under it, the studio default", "params": {"amp-voice": 0, "amp-gain": 0.35, "amp-tight": 20.0, "amp-bass": 0.6, "amp-mid": 0.5, "amp-treble": 0.45, "amp-pres": 0.2, "amp-master": 0.3, "amp-sag": 0.3, "amp-cab": 4, "amp-mic": 0.2, "amp-blend": 0.5, "amp-level": -5.0}}

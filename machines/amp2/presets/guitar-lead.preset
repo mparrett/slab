@@ -1,0 +1,1 @@
+{"slab": "preset", "schema": 1, "machine": "amp2", "note": "Guitar: hot-rodded high gain for leads, singing sustain", "params": {"amp-voice": 3, "amp-gain": 0.75, "amp-tight": 120.0, "amp-bass": 0.5, "amp-mid": 0.6, "amp-treble": 0.55, "amp-pres": 0.45, "amp-master": 0.4, "amp-sag": 0.3, "amp-cab": 2, "amp-mic": 0.3, "amp-blend": 0.0, "amp-level": -3.5}}

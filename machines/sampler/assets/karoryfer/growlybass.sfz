@@ -1,0 +1,212 @@
+// Growlybass, Squier Jazz Bass fingered, clean
+// Karoryfer Samples (CC0) - flattened for Slab by tools/library/karoryfer.py
+// shipped with slab as 16-bit mono FLAC at 44.1 kHz (tools/library/factory.py)
+
+<region> lokey=33 hikey=38 pitch_keycenter=37 hivel=60 seq_length=4 seq_position=1 sample=growlybass/001-db2_pp_rr1.flac
+<region> lokey=33 hikey=38 pitch_keycenter=37 hivel=60 seq_length=4 seq_position=2 sample=growlybass/002-db2_pp_rr2.flac
+<region> lokey=33 hikey=38 pitch_keycenter=37 hivel=60 seq_length=4 seq_position=3 sample=growlybass/003-db2_pp_rr3.flac
+<region> lokey=33 hikey=38 pitch_keycenter=37 hivel=60 seq_length=4 seq_position=4 sample=growlybass/004-db2_pp_rr4.flac
+<region> lokey=33 hikey=38 pitch_keycenter=37 lovel=61 hivel=95 seq_length=4 seq_position=1 sample=growlybass/005-db2_p_rr1.flac
+<region> lokey=33 hikey=38 pitch_keycenter=37 lovel=61 hivel=95 seq_length=4 seq_position=2 sample=growlybass/006-db2_p_rr2.flac
+<region> lokey=33 hikey=38 pitch_keycenter=37 lovel=61 hivel=95 seq_length=4 seq_position=3 sample=growlybass/007-db2_p_rr3.flac
+<region> lokey=33 hikey=38 pitch_keycenter=37 lovel=61 hivel=95 seq_length=4 seq_position=4 sample=growlybass/008-db2_p_rr4.flac
+<region> lokey=33 hikey=38 pitch_keycenter=37 lovel=96 hivel=120 seq_length=4 seq_position=1 sample=growlybass/009-db2_f_rr1.flac
+<region> lokey=33 hikey=38 pitch_keycenter=37 lovel=96 hivel=120 seq_length=4 seq_position=2 sample=growlybass/010-db2_f_rr2.flac
+<region> lokey=33 hikey=38 pitch_keycenter=37 lovel=96 hivel=120 seq_length=4 seq_position=3 sample=growlybass/011-db2_f_rr3.flac
+<region> lokey=33 hikey=38 pitch_keycenter=37 lovel=96 hivel=120 seq_length=4 seq_position=4 sample=growlybass/012-db2_f_rr4.flac
+<region> lokey=33 hikey=38 pitch_keycenter=37 lovel=121 seq_length=4 seq_position=1 sample=growlybass/013-db2_ff_rr1.flac
+<region> lokey=33 hikey=38 pitch_keycenter=37 lovel=121 seq_length=4 seq_position=2 sample=growlybass/014-db2_ff_rr2.flac
+<region> lokey=33 hikey=38 pitch_keycenter=37 lovel=121 seq_length=4 seq_position=3 sample=growlybass/015-db2_ff_rr3.flac
+<region> lokey=33 hikey=38 pitch_keycenter=37 lovel=121 seq_length=4 seq_position=4 sample=growlybass/016-db2_ff_rr4.flac
+<region> lokey=39 hikey=40 pitch_keycenter=40 hivel=60 seq_length=4 seq_position=1 sample=growlybass/017-e2_pp_rr1.flac
+<region> lokey=39 hikey=40 pitch_keycenter=40 hivel=60 seq_length=4 seq_position=2 sample=growlybass/018-e2_pp_rr2.flac
+<region> lokey=39 hikey=40 pitch_keycenter=40 hivel=60 seq_length=4 seq_position=3 sample=growlybass/019-e2_pp_rr3.flac
+<region> lokey=39 hikey=40 pitch_keycenter=40 hivel=60 seq_length=4 seq_position=4 sample=growlybass/020-e2_pp_rr4.flac
+<region> lokey=39 hikey=40 pitch_keycenter=40 lovel=61 hivel=95 seq_length=4 seq_position=1 sample=growlybass/021-e2_p_rr1.flac
+<region> lokey=39 hikey=40 pitch_keycenter=40 lovel=61 hivel=95 seq_length=4 seq_position=2 sample=growlybass/022-e2_p_rr2.flac
+<region> lokey=39 hikey=40 pitch_keycenter=40 lovel=61 hivel=95 seq_length=4 seq_position=3 sample=growlybass/023-e2_p_rr3.flac
+<region> lokey=39 hikey=40 pitch_keycenter=40 lovel=61 hivel=95 seq_length=4 seq_position=4 sample=growlybass/024-e2_p_rr4.flac
+<region> lokey=39 hikey=40 pitch_keycenter=40 lovel=96 hivel=120 seq_length=4 seq_position=1 sample=growlybass/025-e2_f_rr1.flac
+<region> lokey=39 hikey=40 pitch_keycenter=40 lovel=96 hivel=120 seq_length=4 seq_position=2 sample=growlybass/026-e2_f_rr2.flac
+<region> lokey=39 hikey=40 pitch_keycenter=40 lovel=96 hivel=120 seq_length=4 seq_position=3 sample=growlybass/027-e2_f_rr3.flac
+<region> lokey=39 hikey=40 pitch_keycenter=40 lovel=96 hivel=120 seq_length=4 seq_position=4 sample=growlybass/028-e2_f_rr4.flac
+<region> lokey=39 hikey=40 pitch_keycenter=40 lovel=121 seq_length=4 seq_position=1 sample=growlybass/029-e2_ff_rr1.flac
+<region> lokey=39 hikey=40 pitch_keycenter=40 lovel=121 seq_length=4 seq_position=2 sample=growlybass/030-e2_ff_rr2.flac
+<region> lokey=39 hikey=40 pitch_keycenter=40 lovel=121 seq_length=4 seq_position=3 sample=growlybass/031-e2_ff_rr3.flac
+<region> lokey=39 hikey=40 pitch_keycenter=40 lovel=121 seq_length=4 seq_position=4 sample=growlybass/032-e2_ff_rr4.flac
+<region> lokey=41 hikey=43 pitch_keycenter=42 hivel=60 seq_length=4 seq_position=1 sample=growlybass/033-gb2_pp_rr1.flac
+<region> lokey=41 hikey=43 pitch_keycenter=42 hivel=60 seq_length=4 seq_position=2 sample=growlybass/034-gb2_pp_rr2.flac
+<region> lokey=41 hikey=43 pitch_keycenter=42 hivel=60 seq_length=4 seq_position=3 sample=growlybass/035-gb2_pp_rr3.flac
+<region> lokey=41 hikey=43 pitch_keycenter=42 hivel=60 seq_length=4 seq_position=4 sample=growlybass/036-gb2_pp_rr4.flac
+<region> lokey=41 hikey=43 pitch_keycenter=42 lovel=61 hivel=95 seq_length=4 seq_position=1 sample=growlybass/037-gb2_p_rr1.flac
+<region> lokey=41 hikey=43 pitch_keycenter=42 lovel=61 hivel=95 seq_length=4 seq_position=2 sample=growlybass/038-gb2_p_rr2.flac
+<region> lokey=41 hikey=43 pitch_keycenter=42 lovel=61 hivel=95 seq_length=4 seq_position=3 sample=growlybass/039-gb2_p_rr3.flac
+<region> lokey=41 hikey=43 pitch_keycenter=42 lovel=61 hivel=95 seq_length=4 seq_position=4 sample=growlybass/040-gb2_p_rr4.flac
+<region> lokey=41 hikey=43 pitch_keycenter=42 lovel=96 hivel=120 seq_length=4 seq_position=1 sample=growlybass/041-gb2_f_rr1.flac
+<region> lokey=41 hikey=43 pitch_keycenter=42 lovel=96 hivel=120 seq_length=4 seq_position=2 sample=growlybass/042-gb2_f_rr2.flac
+<region> lokey=41 hikey=43 pitch_keycenter=42 lovel=96 hivel=120 seq_length=4 seq_position=3 sample=growlybass/043-gb2_f_rr3.flac
+<region> lokey=41 hikey=43 pitch_keycenter=42 lovel=96 hivel=120 seq_length=4 seq_position=4 sample=growlybass/044-gb2_f_rr4.flac
+<region> lokey=41 hikey=43 pitch_keycenter=42 lovel=121 seq_length=4 seq_position=1 sample=growlybass/045-gb2_ff_rr1.flac
+<region> lokey=41 hikey=43 pitch_keycenter=42 lovel=121 seq_length=4 seq_position=2 sample=growlybass/046-gb2_ff_rr2.flac
+<region> lokey=41 hikey=43 pitch_keycenter=42 lovel=121 seq_length=4 seq_position=3 sample=growlybass/047-gb2_ff_rr3.flac
+<region> lokey=41 hikey=43 pitch_keycenter=42 lovel=121 seq_length=4 seq_position=4 sample=growlybass/048-gb2_ff_rr4.flac
+<region> lokey=44 hikey=46 pitch_keycenter=45 hivel=60 seq_length=4 seq_position=1 sample=growlybass/049-a2_pp_rr1.flac
+<region> lokey=44 hikey=46 pitch_keycenter=45 hivel=60 seq_length=4 seq_position=2 sample=growlybass/050-a2_pp_rr2.flac
+<region> lokey=44 hikey=46 pitch_keycenter=45 hivel=60 seq_length=4 seq_position=3 sample=growlybass/051-a2_pp_rr3.flac
+<region> lokey=44 hikey=46 pitch_keycenter=45 hivel=60 seq_length=4 seq_position=4 sample=growlybass/052-a2_pp_rr4.flac
+<region> lokey=44 hikey=46 pitch_keycenter=45 lovel=61 hivel=95 seq_length=4 seq_position=1 sample=growlybass/053-a2_p_rr1.flac
+<region> lokey=44 hikey=46 pitch_keycenter=45 lovel=61 hivel=95 seq_length=4 seq_position=2 sample=growlybass/054-a2_p_rr2.flac
+<region> lokey=44 hikey=46 pitch_keycenter=45 lovel=61 hivel=95 seq_length=4 seq_position=3 sample=growlybass/055-a2_p_rr3.flac
+<region> lokey=44 hikey=46 pitch_keycenter=45 lovel=61 hivel=95 seq_length=4 seq_position=4 sample=growlybass/056-a2_p_rr4.flac
+<region> lokey=44 hikey=46 pitch_keycenter=45 lovel=96 hivel=120 seq_length=4 seq_position=1 sample=growlybass/057-a2_f_rr1.flac
+<region> lokey=44 hikey=46 pitch_keycenter=45 lovel=96 hivel=120 seq_length=4 seq_position=2 sample=growlybass/058-a2_f_rr2.flac
+<region> lokey=44 hikey=46 pitch_keycenter=45 lovel=96 hivel=120 seq_length=4 seq_position=3 sample=growlybass/059-a2_f_rr3.flac
+<region> lokey=44 hikey=46 pitch_keycenter=45 lovel=96 hivel=120 seq_length=4 seq_position=4 sample=growlybass/060-a2_f_rr4.flac
+<region> lokey=44 hikey=46 pitch_keycenter=45 lovel=121 seq_length=4 seq_position=1 sample=growlybass/061-a2_ff_rr1.flac
+<region> lokey=44 hikey=46 pitch_keycenter=45 lovel=121 seq_length=4 seq_position=2 sample=growlybass/062-a2_ff_rr2.flac
+<region> lokey=44 hikey=46 pitch_keycenter=45 lovel=121 seq_length=4 seq_position=3 sample=growlybass/063-a2_ff_rr3.flac
+<region> lokey=44 hikey=46 pitch_keycenter=45 lovel=121 seq_length=4 seq_position=4 sample=growlybass/064-a2_ff_rr4.flac
+<region> lokey=47 hikey=49 pitch_keycenter=48 hivel=60 seq_length=4 seq_position=1 sample=growlybass/065-c3_pp_rr1.flac
+<region> lokey=47 hikey=49 pitch_keycenter=48 hivel=60 seq_length=4 seq_position=2 sample=growlybass/066-c3_pp_rr2.flac
+<region> lokey=47 hikey=49 pitch_keycenter=48 hivel=60 seq_length=4 seq_position=3 sample=growlybass/067-c3_pp_rr3.flac
+<region> lokey=47 hikey=49 pitch_keycenter=48 hivel=60 seq_length=4 seq_position=4 sample=growlybass/068-c3_pp_rr4.flac
+<region> lokey=47 hikey=49 pitch_keycenter=48 lovel=61 hivel=95 seq_length=4 seq_position=1 sample=growlybass/069-c3_p_rr1.flac
+<region> lokey=47 hikey=49 pitch_keycenter=48 lovel=61 hivel=95 seq_length=4 seq_position=2 sample=growlybass/070-c3_p_rr2.flac
+<region> lokey=47 hikey=49 pitch_keycenter=48 lovel=61 hivel=95 seq_length=4 seq_position=3 sample=growlybass/071-c3_p_rr3.flac
+<region> lokey=47 hikey=49 pitch_keycenter=48 lovel=61 hivel=95 seq_length=4 seq_position=4 sample=growlybass/072-c3_p_rr4.flac
+<region> lokey=47 hikey=49 pitch_keycenter=48 lovel=96 hivel=120 seq_length=4 seq_position=1 sample=growlybass/073-c3_f_rr1.flac
+<region> lokey=47 hikey=49 pitch_keycenter=48 lovel=96 hivel=120 seq_length=4 seq_position=2 sample=growlybass/074-c3_f_rr2.flac
+<region> lokey=47 hikey=49 pitch_keycenter=48 lovel=96 hivel=120 seq_length=4 seq_position=3 sample=growlybass/075-c3_f_rr3.flac
+<region> lokey=47 hikey=49 pitch_keycenter=48 lovel=96 hivel=120 seq_length=4 seq_position=4 sample=growlybass/076-c3_f_rr4.flac
+<region> lokey=47 hikey=49 pitch_keycenter=48 lovel=121 seq_length=4 seq_position=1 sample=growlybass/077-c3_ff_rr1.flac
+<region> lokey=47 hikey=49 pitch_keycenter=48 lovel=121 seq_length=4 seq_position=2 sample=growlybass/078-c3_ff_rr2.flac
+<region> lokey=47 hikey=49 pitch_keycenter=48 lovel=121 seq_length=4 seq_position=3 sample=growlybass/079-c3_ff_rr3.flac
+<region> lokey=47 hikey=49 pitch_keycenter=48 lovel=121 seq_length=4 seq_position=4 sample=growlybass/080-c3_ff_rr4.flac
+<region> lokey=50 hikey=52 pitch_keycenter=51 hivel=60 seq_length=4 seq_position=1 sample=growlybass/081-eb3_pp_rr1.flac
+<region> lokey=50 hikey=52 pitch_keycenter=51 hivel=60 seq_length=4 seq_position=2 sample=growlybass/082-eb3_pp_rr2.flac
+<region> lokey=50 hikey=52 pitch_keycenter=51 hivel=60 seq_length=4 seq_position=3 sample=growlybass/083-eb3_pp_rr3.flac
+<region> lokey=50 hikey=52 pitch_keycenter=51 hivel=60 seq_length=4 seq_position=4 sample=growlybass/084-eb3_pp_rr4.flac
+<region> lokey=50 hikey=52 pitch_keycenter=51 lovel=61 hivel=95 seq_length=4 seq_position=1 sample=growlybass/085-eb3_p_rr1.flac
+<region> lokey=50 hikey=52 pitch_keycenter=51 lovel=61 hivel=95 seq_length=4 seq_position=2 sample=growlybass/086-eb3_p_rr2.flac
+<region> lokey=50 hikey=52 pitch_keycenter=51 lovel=61 hivel=95 seq_length=4 seq_position=3 sample=growlybass/087-eb3_p_rr3.flac
+<region> lokey=50 hikey=52 pitch_keycenter=51 lovel=61 hivel=95 seq_length=4 seq_position=4 sample=growlybass/088-eb3_p_rr4.flac
+<region> lokey=50 hikey=52 pitch_keycenter=51 lovel=96 hivel=120 seq_length=4 seq_position=1 sample=growlybass/089-eb3_f_rr1.flac
+<region> lokey=50 hikey=52 pitch_keycenter=51 lovel=96 hivel=120 seq_length=4 seq_position=2 sample=growlybass/090-eb3_f_rr2.flac
+<region> lokey=50 hikey=52 pitch_keycenter=51 lovel=96 hivel=120 seq_length=4 seq_position=3 sample=growlybass/091-eb3_f_rr3.flac
+<region> lokey=50 hikey=52 pitch_keycenter=51 lovel=96 hivel=120 seq_length=4 seq_position=4 sample=growlybass/092-eb3_f_rr4.flac
+<region> lokey=50 hikey=52 pitch_keycenter=51 lovel=121 seq_length=4 seq_position=1 sample=growlybass/093-eb3_ff_rr1.flac
+<region> lokey=50 hikey=52 pitch_keycenter=51 lovel=121 seq_length=4 seq_position=2 sample=growlybass/094-eb3_ff_rr2.flac
+<region> lokey=50 hikey=52 pitch_keycenter=51 lovel=121 seq_length=4 seq_position=3 sample=growlybass/095-eb3_ff_rr3.flac
+<region> lokey=50 hikey=52 pitch_keycenter=51 lovel=121 seq_length=4 seq_position=4 sample=growlybass/096-eb3_ff_rr4.flac
+<region> lokey=53 hikey=55 pitch_keycenter=54 hivel=60 seq_length=4 seq_position=1 sample=growlybass/097-gb3_pp_rr1.flac
+<region> lokey=53 hikey=55 pitch_keycenter=54 hivel=60 seq_length=4 seq_position=2 sample=growlybass/098-gb3_pp_rr2.flac
+<region> lokey=53 hikey=55 pitch_keycenter=54 hivel=60 seq_length=4 seq_position=3 sample=growlybass/099-gb3_pp_rr3.flac
+<region> lokey=53 hikey=55 pitch_keycenter=54 hivel=60 seq_length=4 seq_position=4 sample=growlybass/100-gb3_pp_rr4.flac
+<region> lokey=53 hikey=55 pitch_keycenter=54 lovel=61 hivel=95 seq_length=4 seq_position=1 sample=growlybass/101-gb3_p_rr1.flac
+<region> lokey=53 hikey=55 pitch_keycenter=54 lovel=61 hivel=95 seq_length=4 seq_position=2 sample=growlybass/102-gb3_p_rr2.flac
+<region> lokey=53 hikey=55 pitch_keycenter=54 lovel=61 hivel=95 seq_length=4 seq_position=3 sample=growlybass/103-gb3_p_rr3.flac
+<region> lokey=53 hikey=55 pitch_keycenter=54 lovel=61 hivel=95 seq_length=4 seq_position=4 sample=growlybass/104-gb3_p_rr4.flac
+<region> lokey=53 hikey=55 pitch_keycenter=54 lovel=96 hivel=120 seq_length=4 seq_position=1 sample=growlybass/105-gb3_f_rr1.flac
+<region> lokey=53 hikey=55 pitch_keycenter=54 lovel=96 hivel=120 seq_length=4 seq_position=2 sample=growlybass/106-gb3_f_rr2.flac
+<region> lokey=53 hikey=55 pitch_keycenter=54 lovel=96 hivel=120 seq_length=4 seq_position=3 sample=growlybass/107-gb3_f_rr3.flac
+<region> lokey=53 hikey=55 pitch_keycenter=54 lovel=96 hivel=120 seq_length=4 seq_position=4 sample=growlybass/108-gb3_f_rr4.flac
+<region> lokey=53 hikey=55 pitch_keycenter=54 lovel=121 seq_length=4 seq_position=1 sample=growlybass/109-gb3_ff_rr1.flac
+<region> lokey=53 hikey=55 pitch_keycenter=54 lovel=121 seq_length=4 seq_position=2 sample=growlybass/110-gb3_ff_rr2.flac
+<region> lokey=53 hikey=55 pitch_keycenter=54 lovel=121 seq_length=4 seq_position=3 sample=growlybass/111-gb3_ff_rr3.flac
+<region> lokey=53 hikey=55 pitch_keycenter=54 lovel=121 seq_length=4 seq_position=4 sample=growlybass/112-gb3_ff_rr4.flac
+<region> lokey=56 hikey=58 pitch_keycenter=57 hivel=60 seq_length=4 seq_position=1 sample=growlybass/113-a3_pp_rr1.flac
+<region> lokey=56 hikey=58 pitch_keycenter=57 hivel=60 seq_length=4 seq_position=2 sample=growlybass/114-a3_pp_rr2.flac
+<region> lokey=56 hikey=58 pitch_keycenter=57 hivel=60 seq_length=4 seq_position=3 sample=growlybass/115-a3_pp_rr3.flac
+<region> lokey=56 hikey=58 pitch_keycenter=57 hivel=60 seq_length=4 seq_position=4 sample=growlybass/116-a3_pp_rr4.flac
+<region> lokey=56 hikey=58 pitch_keycenter=57 lovel=61 hivel=95 seq_length=4 seq_position=1 sample=growlybass/117-a3_p_rr1.flac
+<region> lokey=56 hikey=58 pitch_keycenter=57 lovel=61 hivel=95 seq_length=4 seq_position=2 sample=growlybass/118-a3_p_rr2.flac
+<region> lokey=56 hikey=58 pitch_keycenter=57 lovel=61 hivel=95 seq_length=4 seq_position=3 sample=growlybass/119-a3_p_rr3.flac
+<region> lokey=56 hikey=58 pitch_keycenter=57 lovel=61 hivel=95 seq_length=4 seq_position=4 sample=growlybass/120-a3_p_rr4.flac
+<region> lokey=56 hikey=58 pitch_keycenter=57 lovel=96 hivel=120 seq_length=4 seq_position=1 sample=growlybass/121-a3_f_rr1.flac
+<region> lokey=56 hikey=58 pitch_keycenter=57 lovel=96 hivel=120 seq_length=4 seq_position=2 sample=growlybass/122-a3_f_rr2.flac
+<region> lokey=56 hikey=58 pitch_keycenter=57 lovel=96 hivel=120 seq_length=4 seq_position=3 sample=growlybass/123-a3_f_rr3.flac
+<region> lokey=56 hikey=58 pitch_keycenter=57 lovel=96 hivel=120 seq_length=4 seq_position=4 sample=growlybass/124-a3_f_rr4.flac
+<region> lokey=56 hikey=58 pitch_keycenter=57 lovel=121 seq_length=4 seq_position=1 sample=growlybass/125-a3_ff_rr1.flac
+<region> lokey=56 hikey=58 pitch_keycenter=57 lovel=121 seq_length=4 seq_position=2 sample=growlybass/126-a3_ff_rr2.flac
+<region> lokey=56 hikey=58 pitch_keycenter=57 lovel=121 seq_length=4 seq_position=3 sample=growlybass/127-a3_ff_rr3.flac
+<region> lokey=56 hikey=58 pitch_keycenter=57 lovel=121 seq_length=4 seq_position=4 sample=growlybass/128-a3_ff_rr4.flac
+<region> lokey=59 hikey=61 hivel=60 pitch_keycenter=59 seq_length=4 seq_position=1 sample=growlybass/129-c4_pp_rr1.flac
+<region> lokey=59 hikey=61 hivel=60 pitch_keycenter=59 seq_length=4 seq_position=2 sample=growlybass/130-c4_pp_rr2.flac
+<region> lokey=59 hikey=61 hivel=60 pitch_keycenter=59 seq_length=4 seq_position=3 sample=growlybass/131-c4_pp_rr3.flac
+<region> lokey=59 hikey=61 hivel=60 pitch_keycenter=59 seq_length=4 seq_position=4 sample=growlybass/132-c4_pp_rr4.flac
+<region> lokey=59 hikey=61 lovel=61 hivel=95 pitch_keycenter=59 seq_length=4 seq_position=1 sample=growlybass/133-c4_p_rr1.flac
+<region> lokey=59 hikey=61 lovel=61 hivel=95 pitch_keycenter=59 seq_length=4 seq_position=2 sample=growlybass/134-c4_p_rr2.flac
+<region> lokey=59 hikey=61 lovel=61 hivel=95 pitch_keycenter=59 seq_length=4 seq_position=3 sample=growlybass/135-c4_p_rr3.flac
+<region> lokey=59 hikey=61 lovel=61 hivel=95 pitch_keycenter=59 seq_length=4 seq_position=4 sample=growlybass/136-c4_p_rr4.flac
+<region> lokey=59 hikey=61 lovel=96 hivel=120 pitch_keycenter=59 seq_length=4 seq_position=1 sample=growlybass/137-c4_f_rr1.flac
+<region> lokey=59 hikey=61 lovel=96 hivel=120 pitch_keycenter=59 seq_length=4 seq_position=2 sample=growlybass/138-c4_f_rr2.flac
+<region> lokey=59 hikey=61 lovel=96 hivel=120 pitch_keycenter=59 seq_length=4 seq_position=3 sample=growlybass/139-c4_f_rr3.flac
+<region> lokey=59 hikey=61 lovel=96 hivel=120 pitch_keycenter=59 seq_length=4 seq_position=4 sample=growlybass/140-c4_f_rr4.flac
+<region> lokey=59 hikey=61 lovel=121 pitch_keycenter=59 seq_length=4 seq_position=1 sample=growlybass/141-c4_ff_rr1.flac
+<region> lokey=59 hikey=61 lovel=121 pitch_keycenter=59 seq_length=4 seq_position=2 sample=growlybass/142-c4_ff_rr2.flac
+<region> lokey=59 hikey=61 lovel=121 pitch_keycenter=59 seq_length=4 seq_position=3 sample=growlybass/143-c4_ff_rr3.flac
+<region> lokey=59 hikey=61 lovel=121 pitch_keycenter=59 seq_length=4 seq_position=4 sample=growlybass/144-c4_ff_rr4.flac
+<region> lokey=62 hikey=64 pitch_keycenter=63 hivel=60 seq_length=4 seq_position=1 sample=growlybass/145-eb4_pp_rr1.flac
+<region> lokey=62 hikey=64 pitch_keycenter=63 hivel=60 seq_length=4 seq_position=2 sample=growlybass/146-eb4_pp_rr2.flac
+<region> lokey=62 hikey=64 pitch_keycenter=63 hivel=60 seq_length=4 seq_position=3 sample=growlybass/147-eb4_pp_rr3.flac
+<region> lokey=62 hikey=64 pitch_keycenter=63 hivel=60 seq_length=4 seq_position=4 sample=growlybass/148-eb4_pp_rr4.flac
+<region> lokey=62 hikey=64 pitch_keycenter=63 lovel=61 hivel=95 seq_length=4 seq_position=1 sample=growlybass/149-eb4_p_rr1.flac
+<region> lokey=62 hikey=64 pitch_keycenter=63 lovel=61 hivel=95 seq_length=4 seq_position=2 sample=growlybass/150-eb4_p_rr2.flac
+<region> lokey=62 hikey=64 pitch_keycenter=63 lovel=61 hivel=95 seq_length=4 seq_position=3 sample=growlybass/151-eb4_p_rr3.flac
+<region> lokey=62 hikey=64 pitch_keycenter=63 lovel=61 hivel=95 seq_length=4 seq_position=4 sample=growlybass/152-eb4_p_rr4.flac
+<region> lokey=62 hikey=64 pitch_keycenter=63 lovel=96 hivel=120 seq_length=4 seq_position=1 sample=growlybass/153-eb4_f_rr1.flac
+<region> lokey=62 hikey=64 pitch_keycenter=63 lovel=96 hivel=120 seq_length=4 seq_position=2 sample=growlybass/154-eb4_f_rr2.flac
+<region> lokey=62 hikey=64 pitch_keycenter=63 lovel=96 hivel=120 seq_length=4 seq_position=3 sample=growlybass/155-eb4_f_rr3.flac
+<region> lokey=62 hikey=64 pitch_keycenter=63 lovel=96 hivel=120 seq_length=4 seq_position=4 sample=growlybass/156-eb4_f_rr4.flac
+<region> lokey=62 hikey=64 pitch_keycenter=63 lovel=121 seq_length=4 seq_position=1 sample=growlybass/157-eb4_ff_rr1.flac
+<region> lokey=62 hikey=64 pitch_keycenter=63 lovel=121 seq_length=4 seq_position=2 sample=growlybass/158-eb4_ff_rr2.flac
+<region> lokey=62 hikey=64 pitch_keycenter=63 lovel=121 seq_length=4 seq_position=3 sample=growlybass/159-eb4_ff_rr3.flac
+<region> lokey=62 hikey=64 pitch_keycenter=63 lovel=121 seq_length=4 seq_position=4 sample=growlybass/160-eb4_ff_rr4.flac
+<region> lokey=65 hikey=67 pitch_keycenter=66 hivel=60 seq_length=4 seq_position=1 sample=growlybass/161-gb4_pp_rr1.flac
+<region> lokey=65 hikey=67 pitch_keycenter=66 hivel=60 seq_length=4 seq_position=2 sample=growlybass/162-gb4_pp_rr2.flac
+<region> lokey=65 hikey=67 pitch_keycenter=66 hivel=60 seq_length=4 seq_position=3 sample=growlybass/163-gb4_pp_rr3.flac
+<region> lokey=65 hikey=67 pitch_keycenter=66 hivel=60 seq_length=4 seq_position=4 sample=growlybass/164-gb4_pp_rr4.flac
+<region> lokey=65 hikey=67 pitch_keycenter=66 lovel=61 hivel=95 seq_length=4 seq_position=1 sample=growlybass/165-gb4_p_rr1.flac
+<region> lokey=65 hikey=67 pitch_keycenter=66 lovel=61 hivel=95 seq_length=4 seq_position=2 sample=growlybass/166-gb4_p_rr2.flac
+<region> lokey=65 hikey=67 pitch_keycenter=66 lovel=61 hivel=95 seq_length=4 seq_position=3 sample=growlybass/167-gb4_p_rr3.flac
+<region> lokey=65 hikey=67 pitch_keycenter=66 lovel=61 hivel=95 seq_length=4 seq_position=4 sample=growlybass/168-gb4_p_rr4.flac
+<region> lokey=65 hikey=67 pitch_keycenter=66 lovel=96 hivel=120 seq_length=4 seq_position=1 sample=growlybass/169-gb4_f_rr1.flac
+<region> lokey=65 hikey=67 pitch_keycenter=66 lovel=96 hivel=120 seq_length=4 seq_position=2 sample=growlybass/170-gb4_f_rr2.flac
+<region> lokey=65 hikey=67 pitch_keycenter=66 lovel=96 hivel=120 seq_length=4 seq_position=3 sample=growlybass/171-gb4_f_rr3.flac
+<region> lokey=65 hikey=67 pitch_keycenter=66 lovel=96 hivel=120 seq_length=4 seq_position=4 sample=growlybass/172-gb4_f_rr4.flac
+<region> lokey=65 hikey=67 pitch_keycenter=66 lovel=121 seq_length=4 seq_position=1 sample=growlybass/173-gb4_ff_rr1.flac
+<region> lokey=65 hikey=67 pitch_keycenter=66 lovel=121 seq_length=4 seq_position=2 sample=growlybass/174-gb4_ff_rr2.flac
+<region> lokey=65 hikey=67 pitch_keycenter=66 lovel=121 seq_length=4 seq_position=3 sample=growlybass/175-gb4_ff_rr3.flac
+<region> lokey=65 hikey=67 pitch_keycenter=66 lovel=121 seq_length=4 seq_position=4 sample=growlybass/176-gb4_ff_rr4.flac
+<region> lokey=68 hikey=70 pitch_keycenter=69 hivel=60 seq_length=4 seq_position=1 sample=growlybass/177-a4_pp_rr1.flac
+<region> lokey=68 hikey=70 pitch_keycenter=69 hivel=60 seq_length=4 seq_position=2 sample=growlybass/178-a4_pp_rr2.flac
+<region> lokey=68 hikey=70 pitch_keycenter=69 hivel=60 seq_length=4 seq_position=3 sample=growlybass/179-a4_pp_rr3.flac
+<region> lokey=68 hikey=70 pitch_keycenter=69 hivel=60 seq_length=4 seq_position=4 sample=growlybass/180-a4_pp_rr4.flac
+<region> lokey=68 hikey=70 pitch_keycenter=69 lovel=61 hivel=95 seq_length=4 seq_position=1 sample=growlybass/181-a4_p_rr1.flac
+<region> lokey=68 hikey=70 pitch_keycenter=69 lovel=61 hivel=95 seq_length=4 seq_position=2 sample=growlybass/182-a4_p_rr2.flac
+<region> lokey=68 hikey=70 pitch_keycenter=69 lovel=61 hivel=95 seq_length=4 seq_position=3 sample=growlybass/183-a4_p_rr3.flac
+<region> lokey=68 hikey=70 pitch_keycenter=69 lovel=61 hivel=95 seq_length=4 seq_position=4 sample=growlybass/184-a4_p_rr4.flac
+<region> lokey=68 hikey=70 pitch_keycenter=69 lovel=96 hivel=120 seq_length=4 seq_position=1 sample=growlybass/185-a4_f_rr1.flac
+<region> lokey=68 hikey=70 pitch_keycenter=69 lovel=96 hivel=120 seq_length=4 seq_position=2 sample=growlybass/186-a4_f_rr2.flac
+<region> lokey=68 hikey=70 pitch_keycenter=69 lovel=96 hivel=120 seq_length=4 seq_position=3 sample=growlybass/187-a4_f_rr3.flac
+<region> lokey=68 hikey=70 pitch_keycenter=69 lovel=96 hivel=120 seq_length=4 seq_position=4 sample=growlybass/188-a4_f_rr4.flac
+<region> lokey=68 hikey=70 pitch_keycenter=69 lovel=121 seq_length=4 seq_position=1 sample=growlybass/189-a4_ff_rr1.flac
+<region> lokey=68 hikey=70 pitch_keycenter=69 lovel=121 seq_length=4 seq_position=2 sample=growlybass/190-a4_ff_rr2.flac
+<region> lokey=68 hikey=70 pitch_keycenter=69 lovel=121 seq_length=4 seq_position=3 sample=growlybass/191-a4_ff_rr3.flac
+<region> lokey=68 hikey=70 pitch_keycenter=69 lovel=121 seq_length=4 seq_position=4 sample=growlybass/192-a4_ff_rr4.flac
+<region> lokey=71 hikey=72 pitch_keycenter=72 hivel=60 seq_length=4 seq_position=1 sample=growlybass/193-c5_pp_rr1.flac
+<region> lokey=71 hikey=72 pitch_keycenter=72 hivel=60 seq_length=4 seq_position=2 sample=growlybass/194-c5_pp_rr2.flac
+<region> lokey=71 hikey=72 pitch_keycenter=72 hivel=60 seq_length=4 seq_position=3 sample=growlybass/195-c5_pp_rr3.flac
+<region> lokey=71 hikey=72 pitch_keycenter=72 hivel=60 seq_length=4 seq_position=4 sample=growlybass/196-c5_pp_rr4.flac
+<region> lokey=71 hikey=72 pitch_keycenter=72 lovel=61 hivel=95 seq_length=4 seq_position=1 sample=growlybass/197-c5_p_rr1.flac
+<region> lokey=71 hikey=72 pitch_keycenter=72 lovel=61 hivel=95 seq_length=4 seq_position=2 sample=growlybass/198-c5_p_rr2.flac
+<region> lokey=71 hikey=72 pitch_keycenter=72 lovel=61 hivel=95 seq_length=4 seq_position=3 sample=growlybass/199-c5_p_rr3.flac
+<region> lokey=71 hikey=72 pitch_keycenter=72 lovel=61 hivel=95 seq_length=4 seq_position=4 sample=growlybass/200-c5_p_rr4.flac
+<region> lokey=71 hikey=72 pitch_keycenter=72 lovel=96 hivel=120 seq_length=4 seq_position=1 sample=growlybass/201-c5_f_rr1.flac
+<region> lokey=71 hikey=72 pitch_keycenter=72 lovel=96 hivel=120 seq_length=4 seq_position=2 sample=growlybass/202-c5_f_rr2.flac
+<region> lokey=71 hikey=72 pitch_keycenter=72 lovel=96 hivel=120 seq_length=4 seq_position=3 sample=growlybass/203-c5_f_rr3.flac
+<region> lokey=71 hikey=72 pitch_keycenter=72 lovel=96 hivel=120 seq_length=4 seq_position=4 sample=growlybass/204-c5_f_rr4.flac
+<region> lokey=71 hikey=72 pitch_keycenter=72 lovel=121 seq_length=4 seq_position=1 sample=growlybass/205-c5_ff_rr1.flac
+<region> lokey=71 hikey=72 pitch_keycenter=72 lovel=121 seq_length=4 seq_position=2 sample=growlybass/206-c5_ff_rr2.flac
+<region> lokey=71 hikey=72 pitch_keycenter=72 lovel=121 seq_length=4 seq_position=3 sample=growlybass/207-c5_ff_rr3.flac
+<region> lokey=71 hikey=72 pitch_keycenter=72 lovel=121 seq_length=4 seq_position=4 sample=growlybass/208-c5_ff_rr4.flac

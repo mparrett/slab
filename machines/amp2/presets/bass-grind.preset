@@ -1,0 +1,1 @@
+{"slab": "preset", "schema": 1, "machine": "amp2", "note": "Bass: driven mids through an 8x10, clean lows from the DI", "params": {"amp-voice": 2, "amp-gain": 0.45, "amp-tight": 80.0, "amp-bass": 0.6, "amp-mid": 0.7, "amp-treble": 0.5, "amp-pres": 0.4, "amp-master": 0.5, "amp-sag": 0.3, "amp-cab": 4, "amp-mic": 0.2, "amp-blend": 0.55, "amp-level": 0.0}}

@@ -416,9 +416,10 @@ pub const FyRawMachine = struct {
     preset_ref: [MAX_CONTROLS]f32 = [_]f32{0} ** MAX_CONTROLS,
     preset_ref_on: [MAX_CONTROLS]bool = [_]bool{false} ** MAX_CONTROLS,
     // Host-allocated audio buffers (manifest `buffer` requests), one per
-    // channel. Base pointer + element count are injected into each channel's
-    // state at the request's introspected offsets.
-    buffer_mem: [machine_desc.MAX_BUFFERS][2][]f64 = undefined,
+    // state region: per channel for effects, per voice for voice machines.
+    // Base pointer + element count are injected into each region's state
+    // at the request's introspected offsets.
+    buffer_mem: [machine_desc.MAX_BUFFERS][MAX_REGIONS][]f64 = [_][MAX_REGIONS][]f64{[_][]f64{&.{}} ** MAX_REGIONS} ** machine_desc.MAX_BUFFERS,
     // Read-only audio assets loaded from disk at create (manifest `asset`),
     // shared across voices via params.
     asset_mem: [machine_desc.MAX_ASSETS]wav.Sample = [_]wav.Sample{.{ .data = &.{}, .sample_rate = 0 }} ** machine_desc.MAX_ASSETS,
@@ -502,6 +503,11 @@ pub const FyRawMachine = struct {
     voice_gate: [MAX_REGIONS]bool = [_]bool{false} ** MAX_REGIONS,
     voice_age: [MAX_REGIONS]u64 = [_]u64{0} ** MAX_REGIONS,
     age_counter: u64 = 0,
+    // Samples rendered so far, and when each voice's note started on that
+    // clock: poly legato tells a hammer-on from a chord by the gap.
+    clock: u64 = 0,
+    event_clock: u64 = 0,
+    voice_on_clock: [MAX_REGIONS]u64 = [_]u64{0} ** MAX_REGIONS,
     // Mono machines (1 voice, melodic): held-note stack, newest last, for
     // last-note priority. Releasing the sounding note falls back to the
     // newest still-held one as a legato retrigger.
@@ -569,9 +575,6 @@ pub const FyRawMachine = struct {
         const desc = try machine_desc.read(host);
         if (desc.state_size > MAX_STATE or desc.params_size > MAX_PARAMS) return error.RawMachineStorageTooLarge;
         if (desc.voices > MAX_REGIONS) return error.RawMachineTooManyVoices;
-        // Host buffers are allocated per channel (2); polyphonic machines
-        // would need per-voice rings — not wired yet.
-        if (desc.voices > 1 and desc.buffer_count > 0) return error.RawMachineVoicesWithBuffers;
 
         try validateWord(host, desc.renderWord());
         if (desc.renderLiteWord()) |word| try validateWord(host, word);
@@ -926,30 +929,38 @@ pub const FyRawMachine = struct {
         errdefer self.freeBuffersUpTo(alloc, done);
         for (self.desc.buffers[0..self.desc.buffer_count], 0..) |*req, bi| {
             const n: usize = @max(1, @as(usize, @intFromFloat(@ceil(req.seconds * BUFFER_SR))));
-            const mem_l = try alloc.alloc(f64, n);
-            errdefer alloc.free(mem_l);
-            // A true-stereo effect runs one pass on region 0, so it gets
-            // one copy; a stereo kernel wanting two rings declares two.
-            const mem_r = try alloc.alloc(f64, if (self.desc.stereo) 0 else n);
-            @memset(mem_l, 0);
-            @memset(mem_r, 0);
-            self.buffer_mem[bi] = .{ mem_l, mem_r };
+            // One contiguous block sliced per region, so a failure frees
+            // everything this request took.
+            const regions = self.bufferRegions();
+            const mem = try alloc.alloc(f64, n * regions);
+            @memset(mem, 0);
+            for (0..regions) |r| self.buffer_mem[bi][r] = mem[r * n ..][0..n];
             done = bi + 1;
         }
         self.injectBuffers();
     }
 
     fn freeBuffersUpTo(self: *FyRawMachine, alloc: std.mem.Allocator, count: usize) void {
-        for (self.buffer_mem[0..count]) |pair| {
-            for (pair) |mem| alloc.free(mem);
+        for (self.buffer_mem[0..count]) |rings| {
+            const regions = self.bufferRegions();
+            alloc.free(rings[0].ptr[0 .. rings[0].len * regions]);
         }
     }
 
-    // Write each buffer's base pointer + element count into both channel
-    // states. Must rerun after any state memset (reset).
+    // Regions that own a copy of each buffer: every voice of a voice
+    // machine, both channels of a dual-mono effect, and the one pass of a
+    // true-stereo effect (a stereo kernel wanting two rings declares two).
+    // Buffered voice machines don't unison, so the pool never grows.
+    fn bufferRegions(self: *const FyRawMachine) usize {
+        if (self.desc.mode == .voice_sample) return @max(self.desc.voices, 1);
+        return if (self.desc.stereo) 1 else 2;
+    }
+
+    // Write each buffer's base pointer + element count into every region's
+    // state. Must rerun after any state memset (reset).
     fn injectBuffers(self: *FyRawMachine) void {
         for (self.desc.buffers[0..self.desc.buffer_count], 0..) |*req, bi| {
-            for (0..@as(usize, if (self.desc.stereo) 1 else 2)) |ch| {
+            for (0..self.bufferRegions()) |ch| {
                 const mem = self.buffer_mem[bi][ch];
                 self.writeStateUsize(ch, req.ptr_offset, @intFromPtr(mem.ptr));
                 self.writeStateF64(ch, req.len_offset, @floatFromInt(mem.len));
@@ -2364,9 +2375,11 @@ fn renderVoiceSample(self: *FyRawMachine, ctx: *const machine.MachineCtx, l: []f
         }
 
         while (event_index < events.len and @min(@as(usize, @intCast(events[event_index].sample_offset)), l.len) == cursor) : (event_index += 1) {
+            self.event_clock = self.clock + cursor;
             try applyNoteEvent(self, events[event_index]);
         }
     }
+    self.clock += l.len;
 
     // No clamp: machines have headroom (docs/17 D5); only the master bus
     // soft-clips.
@@ -2708,6 +2721,7 @@ fn syncUnison(self: *FyRawMachine) !void {
 /// (Re)start voice `v` as place k of an n-voice group playing `ev`.
 fn startVoice(self: *FyRawMachine, v: usize, k: usize, n: usize, ev: machine.NoteEvent) !void {
     self.voice_age[v] = self.age_counter;
+    self.voice_on_clock[v] = self.event_clock;
     self.voice_pitch[v] = ev.pitch;
     self.voice_note_id[v] = ev.note_id;
     self.voice_gate[v] = true;
@@ -2741,6 +2755,7 @@ fn noteOnEvent(self: *FyRawMachine, ev: machine.NoteEvent) !void {
         self.mono_held_id[self.mono_held_n] = ev.note_id;
         self.mono_held_n += 1;
     }
+    if (!mono) if (polyLegatoVoice(self, ev)) |v| return legatoOnto(self, v, ev);
     // Legato: a note arriving while the voice is still held (mono slide).
     self.kctx.legato = if (mono and self.voice_gate[0]) 1 else 0;
     // The note's voices: a mono group is always the first regions.
@@ -2753,6 +2768,44 @@ fn noteOnEvent(self: *FyRawMachine, ev: machine.NoteEvent) !void {
     }
     self.age_counter += 1;
     for (group[0..n], 0..) |v, k| try startVoice(self, v, k, n, ev);
+    self.kctx.legato = 0;
+}
+
+/// The shortest gap between a held note and one that plays legato from it:
+/// notes closer together are a chord or a strum.
+const LEGATO_GAP_S = 0.03;
+
+/// Poly legato (manifest `legato-span!`): the voice a note takes over when
+/// it starts while exactly one note is held, within the span of it, and
+/// LEGATO_GAP_S or more after it. A string: the finger hammers on or pulls
+/// off on the string that is ringing instead of plucking another. Null
+/// when the note gets a voice of its own.
+fn polyLegatoVoice(self: *const FyRawMachine, ev: machine.NoteEvent) ?usize {
+    if (self.desc.legato_span <= 0 or self.uni_count != 1 or self.desc.note_pitch) return null;
+    var held: ?usize = null;
+    for (0..self.regionCount()) |v| if (self.voice_gate[v]) {
+        if (held != null) return null;
+        held = v;
+    };
+    const h = held orelse return null;
+    const d = @abs(ev.pitch - self.voice_pitch[h]);
+    if (d == 0 or d > self.desc.legato_span) return null;
+    const gap: f64 = @floatFromInt(self.event_clock -| self.voice_on_clock[h]);
+    if (gap < LEGATO_GAP_S * self.synced_sr) return null;
+    return h;
+}
+
+/// Voice `v` plays `ev` legato: the note-on runs with ctx.legato = 1 and
+/// the voice now answers to the new note, so the old note's note-off
+/// passes it by.
+fn legatoOnto(self: *FyRawMachine, v: usize, ev: machine.NoteEvent) !void {
+    self.voice_pitch[v] = ev.pitch;
+    self.voice_note_id[v] = ev.note_id;
+    self.voice_on_clock[v] = self.event_clock;
+    self.voice_expr[v] = .{ ev.pitch, 0.5, 0, 1 };
+    self.kctx.legato = 1;
+    self.kctx.pitch = ev.pitch;
+    try callNoteOn(self, v, voiceHz(self, v, ev.pitch), ev.velocity);
     self.kctx.legato = 0;
 }
 
@@ -2945,8 +2998,8 @@ fn resetImpl(state: *anyopaque) void {
     @memset(self.voice_idle[0..], true);
     self.mono_held_n = 0;
     @memset(self.params_buf[0..self.desc.params_size], 0);
-    for (self.buffer_mem[0..self.desc.buffer_count]) |pair| {
-        for (pair) |mem| @memset(mem, 0);
+    for (self.buffer_mem[0..self.desc.buffer_count]) |rings| {
+        for (rings) |mem| @memset(mem, 0);
     }
     self.injectBuffers();
     self.injectAssets(); // params were memset; restore the asset pointers
@@ -6537,6 +6590,27 @@ test "raw DSP2 delay machine: two rings, injected once into the stereo region" {
     }
 }
 
+test "raw DSP2 voice machine with a buffer: one ring per voice" {
+    const inst = try FyRawMachine.create(testing.allocator, "machines/bass/bass.fy");
+    const mach = inst.machineInterface();
+    defer mach.deinit.?(mach.state, testing.allocator);
+
+    // Fretwire's strings are each a delay loop: every voice region gets
+    // its own ring, injected at the request's offsets, and none share one.
+    try testing.expectEqual(@as(usize, 1), inst.desc.buffer_count);
+    const req = inst.desc.buffers[0];
+    const voices = inst.desc.voices;
+    try testing.expect(voices > 1);
+    for (0..voices) |v| {
+        const ring = inst.buffer_mem[0][v];
+        try testing.expect(ring.len > 0);
+        const ptr_bits: *align(8) const usize = @ptrCast(@alignCast(&inst.state_buf[v * MAX_STATE + req.ptr_offset]));
+        try testing.expectEqual(@intFromPtr(ring.ptr), ptr_bits.*);
+        if (v > 0) try testing.expect(ring.ptr != inst.buffer_mem[0][v - 1].ptr);
+    }
+    try testing.expectEqual(@as(usize, 0), inst.buffer_mem[0][voices].len);
+}
+
 /// Render `n` samples of an effect fed one impulse (`amp_l`, `amp_r`) at
 /// sample 0, after applying `sets` (control id, value). Caller frees.
 const ParamSet = struct { []const u8, f64 };
@@ -8923,4 +8997,57 @@ test "wavetable editor: an edited table plays at once, saves beside the project 
         try testing.expectApproxEqAbs(inst.asset_wt[ai].data[f * S + top + 4], other.asset_wt[ai].data[f * S + top + 4], 1e-5);
         try testing.expectApproxEqAbs(inst.asset_wt[ai].data[f * S + 300], other.asset_wt[ai].data[f * S + 300], 1e-5);
     }
+}
+
+test "poly legato: an overlapping single note takes over the ringing voice" {
+    const inst = try FyRawMachine.create(testing.allocator, "machines/guitar/guitar.fy");
+    const mach = inst.machineInterface();
+    defer mach.deinit.?(mach.state, testing.allocator);
+    try testing.expect(inst.desc.legato_span > 0);
+
+    var ctx = std.mem.zeroes(machine.MachineCtx);
+    ctx.sample_rate = 48_000;
+    ctx.block_size = 4096;
+    var l = [_]f32{0} ** 4096;
+    var r = [_]f32{0} ** 4096;
+    const gated = struct {
+        fn count(m: *FyRawMachine) usize {
+            var n: usize = 0;
+            for (0..m.regionCount()) |v| n += @intFromBool(m.voice_gate[v]);
+            return n;
+        }
+    }.count;
+
+    // G3, then A3 50 ms later while G3 is still held: a hammer-on on the
+    // same voice; G3's note-off afterwards leaves it sounding A3.
+    var hammer = [_]machine.NoteEvent{
+        .{ .sample_offset = 0, .kind = .note_on, .channel = 0, .note_id = -1, .pitch = 55, .velocity = 0.8 },
+        .{ .sample_offset = 2400, .kind = .note_on, .channel = 0, .note_id = -1, .pitch = 57, .velocity = 0.8 },
+        .{ .sample_offset = 3000, .kind = .note_off, .channel = 0, .note_id = -1, .pitch = 55, .velocity = 0 },
+    };
+    ctx.note_in = @ptrCast(hammer[0..].ptr);
+    ctx.note_in_count = hammer.len;
+    testRender(mach, &ctx, &l, &r);
+    try testing.expectEqual(@as(usize, 1), gated(inst));
+    var playing: ?usize = null;
+    for (0..inst.regionCount()) |v| if (inst.voice_gate[v]) {
+        playing = v;
+    };
+    try testing.expectEqual(@as(f32, 57), inst.voice_pitch[playing.?]);
+    for (0..inst.regionCount()) |v| if (v != playing.?) try testing.expect(inst.voice_idle[v]);
+
+    // A chord, and a note 10 ms after another: each note its own voice.
+    resetImpl(inst);
+    var chord = [_]machine.NoteEvent{
+        .{ .sample_offset = 0, .kind = .note_on, .channel = 0, .note_id = -1, .pitch = 52, .velocity = 0.8 },
+        .{ .sample_offset = 0, .kind = .note_on, .channel = 0, .note_id = -1, .pitch = 56, .velocity = 0.8 },
+        .{ .sample_offset = 2000, .kind = .note_off, .channel = 0, .note_id = -1, .pitch = 52, .velocity = 0 },
+        .{ .sample_offset = 2000, .kind = .note_off, .channel = 0, .note_id = -1, .pitch = 56, .velocity = 0 },
+        .{ .sample_offset = 2400, .kind = .note_on, .channel = 0, .note_id = -1, .pitch = 60, .velocity = 0.8 },
+        .{ .sample_offset = 2880, .kind = .note_on, .channel = 0, .note_id = -1, .pitch = 62, .velocity = 0.8 },
+    };
+    ctx.note_in = @ptrCast(chord[0..].ptr);
+    ctx.note_in_count = chord.len;
+    testRender(mach, &ctx, &l, &r);
+    try testing.expectEqual(@as(usize, 2), gated(inst));
 }

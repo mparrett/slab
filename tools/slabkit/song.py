@@ -17,7 +17,7 @@ import zlib
 
 from . import rhythm
 from .machines import ROOT, SLAB, SlabError, library_path, machine, ref as file_ref, preset as load_preset, preset_assets, preset_name
-from .theory import Chord, Key, note, voice_lead
+from .theory import Chord, Key, guitar_voicing, note, voice_lead
 
 MAX_TRACKS = 32  # buses count (docs/23)
 MAX_CLIPS = 64
@@ -206,6 +206,65 @@ class Clip:
         """Notes together; strum > 0 staggers them upward by that many beats."""
         for i, p in enumerate(sorted(note(x) for x in pitches)):
             self.note(p, at + i * strum, length - i * strum, vel)
+        return self
+
+    def strum(self, chord, at, length, direction="down", vel=96, position=0, speed=None,
+              strings=None, mute=False, taper=None):
+        """One strum across a guitar's strings. `chord` is a symbol, played
+        as the shape a guitarist would use near fret `position`
+        (theory.guitar_voicing), or a list of pitches. A down strum runs low
+        to high, an up strum high to low and catches the top `strings`
+        (default 4). The pick takes `speed` seconds across them (default
+        30 ms down, 20 ms up, a little quicker when harder), each string a
+        touch softer than the one before (`taper`, velocity steps) with a
+        small fixed jitter, and they all stop together at `at + length`.
+        mute=True is a dead strum, the chuck of a palm on the strings."""
+        ps = guitar_voicing(chord, position) if isinstance(chord, str) else sorted(note(p) for p in chord)
+        down = str(direction).lower() in ("down", "d")
+        if strings is None:
+            strings = len(ps) if down else min(4, len(ps))
+        order = ps[:strings] if down else ps[::-1][:strings]
+        secs = speed if speed is not None else (0.03 if down else 0.02) * (1.2 - 0.35 * vel / 127)
+        t0 = self.start + at
+        bps = 1.0 / max(1e-9, self.song.seconds_at(t0 + 1) - self.song.seconds_at(t0))
+        across = secs * bps
+        step = taper if taper is not None else (4 if down else 5)
+        ring = 0.06 * bps if mute else length
+        for i, p in enumerate(order):
+            off = across * (i / (len(order) - 1)) ** 0.85 if len(order) > 1 else 0.0
+            jitter = (int(t0 * 997 + i * 31 + p * 7) % 7) - 3
+            v = max(1, min(127, int(round((vel * (0.55 if mute else 1.0)) - step * i + jitter))))
+            self.note(p, at + off, max(0.01, ring - off), v)
+        return self
+
+    def strums(self, prog, pattern="D.DU.UDU", step=0.5, beats_per_chord=None, at=0.0, vel=96,
+               position=0, soft=0.7, gate=0.98, speed=None):
+        """Strummed rhythm guitar over a progression, one chord a bar by
+        default (`chords` takes the same prog). Each pattern character is a
+        step of `step` beats: D a down strum, U an up strum, d and u softer
+        ones (`soft` x vel), X a dead strum, . or - lets the last one ring.
+        Each strum rings until the next hit, as the pick re-strikes the
+        strings. `position` is the fret hand: a number, or a dict from
+        chord symbol to fret ({"F": 1, "Bm": 2}) with 0 for the rest."""
+        hits = []
+        for ch, t, ln in self._spans(prog, beats_per_chord, at):
+            k = 0
+            while k * step < ln - 1e-9:
+                c = pattern[k % len(pattern)]
+                if c not in "DUduX.-":
+                    raise SlabError(f"strum pattern char {c!r}: use D U d u X . -")
+                if c not in ".-":
+                    hits.append((t + k * step, c, ch))
+                k += 1
+            hits.append((t + ln, None, None))      # the chord's end stops the last strum
+        for (t, c, ch), (t1, _, _) in zip(hits, hits[1:]):
+            if c is None:
+                continue
+            pos = position.get(ch.name, 0) if isinstance(position, dict) else position
+            shape = guitar_voicing(ch, pos)
+            v = vel if c in "DUX" else int(vel * soft)
+            self.strum(shape, t, (t1 - t) * gate, "down" if c in "DdX" else "up", v,
+                       speed=speed, mute=c == "X")
         return self
 
     # ── patterns ─────────────────────────────────────────────────────

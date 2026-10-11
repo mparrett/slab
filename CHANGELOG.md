@@ -6,6 +6,44 @@ GitHub are its section here (`tools/release.sh` copies them), so add to
 
 ## Unreleased
 
+- **Fretwire, a modeled electric bass.** A new instrument that plays a
+  bass string rather than a recording of one: each note's pluck, decay,
+  pitch glide and tone depend on how hard you play, where the string is
+  plucked and heard, and which string and fret the note falls on.
+  Presets for fingers, the bridge pickup, pick, slap, pop, flatwounds and
+  palm muting. Its tone is a direct recording's; put an amp after it.
+- **Finger vibrato on Fretwire.** A note's slide expression is its
+  vibrato depth: draw it rising under a held bend and the string sings,
+  pushed sharp and back like a guitarist's finger. VIBRATO RATE and DEPTH
+  on the panel.
+- **Long Light**, a new demo song: a slow rock ballad whose guitar solo
+  bends, slides, hammers on and shakes its notes, after David Gilmour.
+- **Strummed guitar in slabkit.** `clip.strums(prog, "D.DU.UDU")` plays a
+  progression as a guitarist would: real chord shapes (open chords, barre
+  shapes up the neck), down strums low to high and up strums over the top
+  strings, the pick's timing across them, softer strings as it goes, and
+  dead strums. `clip.strum` is one strum.
+- **Hammer-ons and pull-offs.** On the Fretwire bass and guitar, a note
+  that overlaps the one before it (up to a fourth away, in a single-note
+  line) plays on the same ringing string: the finger hammers on or pulls
+  off instead of plucking again. Chords and strums are left alone.
+- **Fretwire Guitar.** The waveguide string strung as a six-string
+  electric guitar, fitted to a sampled guitar, with presets for the neck
+  and bridge pickups, fingerstyle, funk, jazz, palm muting and slide.
+- **Bass and guitar bend and slide.** A note's pitch curve bends the
+  string smoothly, or with MOTION on SLIDE moves it fret by fret with the
+  rasp of a finger on the windings. AUTO tells them apart: a curve that
+  goes further than a string can bend becomes a slide.
+- **More instruments ship with Slab:** violin, viola and cello sections,
+  contrabass pizzicato, trumpet and trombone (from VSCO 2 CE), two
+  fingered electric basses, a clean electric guitar and an alto sax
+  (from Karoryfer), all CC0 and ready in the sampler without a download.
+  The full Karoryfer and VSCO libraries are new packs in the Library.
+- **Ampstack, an amp and cabinet for bass and guitar.** Four amp voices
+  (a tube bass head, a clean American combo, British crunch and high
+  gain), each with its own three-knob tone stack that interacts like the
+  real circuit, a power amp that sags, five speaker cabinets with a mic
+  position, and a DI blend for bass. Presets for bass and guitar.
 - **FLAC files import as audio clips**: Import audio… and the sampler's
   file picker accept .flac, and the browser lists FLAC samples in your
   Samples folder, a project's audio and library packs.

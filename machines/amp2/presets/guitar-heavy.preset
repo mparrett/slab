@@ -1,0 +1,1 @@
+{"slab": "preset", "schema": 1, "machine": "amp2", "note": "Guitar: tight high-gain rhythm, scooped, palm mutes", "params": {"amp-voice": 3, "amp-gain": 0.6, "amp-tight": 160.0, "amp-bass": 0.55, "amp-mid": 0.35, "amp-treble": 0.6, "amp-pres": 0.4, "amp-master": 0.3, "amp-sag": 0.3, "amp-cab": 2, "amp-mic": 0.2, "amp-blend": 0.0, "amp-level": -2.5}}

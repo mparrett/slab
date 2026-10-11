@@ -91,12 +91,22 @@ They are never shared or published.
 
 A **pack** is a set of samples too large to ship with slab, or not
 slab's to ship. Examples:
-- **Free:** VCSL, about 6 GB. A few basics from it ship with slab
-  instead (two pianos, the FM piano, harpsichord, marimba, kalimba,
-  ocarina and three kits, 76 MB of 16-bit mono FLAC in
-  `machines/sampler/assets/vcsl/`, made by `tools/library/vcsl_factory.py`):
-  the sampler's `vcsl/` bank, and Unfairlight's VCSL presets load the
-  same SFZs.
+- **Free:** VCSL (about 6 GB), Karoryfer (1.6 GB) and VSCO 2 CE
+  (3.2 GB). A few instruments from each ship with slab instead, as
+  16-bit mono FLAC in `machines/sampler/assets/<pack>/`, made by
+  `tools/library/factory.py`:
+  - VCSL: two pianos, the FM piano, harpsichord, marimba, kalimba,
+    ocarina and three kits (76 MB), the sampler's `vcsl/` bank;
+    Unfairlight's VCSL presets load the same SFZs;
+  - Karoryfer: two fingered basses, the clean electric guitar and the
+    alto sax (108 MB);
+  - VSCO: violin, viola and cello sections, contrabass pizzicato,
+    trumpet and trombone (49 MB).
+
+  The Karoryfer and VSCO presets ship under the names their packs use
+  (`karoryfer/fashionbass`, `vsco-strings/cello-section-susvib`), so a
+  song made with the pack plays without it; with the pack installed the
+  shipped copy wins and the menu lists it once.
 - **Yours to own:** the Fairlight CMI disks, the Reverb drum machine
   collection, a commercial library.
 
@@ -107,8 +117,9 @@ ships.
 ### The pack manifest
 
 Slab knows a pack by its manifest, `<id>.pack.json`. Manifests ship
-with slab in `factory:packs/` (`vcsl`, `drum-machines`, `cmi` and
-`extract`, the stems model, docs/30 §Stems, read by src/packs.zig), and more can come from the online repository:
+with slab in `factory:packs/` (`vcsl`, `karoryfer`, `vsco`,
+`drum-machines`, `cmi` and `extract`, the stems model, docs/30 §Stems,
+read by src/packs.zig), and more can come from the online repository:
 
 ```json
 {"id": "vcsl", "name": "Versilian Community Sample Library", "version": "2024.1",
@@ -181,7 +192,8 @@ What's built (the PACKS tab, src/packs.zig):
   for each. Once they are found, **IMPORT** appears; slab doesn't start
   an import on its own.
 - **Importing** still runs the pack's tool from `tools/library/`
-  (`vcsl.py`, `drums.py`, `cmi.py --collection disks _sources`) with
+  (`vcsl.py`, `karoryfer.py`, `vsco.py`, `drums.py`,
+  `cmi.py --collection disks _sources`) with
   Python 3, as a child process. Its output goes to
   `Cache/packs/<id>.log`, and the card shows the last line, with CANCEL
   and LOG. **DOWNLOAD** on VCSL runs `vcsl.py`, which fetches the

@@ -69,7 +69,7 @@ by `KernelCtx` / `IoFrame` in the adapter, and checked by the test
   | `chan` | region index: voice index for voice machines, 0 L / 1 R for effects |
   | `hz`, `vel`, `pitch` | note-on data; `hz` is raw MIDI pitch for `note-pitch` machines |
   | `data` | the derive-data pointer; read with `ctx Ctx.data-p p@64` |
-  | `legato` | note-on: 1 when a mono voice was still held (slide) |
+  | `legato` | note-on: 1 when a mono voice was still held (slide), or a poly machine's legato note (below) |
   | `pressure`, `slide`, `gain` | note-expr data (docs/22) |
   | `uni`, `phase` | note-on, unison (docs/08 §Unison): the voice's place in its note's group, −1 to 1, and a start phase 0–1. Both 0 for a voice playing alone. A kernel whose oscillators free-run from 0 seeds them from `phase` while they are still exactly 0, which leaves unison-off renders unchanged. |
 
@@ -146,6 +146,17 @@ stack with last-note priority:
 `ctx.legato` is also 1 for any note-on that arrives while the voice is
 held, so a kernel can slide instead of retriggering. Before this, the
 first note-off of any pitch released the voice.
+
+**Poly legato (implemented, 2026-10-11).** A polyphonic machine can
+declare `semitones legato-span!`. A note that starts while exactly one
+note is held, within the span of it and at least 30 ms after it
+(`LEGATO_GAP_S`: closer is a chord or a strum), takes over that note's
+voice: its note-on runs there with `ctx.legato = 1`, and the voice answers
+to the new note, so the old note's note-off passes it by. Chords, strums,
+two held notes and leaps wider than the span get voices of their own as
+usual. Fretwire's bass and guitar declare 5 (a fourth): overlapping notes
+are hammer-ons upward and pull-offs downward on the ringing string. The
+host keeps a sample clock for the gap (`clock`, `voice_on_clock`).
 
 **Still to do (docs/17 step 3):**
 

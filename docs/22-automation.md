@@ -467,7 +467,16 @@ Three pieces, as built:
      tracking follows, it reads note-hz every sample).
    - **MS-20, Cream** (mono): set the pitch directly, past the
      portamento, since the bend is already the glide.
-   - No machine reads pressure or slide yet; gain only the two samplers.
+   - **Fretwire bass and guitar**: the curve retunes the string's loop,
+     gliding over ~10 ms. MOTION decides what it is: BEND follows it,
+     SLIDE rounds the offset from the note's start to whole frets and
+     makes winding noise and fret ticks, AUTO bends until the curve goes
+     more than 3.5 semitones up or below the start, then slides.
+     The **slide** dimension is finger vibrato depth (0–1 of VIB DEPTH
+     semitones at VIB RATE): like a guitarist's, it only pushes the string
+     sharp and lets it back, never below the note, so a held bend can
+     sing for bars where 8 pitch points couldn't.
+   - No machine reads pressure yet; slide only Fretwire (vibrato); gain only the two samplers.
 
 Mono machines apply expression to the sounding note. A 32-sample step
 on a slow bend is inaudible. If fast bends step audibly, the expression

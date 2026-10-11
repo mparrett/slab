@@ -215,15 +215,21 @@ Passenger, `ms20` SM-24 Mono, `juno2` Ju-Know, `profit5` Profit-5 (a Prophet-5 w
 parameters are the DX7's own, 0..99, and .syx voices import byte for byte
 into your library, never the repository; factory presets are Slab's own,
 e.g. `slab/glass-lead`),
-`rhodes` Rhodes E-Piano, `sampler` Sampler, `concoction` Concoction (a
+`rhodes` Rhodes E-Piano, `bass` Fretwire and `guitar` Fretwire Guitar
+(waveguide strings: the string, pluck and pickup are modeled, HAND picks
+the string a note is played on, and a note's pitch curve bends the
+string or slides it fret by fret, MOTION; a note that overlaps the one
+before it, up to a fourth away, is a hammer-on or pull-off: in slabkit
+`melody(..., gate=1.15)`), `sampler` Sampler, `concoction` Concoction (a
 clean digital wavetable synth after Serum: fixed oscillator phase, a
 built-in table bank or any Serum wavetable, an 8-slot mod matrix).
 
 | Role | Slab machines and starting presets |
 |---|---|
 | drums | `drum2`: `gated-snare-kit` (80s pop), `polite-studio-kit`, `909-punch`, `808-boom`, `tight-funk-kit`, `light-disco-kit` |
-| bass | `concoction`: `crisp-saw-bass`, `clean-sine-bass`, `pluck-bass`, `kick-bass`, `reese`, `wobble` (the clean, punchy digital basses). `cream`: `outstanding-funk-bass`, `synthwave-bass`, `deep-sub-bass`. `profit5`: `heavy-bass`, `clang-fm-bass`. `ms20`: `rubber-bass`, `acid-bass`, `octave-night-bass`. `fm86`: `bass-1` (DX slap) |
+| bass | `bass` (the electric bass guitar): `default` (fingers, neck pickup), `fingers-bridge`, `pick`, `slap`, `pop`, `flatwound`, `palm-mute`. `concoction`: `crisp-saw-bass`, `clean-sine-bass`, `pluck-bass`, `kick-bass`, `reese`, `wobble` (the clean, punchy digital basses). `cream`: `outstanding-funk-bass`, `synthwave-bass`, `deep-sub-bass`. `profit5`: `heavy-bass`, `clang-fm-bass`. `ms20`: `rubber-bass`, `acid-bass`, `octave-night-bass`. `fm86`: `bass-1` (DX slap) |
 | harmonic bed | `juno2`: `wide-sunny-pad`, `lush-pad`, `strings`, `string-machine-wash`. `profit5`: `poly-strings`, `ob-pad`. `fm86`: `strings-1` |
+| guitar | `guitar` (electric guitar, into `amp2`): `default`, `bridge`, `fingers`, `funk`, `jazz`, `palm-mute`, `slide`. Rhythm parts: `clip.strums("G D Em C", "D.DU.UDU")` plays real chord shapes with down and up strums |
 | rhythmic comping | `fm86`: `e-piano-1` (the DX7 ballad piano), `clav-1`. `rhodes`: `default`, `mellow`. `juno2`: `warm-chord-plucks`, `polite-synth-pop-keys`. `profit5`: `pluck-keys` |
 | lead / vocal line | `cream`: `cream-lead`, `whistle`. `ms20`: `vibrato-lead`, `portamento-highway-lead`. `fm86`: `syn-lead-1`, `flute-1`. `profit5`: `sync-lead`, `shred-lead` |
 | stabs / brass | `juno2`: `bright-brass-stab`, `brass-stab`, `posh-brass-poly`. `profit5`: `prophet-brass`, `ob-jump-brass`. `fm86`: `brass-1` |
@@ -392,6 +398,12 @@ Leave pads alone; they're already even.
 - `sat2`: TAPE for warmth and glue on drums or bass at mix 0.4–0.6.
   TUBE for keys. XFMR for bass weight. DIODE and FUZZ are effects. Keep
   `out` compensating so the stem level doesn't jump.
+- `amp2` (Ampstack) is the amp and speaker for a bass or a guitar: put it
+  first on the track. Fretwire is a direct signal, so a bass usually
+  wants `bass-blend` (tube head, 8x10, the DI under it), `bass-vintage-15`
+  or `bass-grind`. Guitars: `guitar-clean`, `guitar-crunch`,
+  `guitar-lead`, `guitar-heavy`. Leave CAB on unless another cabinet
+  follows, and use BLEND, not a parallel track, to keep the DI's low end.
 - `chorus2`: `juno-i` / `juno-ii` for pads and keys. Never on bass or
   kick; it smears the low end out of mono.
 - **Share spaces with sends.** Put a fully wet reverb on a bus and send

@@ -69,8 +69,11 @@ song.render(stems=True)        # mix + report; temporary stems are deleted
 | `drums({lane: steps}, at, bars, step)` | lanes kick/snare/clap/ch/oh/tom or aliases; X x o . - |
 | `seq("F2 . F3! Ab2~ Gb2 - .", step, bars, vel, accent, gate)` | step sequencer: one token per step, `!` accent, `~` slide, `-` tie |
 | `chords(prog, rhythm, near, voices, spread, vel, gate, strum)` | voice-led; prog is roman or symbols, `:beats` per chord |
+| `strum(chord, at, len, direction, vel, position, speed, strings, mute)` | one guitar strum: a symbol plays the shape near fret `position`; down low→high, up high→low over the top 4 strings, ~30/20 ms across, each string a little softer |
+| `strums(prog, "D.DU.UDU", step, position, vel, soft)` | strummed rhythm guitar: D/U strums, d/u softer, X dead strum, . rings on; each strum rings until the next. `position` a fret or `{"F": 1}` |
 | `bass(prog, pattern, octave)` | x/X root, o/O octave, 3 5 7 chord tones, b approach, - tie |
 | `arp(prog, "up"/"down"/"updown"/"random"/[indices], rate, octave)` | arpeggio per chord |
+| `theory.guitar_voicing(, position=0)` | the shape a guitarist plays (F → 133211, C at 3 → x35553), as pitches |
 | `repeat(every_beats)` | tile the first N beats across the clip |
 | `transpose(n)`, `swing(amount, grid)`, `humanize(time, vel)`, `velocities(fn)` | transforms |
 | `copy(section)` | same notes (and clip automation) on another section |

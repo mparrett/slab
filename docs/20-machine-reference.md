@@ -8,16 +8,19 @@ project or preset stores (docs/19): real units for knobs, the option
 
 | id | name | kind | voices | prefix |
 |---|---|---|---|---|
+| [`bass`](#bass) | Fretwire | instrument | 4 | `bs-` |
 | [`concoction`](#concoction) | Concoction | instrument | 8 | `cn-` |
 | [`cream`](#cream) | Mog Passenger | instrument | mono | `cr-` |
 | [`drum2`](#drum2) | DS-404 Drums | instrument | mono | `—` |
 | [`fm86`](#fm86) | FM-7.11 | instrument | 8 | `—` |
+| [`guitar`](#guitar) | Fretwire Guitar | instrument | 6 | `gt-` |
 | [`juno2`](#juno2) | Ju-Know | instrument | 8 | `jn-` |
 | [`ms20`](#ms20) | SM-24 Mono | instrument | mono | `—` |
 | [`profit5`](#profit5) | Profit-5 | instrument | 8 | `p5-` |
 | [`rhodes`](#rhodes) | Rhodes E-Piano | instrument | 8 | `rd-` |
 | [`sampler`](#sampler) | Sampler | instrument | 8 | `smp-` |
 | [`unfairlight`](#unfairlight) | Unfairlight TMI | instrument | 8 | `cmi-` |
+| [`amp2`](#amp2) | Ampstack | effect | — | `amp-` |
 | [`bus2`](#bus2) | Bus | effect | — | `bus-` |
 | [`char2`](#char2) | Char | effect | — | `char-` |
 | [`chorus2`](#chorus2) | Chorus | effect | — | `chorus-` |
@@ -33,6 +36,43 @@ project or preset stores (docs/19): real units for knobs, the option
 | [`sat2`](#sat2) | Saturator | effect | — | `sat-` |
 | [`tape2`](#tape2) | Tape | effect | — | `tape-` |
 | [`verb2`](#verb2) | Verb | effect | — | `verb-` |
+
+## bass
+
+**Fretwire**, instrument, 4 voices.
+
+| param | section | label | range | default | notes |
+|---|---|---|---|---|---|
+| `bs-decay` | STRING | DECAY | 0.3 … 40 | 12 | exp |
+| `bs-hfdec` | STRING | HF DEC | 0.05 … 10 | 1.2 | exp |
+| `bs-knee` | STRING | KNEE | 1 … 32 | 9 | exp |
+| `bs-stiff` | STRING | STIFF | 0 … 10 | 4 | linear |
+| `bs-release` | STRING | RELEASE | 0.02 … 2 | 0.12 | exp |
+| `bs-pos` | PLUCK | POS | 0.04 … 0.5 | 0.14 | linear |
+| `bs-soft` | PLUCK | SOFT | 0.05 … 6 | 2 | exp |
+| `bs-shape` | PLUCK | SHAPE | 0 … 1 | 0 | linear |
+| `bs-noise` | PLUCK | NOISE | 0 … 1 | 0.15 | pow |
+| `bs-pickup` | PICKUP | POS | 0.04 … 0.5 | 0.2 | linear |
+| `bs-hand` | PICKUP | HAND | 0 … 12 | 5 | linear |
+| `bs-tone` | PICKUP | TONE | 300 … 12000 | 3200 | exp |
+| `bs-res` | PICKUP | RES | 0 … 1 | 0.3 | linear |
+| `bs-thump` | FEEL | THUMP | 0 … 1 | 0.5 | linear |
+| `bs-buzz` | FEEL | BUZZ | 0 … 1 | 0 | linear |
+| `bs-motion` | FEEL | MOTION | 0 AUTO / 1 BEND / 2 SLIDE | 0 | switch |
+| `bs-slide` | FEEL | SLIDE | 0 … 1 | 0.4 | linear |
+| `bs-level` | FEEL | LEVEL | 0 … 1 | 0.55 | pow |
+| `bs-vibrate` | VIBRATO | RATE | 2 … 9 | 5 | linear |
+| `bs-vibdepth` | VIBRATO | DEPTH | 0 … 2 | 0.5 | linear |
+
+Presets:
+
+- `default` — Fingers on the neck pickup: roundwounds, direct
+- `fingers-bridge` — Fingers over the bridge pickup: nasal, growly, more mids
+- `flatwound` — Old flatwounds, tone rolled off: short, thumpy, dub and Motown
+- `palm-mute` — Muted with the palm: a short pick thud
+- `pick` — Played with a pick near the bridge: bright attack, click, rounder sustain
+- `pop` — Popped string: pulled and snapped, hard push, buzz
+- `slap` — Thumb slap over the end of the neck: narrow strike, fret rattle, bright
 
 ## concoction
 
@@ -457,6 +497,43 @@ Presets:
 - `slab/tubular-bells` — Slab: tubular bells. A clangorous strike that settles into a long, slightly sour hum while the key is held.
 - `slab/vibes` — Slab: vibraphone. A bright mallet bar with a ringing high partial, a tink on the strike and a steady motor tremolo.
 
+## guitar
+
+**Fretwire Guitar**, instrument, 6 voices.
+
+| param | section | label | range | default | notes |
+|---|---|---|---|---|---|
+| `gt-decay` | STRING | DECAY | 0.3 … 40 | 12 | exp |
+| `gt-hfdec` | STRING | HF DEC | 0.05 … 10 | 0.8 | exp |
+| `gt-knee` | STRING | KNEE | 1 … 32 | 5 | exp |
+| `gt-stiff` | STRING | STIFF | 0 … 10 | 1.2 | linear |
+| `gt-release` | STRING | RELEASE | 0.02 … 2 | 0.12 | exp |
+| `gt-pos` | PLUCK | POS | 0.04 … 0.5 | 0.17 | linear |
+| `gt-soft` | PLUCK | SOFT | 0.05 … 6 | 1 | exp |
+| `gt-shape` | PLUCK | SHAPE | 0 … 1 | 0.4 | linear |
+| `gt-noise` | PLUCK | NOISE | 0 … 1 | 0.15 | pow |
+| `gt-pickup` | PICKUP | POS | 0.04 … 0.5 | 0.24 | linear |
+| `gt-hand` | PICKUP | HAND | 0 … 12 | 0 | linear |
+| `gt-tone` | PICKUP | TONE | 300 … 12000 | 4500 | exp |
+| `gt-res` | PICKUP | RES | 0 … 1 | 0.4 | linear |
+| `gt-thump` | FEEL | THUMP | 0 … 1 | 0.3 | linear |
+| `gt-buzz` | FEEL | BUZZ | 0 … 1 | 0 | linear |
+| `gt-motion` | FEEL | MOTION | 0 AUTO / 1 BEND / 2 SLIDE | 0 | switch |
+| `gt-slide` | FEEL | SLIDE | 0 … 1 | 0.4 | linear |
+| `gt-level` | FEEL | LEVEL | 0 … 1 | 0.5 | pow |
+| `gt-vibrate` | VIBRATO | RATE | 2 … 9 | 5 | linear |
+| `gt-vibdepth` | VIBRATO | DEPTH | 0 … 2 | 0.8 | linear |
+
+Presets:
+
+- `bridge` — Picked on the bridge pickup: thin, bright, cutting; for crunch and leads into an amp
+- `default` — Picked, neck pickup, open position: the clean electric
+- `fingers` — Fingerstyle, thumb and fingers over the neck: round and soft
+- `funk` — Bright, tight, short: bridge-and-middle funk chops
+- `jazz` — Archtop jazz: neck pickup, tone rolled off, flatwound thump
+- `palm-mute` — Palm-muted picking: a short chug, give it a high-gain amp
+- `slide` — Bottleneck slide: long sustain, pitch curves glide fret by fret with the rasp
+
 ## juno2
 
 **Ju-Know**, instrument, 8 voices.
@@ -706,6 +783,10 @@ Presets:
 - `octave-down` — Pitched an octave down, longer tail
 - `raw` — Clean one-shot, no loop
 - `sp1200-kit` — SP-1200 drums: 12-bit drop-sample, pitched-down grit, fixed filter
+- `karoryfer/emilyguitar` — Emily, Epiphone electric with flatwounds, direct, clean (Karoryfer, CC0)
+- `karoryfer/fashionbass` — Fashionbass, fingered electric bass direct, five velocity layers (Karoryfer, CC0)
+- `karoryfer/growlybass` — Growlybass, Squier Jazz Bass fingered, clean (Karoryfer, CC0)
+- `karoryfer/weresax-alto` — Weresax alto saxophone, condenser mic, piano and forte layers (Karoryfer, CC0)
 - `vcsl/acoustic-kit` — VCSL acoustic kit on GM keys
 - `vcsl/fm-piano` — VCSL FM Piano
 - `vcsl/grand-piano` — VCSL Grand Piano, Kawai / Sustains, with release samples
@@ -716,6 +797,17 @@ Presets:
 - `vcsl/ocarina` — VCSL Ocarina, Typical / Sustains / Sus, with release samples
 - `vcsl/studio-kit` — VCSL concert drums as a kit on GM keys
 - `vcsl/upright-piano` — VCSL Upright Piano, Yamaha / Sustains, with release samples
+- `vsco-brass/tenor-trombone-stac` — VSCO 2 CE Brass / Tenor Trombone / stac
+- `vsco-brass/tenor-trombone-sus` — VSCO 2 CE Brass / Tenor Trombone / sus
+- `vsco-brass/tenor-trombone-vib` — VSCO 2 CE Brass / Tenor Trombone / vib
+- `vsco-brass/trumpet-stac` — VSCO 2 CE Brass / Trumpet / stac
+- `vsco-brass/trumpet-sus` — VSCO 2 CE Brass / Trumpet / sus
+- `vsco-brass/trumpet-susvib` — VSCO 2 CE Brass / Trumpet / susvib
+- `vsco-strings/cello-section-susvib` — VSCO 2 CE Strings / Cello Section / susvib
+- `vsco-strings/solo-contrabass-pizz` — VSCO 2 CE Strings / Solo Contrabass / Pizz
+- `vsco-strings/viola-section-susvib` — VSCO 2 CE Strings / Viola Section / susvib
+- `vsco-strings/violin-section-spic` — VSCO 2 CE Strings / Violin Section / Spic
+- `vsco-strings/violin-section-susvib` — VSCO 2 CE Strings / Violin Section / susVib
 
 ## unfairlight
 
@@ -792,6 +884,37 @@ Presets:
 - `slab/violin` — Slab: a solo violin, looped. Source made with Stable Audio 3 Small Music (Stability AI), prompt "solo violin playing one long sustained bowed note with gentle vibrato, expressive, dry close microphone, no accompaniment", seed 406; stored as CMI voice RAM, 8-bit at 24 kHz. CC0.
 - `slab/water-drop` — Slab: a water drop's bloop. Source made with Stable Audio 3 Small SFX (Stability AI), prompt "one drop of water falling into a sink, a clear hollow bloop, single sound, quiet room", seed 402; stored as CMI voice RAM, 8-bit at 24 kHz. CC0.
 - `slab/whip-slap` — Slab: a sharp whip-crack slap. Source made with Stable Audio 3 Small SFX (Stability AI), prompt "a single sharp whip crack slap, dry close microphone", seed 408; stored as CMI voice RAM, 8-bit at 24 kHz. CC0.
+
+## amp2
+
+**Ampstack**, stereo insert effect.
+
+| param | section | label | range | default | notes |
+|---|---|---|---|---|---|
+| `amp-voice` | PREAMP | VOICE | 0 BASS / 1 CLEAN / 2 BRIT / 3 HIGAIN | 1 | switch |
+| `amp-gain` | PREAMP | GAIN | 0 … 1 | 0.3 | linear |
+| `amp-tight` | PREAMP | TIGHT | 10 … 400 | 20 | exp |
+| `amp-bass` | TONE | BASS | 0 … 1 | 0.5 | linear |
+| `amp-mid` | TONE | MID | 0 … 1 | 0.5 | linear |
+| `amp-treble` | TONE | TREBLE | 0 … 1 | 0.5 | linear |
+| `amp-pres` | TONE | PRES | 0 … 1 | 0.25 | linear |
+| `amp-master` | POWER | MASTER | 0 … 1 | 0.3 | linear |
+| `amp-sag` | POWER | SAG | 0 … 1 | 0.3 | linear |
+| `amp-cab` | CAB | CAB | 0 OFF / 1 1x12 / 2 4x12 / 3 1x15 / 4 8x10 / 5 4x10 | 1 | switch |
+| `amp-mic` | CAB | MIC | 0 … 1 | 0.2 | linear |
+| `amp-blend` | OUT | BLEND | 0 … 1 | 0 | linear |
+| `amp-level` | OUT | LEVEL | -24 … 24 | 0 | linear |
+
+Presets:
+
+- `bass-blend` — Bass: a tube head into an 8x10 with the DI under it, the studio default
+- `bass-grind` — Bass: driven mids through an 8x10, clean lows from the DI
+- `bass-modern` — Bass: clean and scooped through a 4x10 with a horn, slap and pick
+- `bass-vintage-15` — Bass: a small tube combo with one 15, warm and woody, Motown to dub
+- `guitar-clean` — Guitar: a blackface combo with one 12, sparkle and spank
+- `guitar-crunch` — Guitar: a British head into a 4x12, rhythm crunch
+- `guitar-heavy` — Guitar: tight high-gain rhythm, scooped, palm mutes
+- `guitar-lead` — Guitar: hot-rodded high gain for leads, singing sustain
 
 ## bus2
 

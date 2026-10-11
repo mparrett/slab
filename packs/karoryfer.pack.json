@@ -1,0 +1,11 @@
+{"slab": "pack", "schema": 1,
+ "id": "karoryfer", "name": "Karoryfer Samples", "version": "2014",
+ "license": "CC0-1.0", "redistributable": true, "size": 1580000000,
+ "about": "Two fingered electric basses, a clean electric guitar and an alto sax, multisampled with round robins",
+ "link": "https://github.com/sfzinstruments",
+ "get": {"download": [
+   {"url": "https://github.com/sfzinstruments/karoryfer.fashionbass/archive/0703973b300a6bacb837602be9b588ab64732a72.zip"},
+   {"url": "https://github.com/sfzinstruments/karoryfer.growlybass/archive/4f483268fc66b5a6d5781d421c0d11b8d08d3fc6.zip"},
+   {"url": "https://github.com/sfzinstruments/karoryfer.emilyguitar/archive/b4920dc662fd9cad6dcaccdeecffdd91c8725d8c.zip"},
+   {"url": "https://github.com/sfzinstruments/karoryfer.weresax/archive/a4d756b21d2a573aca0d840cce7e71ba5effd4c6.zip"}]},
+ "import": "karoryfer"}

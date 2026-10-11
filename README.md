@@ -8,14 +8,14 @@ effect is a short file you can open and change.**
 ![Slab: the arrangement, the piano roll and the Mog Passenger synth](docs/images/slab.png)
 
 Slab (the Slab Audio Workstation) is a complete place to make music: lay
-out a song, write parts in the piano roll, play ten instruments through
+out a song, write parts in the piano roll, play twelve instruments through
 fifteen effects, automate anything, and mix it down to a WAV. It looks
 like a rack of 2000s studio hardware and runs like native code, because
 it is.
 
 ## What you get
 
-- **Ten instruments with a lineage.** Each is modeled on the instrument
+- **Twelve instruments with a lineage.** Each is modeled on the instrument
   it's named after:
   - **Mog Passenger**, after the Moog Prodigy and Messenger: three
     oscillators into a driven transistor ladder
@@ -30,13 +30,18 @@ it is.
     8-bit voice RAM, grit included
   - **DS-404**, an 808/909-style drum machine
   - **Rhodes**, a modeled electric piano
+  - **Fretwire** bass and guitar, physically modeled strings: fingers,
+    pick, slap and pop, and pitch curves that bend or slide fret by fret
   - **Sampler**, for WAV, FLAC, SFZ and folder kits
-- **Fifteen effects:** EQ, graphic EQ, compressor, bus compressor,
+- **Sixteen effects:** EQ, graphic EQ, compressor, bus compressor,
   multiband, a character compressor, saturator, tape, chorus, delay,
-  reverb, gate, limiter, an era (lo-fi) box and a funk overdrive.
+  reverb, gate, limiter, an era (lo-fi) box, a funk overdrive and an
+  amp with its cabinet for bass and guitar.
 - **Sounds that are yours to use.** Factory presets, an FM bank designed
-  from scratch, a sampled-voice bank for the Unfairlight, two pianos and
-  three drum kits. All CC0: use them in any music, no credit owed.
+  from scratch, a sampled-voice bank for the Unfairlight, two pianos,
+  string sections, trumpet and trombone, two sampled basses, an electric
+  guitar, an alto sax and three drum kits. All CC0: use them in any
+  music, no credit owed.
 - **A real studio around them.** Arrangement with clips and folding
   groups, a piano roll with velocity, per-note pitch, pressure and
   slide, automation lanes you can record, buses, sends, sidechain,

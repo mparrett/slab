@@ -401,6 +401,8 @@ const Command = struct { tool: []const u8, args: []const []const u8 = &.{} };
 fn command(import: []const u8) ?Command {
     if (std.mem.eql(u8, import, "vcsl")) return .{ .tool = "tools/library/vcsl.py" };
     if (std.mem.eql(u8, import, "drums")) return .{ .tool = "tools/library/drums.py" };
+    if (std.mem.eql(u8, import, "karoryfer")) return .{ .tool = "tools/library/karoryfer.py" };
+    if (std.mem.eql(u8, import, "vsco")) return .{ .tool = "tools/library/vsco.py" };
     if (std.mem.eql(u8, import, "cmi")) return .{ .tool = "tools/library/cmi.py", .args = &.{ "--collection", "disks", "$sources" } };
     if (std.mem.eql(u8, import, "extract")) return .{ .tool = "tools/extract/extract.py" };
     return null;
@@ -607,11 +609,15 @@ test "the shipped manifests parse" {
     var cat = Catalog.init(t.allocator);
     defer cat.deinit();
     cat.scan();
-    for ([_][]const u8{ "vcsl", "cmi", "drum-machines" }) |id| {
+    for ([_][]const u8{ "vcsl", "karoryfer", "vsco", "cmi", "drum-machines" }) |id| {
         const p = cat.find(id) orelse return error.MissingManifest;
         try t.expect(p.known);
     }
     try t.expect(cat.redistributable("vcsl"));
+    try t.expect(cat.redistributable("karoryfer"));
+    try t.expect(cat.redistributable("vsco"));
+    // every shipped importer has its tool
+    for ([_][]const u8{ "karoryfer", "vsco" }) |id| try t.expect(cat.find(id).?.canImport());
     try t.expect(!cat.redistributable("cmi"));
     try t.expect(!cat.redistributable("drum-machines"));
     try t.expect(cat.find("cmi").?.m.get.supply.?.expect.len == 3);

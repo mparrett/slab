@@ -1,0 +1,7 @@
+{"slab": "pack", "schema": 1,
+ "id": "vsco", "name": "Versilian Chamber Orchestra (VSCO 2 CE)", "version": "4403009",
+ "license": "CC0-1.0", "redistributable": true, "size": 3180000000,
+ "about": "Orchestral samples: string sections and solo strings, brass, woodwinds",
+ "link": "https://github.com/sgossner/VSCO-2-CE",
+ "get": {"download": [{"url": "https://github.com/sgossner/VSCO-2-CE/archive/440300901dfe9275fd84e0b7763af1f8443ae62e.zip"}]},
+ "import": "vsco"}

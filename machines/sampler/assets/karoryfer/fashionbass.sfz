@@ -1,0 +1,194 @@
+// Fashionbass, fingered electric bass direct, five velocity layers
+// Karoryfer Samples (CC0) - flattened for Slab by tools/library/karoryfer.py
+// shipped with slab as 16-bit mono FLAC at 44.1 kHz (tools/library/factory.py)
+
+<region> lokey=12 hikey=19 pitch_keycenter=18 hivel=40 seq_length=2 seq_position=1 sample=fashionbass/001-gb0_pp_rr1.flac
+<region> lokey=12 hikey=19 pitch_keycenter=18 hivel=40 seq_length=2 seq_position=2 sample=fashionbass/002-gb0_pp_rr2.flac
+<region> lokey=12 hikey=19 pitch_keycenter=18 lovel=41 hivel=65 seq_length=2 seq_position=1 sample=fashionbass/003-gb0_p_rr1.flac
+<region> lokey=12 hikey=19 pitch_keycenter=18 lovel=41 hivel=65 seq_length=2 seq_position=2 sample=fashionbass/004-gb0_p_rr2.flac
+<region> lokey=12 hikey=19 pitch_keycenter=18 lovel=66 hivel=85 seq_length=2 seq_position=1 sample=fashionbass/005-gb0_mf_rr1.flac
+<region> lokey=12 hikey=19 pitch_keycenter=18 lovel=66 hivel=85 seq_length=2 seq_position=2 sample=fashionbass/006-gb0_mf_rr2.flac
+<region> lokey=12 hikey=19 pitch_keycenter=18 lovel=86 hivel=110 seq_length=2 seq_position=1 sample=fashionbass/007-gb0_f_rr1.flac
+<region> lokey=12 hikey=19 pitch_keycenter=18 lovel=86 hivel=110 seq_length=2 seq_position=2 sample=fashionbass/008-gb0_f_rr2.flac
+<region> lokey=12 hikey=19 pitch_keycenter=18 lovel=111 seq_length=2 seq_position=1 sample=fashionbass/009-gb0_ff_rr1.flac
+<region> lokey=12 hikey=19 pitch_keycenter=18 lovel=111 seq_length=2 seq_position=2 sample=fashionbass/010-gb0_ff_rr2.flac
+<region> lokey=20 hikey=22 pitch_keycenter=21 hivel=40 seq_length=2 seq_position=1 sample=fashionbass/011-a0_pp_rr1.flac
+<region> lokey=20 hikey=22 pitch_keycenter=21 hivel=40 seq_length=2 seq_position=2 sample=fashionbass/012-a0_pp_rr2.flac
+<region> lokey=20 hikey=22 pitch_keycenter=21 lovel=41 hivel=65 seq_length=2 seq_position=1 sample=fashionbass/013-a0_p_rr1.flac
+<region> lokey=20 hikey=22 pitch_keycenter=21 lovel=41 hivel=65 seq_length=2 seq_position=2 sample=fashionbass/014-a0_p_rr2.flac
+<region> lokey=20 hikey=22 pitch_keycenter=21 lovel=66 hivel=85 seq_length=2 seq_position=1 sample=fashionbass/015-a0_mf_rr1.flac
+<region> lokey=20 hikey=22 pitch_keycenter=21 lovel=66 hivel=85 seq_length=2 seq_position=2 sample=fashionbass/016-a0_mf_rr2.flac
+<region> lokey=20 hikey=22 pitch_keycenter=21 lovel=86 hivel=110 seq_length=2 seq_position=1 sample=fashionbass/017-a0_f_rr1.flac
+<region> lokey=20 hikey=22 pitch_keycenter=21 lovel=86 hivel=110 seq_length=2 seq_position=2 sample=fashionbass/018-a0_f_rr2.flac
+<region> lokey=20 hikey=22 pitch_keycenter=21 lovel=111 seq_length=2 seq_position=1 sample=fashionbass/019-a0_ff_rr1.flac
+<region> lokey=20 hikey=22 pitch_keycenter=21 lovel=111 seq_length=2 seq_position=2 sample=fashionbass/020-a0_ff_rr2.flac
+<region> lokey=23 hikey=24 pitch_keycenter=24 hivel=40 seq_length=2 seq_position=1 sample=fashionbass/021-c1_pp_rr1.flac
+<region> lokey=23 hikey=24 pitch_keycenter=24 hivel=40 seq_length=2 seq_position=2 sample=fashionbass/022-c1_pp_rr2.flac
+<region> lokey=23 hikey=24 pitch_keycenter=24 lovel=41 hivel=65 seq_length=2 seq_position=1 sample=fashionbass/023-c1_p_rr1.flac
+<region> lokey=23 hikey=24 pitch_keycenter=24 lovel=41 hivel=65 seq_length=2 seq_position=2 sample=fashionbass/024-c1_p_rr2.flac
+<region> lokey=23 hikey=24 pitch_keycenter=24 lovel=66 hivel=85 seq_length=2 seq_position=1 sample=fashionbass/025-c1_mf_rr1.flac
+<region> lokey=23 hikey=24 pitch_keycenter=24 lovel=66 hivel=85 seq_length=2 seq_position=2 sample=fashionbass/026-c1_mf_rr2.flac
+<region> lokey=23 hikey=24 pitch_keycenter=24 lovel=86 hivel=110 seq_length=2 seq_position=1 sample=fashionbass/027-c1_f_rr1.flac
+<region> lokey=23 hikey=24 pitch_keycenter=24 lovel=86 hivel=110 seq_length=2 seq_position=2 sample=fashionbass/028-c1_f_rr2.flac
+<region> lokey=23 hikey=24 pitch_keycenter=24 lovel=111 seq_length=2 seq_position=1 sample=fashionbass/029-c1_ff_rr1.flac
+<region> lokey=23 hikey=24 pitch_keycenter=24 lovel=111 seq_length=2 seq_position=2 sample=fashionbass/030-c1_ff_rr2.flac
+<region> lokey=25 hikey=27 pitch_keycenter=26 hivel=40 seq_length=2 seq_position=1 sample=fashionbass/031-d1_pp_rr1.flac
+<region> lokey=25 hikey=27 pitch_keycenter=26 hivel=40 seq_length=2 seq_position=2 sample=fashionbass/032-d1_pp_rr2.flac
+<region> lokey=25 hikey=27 pitch_keycenter=26 lovel=41 hivel=65 seq_length=2 seq_position=1 sample=fashionbass/033-d1_p_rr1.flac
+<region> lokey=25 hikey=27 pitch_keycenter=26 lovel=41 hivel=65 seq_length=2 seq_position=2 sample=fashionbass/034-d1_p_rr2.flac
+<region> lokey=25 hikey=27 pitch_keycenter=26 lovel=66 hivel=85 seq_length=2 seq_position=1 sample=fashionbass/035-d1_mf_rr1.flac
+<region> lokey=25 hikey=27 pitch_keycenter=26 lovel=66 hivel=85 seq_length=2 seq_position=2 sample=fashionbass/036-d1_mf_rr2.flac
+<region> lokey=25 hikey=27 pitch_keycenter=26 lovel=86 hivel=110 seq_length=2 seq_position=1 sample=fashionbass/037-d1_f_rr1.flac
+<region> lokey=25 hikey=27 pitch_keycenter=26 lovel=86 hivel=110 seq_length=2 seq_position=2 sample=fashionbass/038-d1_f_rr2.flac
+<region> lokey=25 hikey=27 pitch_keycenter=26 lovel=111 seq_length=2 seq_position=1 sample=fashionbass/039-d1_ff_rr1.flac
+<region> lokey=25 hikey=27 pitch_keycenter=26 lovel=111 seq_length=2 seq_position=2 sample=fashionbass/040-d1_ff_rr2.flac
+<region> lokey=28 hikey=30 pitch_keycenter=29 hivel=40 seq_length=2 seq_position=1 sample=fashionbass/041-f1_pp_rr1.flac
+<region> lokey=28 hikey=30 pitch_keycenter=29 hivel=40 seq_length=2 seq_position=2 sample=fashionbass/042-f1_pp_rr2.flac
+<region> lokey=28 hikey=30 pitch_keycenter=29 lovel=41 hivel=65 seq_length=2 seq_position=1 sample=fashionbass/043-f1_p_rr1.flac
+<region> lokey=28 hikey=30 pitch_keycenter=29 lovel=41 hivel=65 seq_length=2 seq_position=2 sample=fashionbass/044-f1_p_rr2.flac
+<region> lokey=28 hikey=30 pitch_keycenter=29 lovel=66 hivel=85 seq_length=2 seq_position=1 sample=fashionbass/045-f1_mf_rr1.flac
+<region> lokey=28 hikey=30 pitch_keycenter=29 lovel=66 hivel=85 seq_length=2 seq_position=2 sample=fashionbass/046-f1_mf_rr2.flac
+<region> lokey=28 hikey=30 pitch_keycenter=29 lovel=86 hivel=110 seq_length=2 seq_position=1 sample=fashionbass/047-f1_f_rr1.flac
+<region> lokey=28 hikey=30 pitch_keycenter=29 lovel=86 hivel=110 seq_length=2 seq_position=2 sample=fashionbass/048-f1_f_rr2.flac
+<region> lokey=28 hikey=30 pitch_keycenter=29 lovel=111 seq_length=2 seq_position=1 sample=fashionbass/049-f1_ff_rr1.flac
+<region> lokey=28 hikey=30 pitch_keycenter=29 lovel=111 seq_length=2 seq_position=2 sample=fashionbass/050-f1_ff_rr2.flac
+<region> lokey=31 hikey=33 pitch_keycenter=32 hivel=40 seq_length=2 seq_position=1 sample=fashionbass/051-ab1_pp_rr1.flac
+<region> lokey=31 hikey=33 pitch_keycenter=32 hivel=40 seq_length=2 seq_position=2 sample=fashionbass/052-ab1_pp_rr2.flac
+<region> lokey=31 hikey=33 pitch_keycenter=32 lovel=41 hivel=65 seq_length=2 seq_position=1 sample=fashionbass/053-ab1_p_rr1.flac
+<region> lokey=31 hikey=33 pitch_keycenter=32 lovel=41 hivel=65 seq_length=2 seq_position=2 sample=fashionbass/054-ab1_p_rr2.flac
+<region> lokey=31 hikey=33 pitch_keycenter=32 lovel=66 hivel=85 seq_length=2 seq_position=1 sample=fashionbass/055-ab1_mf_rr1.flac
+<region> lokey=31 hikey=33 pitch_keycenter=32 lovel=66 hivel=85 seq_length=2 seq_position=2 sample=fashionbass/056-ab1_mf_rr2.flac
+<region> lokey=31 hikey=33 pitch_keycenter=32 lovel=86 hivel=110 seq_length=2 seq_position=1 sample=fashionbass/057-ab1_f_rr1.flac
+<region> lokey=31 hikey=33 pitch_keycenter=32 lovel=86 hivel=110 seq_length=2 seq_position=2 sample=fashionbass/058-ab1_f_rr2.flac
+<region> lokey=31 hikey=33 pitch_keycenter=32 lovel=111 seq_length=2 seq_position=1 sample=fashionbass/059-ab1_ff_rr1.flac
+<region> lokey=31 hikey=33 pitch_keycenter=32 lovel=111 seq_length=2 seq_position=2 sample=fashionbass/060-ab1_ff_rr2.flac
+<region> lokey=34 hikey=36 pitch_keycenter=35 hivel=40 seq_length=2 seq_position=1 sample=fashionbass/061-b1_pp_rr1.flac
+<region> lokey=34 hikey=36 pitch_keycenter=35 hivel=40 seq_length=2 seq_position=2 sample=fashionbass/062-b1_pp_rr2.flac
+<region> lokey=34 hikey=36 pitch_keycenter=35 lovel=41 hivel=65 seq_length=2 seq_position=1 sample=fashionbass/063-b1_p_rr1.flac
+<region> lokey=34 hikey=36 pitch_keycenter=35 lovel=41 hivel=65 seq_length=2 seq_position=2 sample=fashionbass/064-b1_p_rr2.flac
+<region> lokey=34 hikey=36 pitch_keycenter=35 lovel=66 hivel=85 seq_length=2 seq_position=1 sample=fashionbass/065-b1_mf_rr1.flac
+<region> lokey=34 hikey=36 pitch_keycenter=35 lovel=66 hivel=85 seq_length=2 seq_position=2 sample=fashionbass/066-b1_mf_rr2.flac
+<region> lokey=34 hikey=36 pitch_keycenter=35 lovel=86 hivel=110 seq_length=2 seq_position=1 sample=fashionbass/067-b1_f_rr1.flac
+<region> lokey=34 hikey=36 pitch_keycenter=35 lovel=86 hivel=110 seq_length=2 seq_position=2 sample=fashionbass/068-b1_f_rr2.flac
+<region> lokey=34 hikey=36 pitch_keycenter=35 lovel=111 seq_length=2 seq_position=1 sample=fashionbass/069-b1_ff_rr1.flac
+<region> lokey=34 hikey=36 pitch_keycenter=35 lovel=111 seq_length=2 seq_position=2 sample=fashionbass/070-b1_ff_rr2.flac
+<region> lokey=37 hikey=39 pitch_keycenter=38 hivel=40 seq_length=2 seq_position=1 sample=fashionbass/071-d2_pp_rr1.flac
+<region> lokey=37 hikey=39 pitch_keycenter=38 hivel=40 seq_length=2 seq_position=2 sample=fashionbass/072-d2_pp_rr2.flac
+<region> lokey=37 hikey=39 pitch_keycenter=38 lovel=41 hivel=65 seq_length=2 seq_position=1 sample=fashionbass/073-d2_p_rr1.flac
+<region> lokey=37 hikey=39 pitch_keycenter=38 lovel=41 hivel=65 seq_length=2 seq_position=2 sample=fashionbass/074-d2_p_rr2.flac
+<region> lokey=37 hikey=39 pitch_keycenter=38 lovel=66 hivel=85 seq_length=2 seq_position=1 sample=fashionbass/075-d2_mf_rr1.flac
+<region> lokey=37 hikey=39 pitch_keycenter=38 lovel=66 hivel=85 seq_length=2 seq_position=2 sample=fashionbass/076-d2_mf_rr2.flac
+<region> lokey=37 hikey=39 pitch_keycenter=38 lovel=86 hivel=110 seq_length=2 seq_position=1 sample=fashionbass/077-d2_f_rr1.flac
+<region> lokey=37 hikey=39 pitch_keycenter=38 lovel=86 hivel=110 seq_length=2 seq_position=2 sample=fashionbass/078-d2_f_rr2.flac
+<region> lokey=37 hikey=39 pitch_keycenter=38 lovel=111 seq_length=2 seq_position=1 sample=fashionbass/079-d2_ff_rr1.flac
+<region> lokey=37 hikey=39 pitch_keycenter=38 lovel=111 seq_length=2 seq_position=2 sample=fashionbass/080-d2_ff_rr2.flac
+<region> lokey=40 hikey=42 pitch_keycenter=41 hivel=40 seq_length=2 seq_position=1 sample=fashionbass/081-f2_pp_rr1.flac
+<region> lokey=40 hikey=42 pitch_keycenter=41 hivel=40 seq_length=2 seq_position=2 sample=fashionbass/082-f2_pp_rr2.flac
+<region> lokey=40 hikey=42 pitch_keycenter=41 lovel=41 hivel=65 seq_length=2 seq_position=1 sample=fashionbass/083-f2_p_rr1.flac
+<region> lokey=40 hikey=42 pitch_keycenter=41 lovel=41 hivel=65 seq_length=2 seq_position=2 sample=fashionbass/084-f2_p_rr2.flac
+<region> lokey=40 hikey=42 pitch_keycenter=41 lovel=66 hivel=85 seq_length=2 seq_position=1 sample=fashionbass/085-f2_mf_rr1.flac
+<region> lokey=40 hikey=42 pitch_keycenter=41 lovel=66 hivel=85 seq_length=2 seq_position=2 sample=fashionbass/086-f2_mf_rr2.flac
+<region> lokey=40 hikey=42 pitch_keycenter=41 lovel=86 hivel=110 seq_length=2 seq_position=1 sample=fashionbass/087-f2_f_rr1.flac
+<region> lokey=40 hikey=42 pitch_keycenter=41 lovel=86 hivel=110 seq_length=2 seq_position=2 sample=fashionbass/088-f2_f_rr2.flac
+<region> lokey=40 hikey=42 pitch_keycenter=41 lovel=111 seq_length=2 seq_position=1 sample=fashionbass/089-f2_ff_rr1.flac
+<region> lokey=40 hikey=42 pitch_keycenter=41 lovel=111 seq_length=2 seq_position=2 sample=fashionbass/090-f2_ff_rr2.flac
+<region> lokey=43 hikey=45 pitch_keycenter=44 hivel=40 seq_length=2 seq_position=1 sample=fashionbass/091-ab2_pp_rr1.flac
+<region> lokey=43 hikey=45 pitch_keycenter=44 hivel=40 seq_length=2 seq_position=2 sample=fashionbass/092-ab2_pp_rr2.flac
+<region> lokey=43 hikey=45 pitch_keycenter=44 lovel=41 hivel=65 seq_length=2 seq_position=1 sample=fashionbass/093-ab2_p_rr1.flac
+<region> lokey=43 hikey=45 pitch_keycenter=44 lovel=41 hivel=65 seq_length=2 seq_position=2 sample=fashionbass/094-ab2_p_rr2.flac
+<region> lokey=43 hikey=45 pitch_keycenter=44 lovel=66 hivel=85 seq_length=2 seq_position=1 sample=fashionbass/095-ab2_mf_rr1.flac
+<region> lokey=43 hikey=45 pitch_keycenter=44 lovel=66 hivel=85 seq_length=2 seq_position=2 sample=fashionbass/096-ab2_mf_rr2.flac
+<region> lokey=43 hikey=45 pitch_keycenter=44 lovel=86 hivel=110 seq_length=2 seq_position=1 sample=fashionbass/097-ab2_f_rr1.flac
+<region> lokey=43 hikey=45 pitch_keycenter=44 lovel=86 hivel=110 seq_length=2 seq_position=2 sample=fashionbass/098-ab2_f_rr2.flac
+<region> lokey=43 hikey=45 pitch_keycenter=44 lovel=111 seq_length=2 seq_position=1 sample=fashionbass/099-ab2_ff_rr1.flac
+<region> lokey=43 hikey=45 pitch_keycenter=44 lovel=111 seq_length=2 seq_position=2 sample=fashionbass/100-ab2_ff_rr2.flac
+<region> lokey=46 hikey=48 pitch_keycenter=47 hivel=40 seq_length=2 seq_position=1 sample=fashionbass/101-b2_pp_rr1.flac
+<region> lokey=46 hikey=48 pitch_keycenter=47 hivel=40 seq_length=2 seq_position=2 sample=fashionbass/102-b2_pp_rr2.flac
+<region> lokey=46 hikey=48 pitch_keycenter=47 lovel=41 hivel=65 seq_length=2 seq_position=1 sample=fashionbass/103-b2_p_rr1.flac
+<region> lokey=46 hikey=48 pitch_keycenter=47 lovel=41 hivel=65 seq_length=2 seq_position=2 sample=fashionbass/104-b2_p_rr2.flac
+<region> lokey=46 hikey=48 pitch_keycenter=47 lovel=66 hivel=85 seq_length=2 seq_position=1 sample=fashionbass/105-b2_mf_rr1.flac
+<region> lokey=46 hikey=48 pitch_keycenter=47 lovel=66 hivel=85 seq_length=2 seq_position=2 sample=fashionbass/106-b2_mf_rr2.flac
+<region> lokey=46 hikey=48 pitch_keycenter=47 lovel=86 hivel=110 seq_length=2 seq_position=1 sample=fashionbass/107-b2_f_rr1.flac
+<region> lokey=46 hikey=48 pitch_keycenter=47 lovel=86 hivel=110 seq_length=2 seq_position=2 sample=fashionbass/108-b2_f_rr2.flac
+<region> lokey=46 hikey=48 pitch_keycenter=47 lovel=111 seq_length=2 seq_position=1 sample=fashionbass/109-b2_ff_rr1.flac
+<region> lokey=46 hikey=48 pitch_keycenter=47 lovel=111 seq_length=2 seq_position=2 sample=fashionbass/110-b2_ff_rr2.flac
+<region> lokey=49 hikey=51 pitch_keycenter=50 hivel=40 seq_length=2 seq_position=1 sample=fashionbass/111-d3_pp_rr1.flac
+<region> lokey=49 hikey=51 pitch_keycenter=50 hivel=40 seq_length=2 seq_position=2 sample=fashionbass/112-d3_pp_rr2.flac
+<region> lokey=49 hikey=51 pitch_keycenter=50 lovel=41 hivel=65 seq_length=2 seq_position=1 sample=fashionbass/113-d3_p_rr1.flac
+<region> lokey=49 hikey=51 pitch_keycenter=50 lovel=41 hivel=65 seq_length=2 seq_position=2 sample=fashionbass/114-d3_p_rr2.flac
+<region> lokey=49 hikey=51 pitch_keycenter=50 lovel=66 hivel=85 seq_length=2 seq_position=1 sample=fashionbass/115-d3_mf_rr1.flac
+<region> lokey=49 hikey=51 pitch_keycenter=50 lovel=66 hivel=85 seq_length=2 seq_position=2 sample=fashionbass/116-d3_mf_rr2.flac
+<region> lokey=49 hikey=51 pitch_keycenter=50 lovel=86 hivel=110 seq_length=2 seq_position=1 sample=fashionbass/117-d3_f_rr1.flac
+<region> lokey=49 hikey=51 pitch_keycenter=50 lovel=86 hivel=110 seq_length=2 seq_position=2 sample=fashionbass/118-d3_f_rr2.flac
+<region> lokey=49 hikey=51 pitch_keycenter=50 lovel=111 seq_length=2 seq_position=1 sample=fashionbass/119-d3_ff_rr1.flac
+<region> lokey=49 hikey=51 pitch_keycenter=50 lovel=111 seq_length=2 seq_position=2 sample=fashionbass/120-d3_ff_rr2.flac
+<region> lokey=52 hikey=54 pitch_keycenter=53 hivel=40 seq_length=2 seq_position=1 sample=fashionbass/121-f3_pp_rr1.flac
+<region> lokey=52 hikey=54 pitch_keycenter=53 hivel=40 seq_length=2 seq_position=2 sample=fashionbass/122-f3_pp_rr2.flac
+<region> lokey=52 hikey=54 pitch_keycenter=53 lovel=41 hivel=65 seq_length=2 seq_position=1 sample=fashionbass/123-f3_p_rr1.flac
+<region> lokey=52 hikey=54 pitch_keycenter=53 lovel=41 hivel=65 seq_length=2 seq_position=2 sample=fashionbass/124-f3_p_rr2.flac
+<region> lokey=52 hikey=54 pitch_keycenter=53 lovel=66 hivel=85 seq_length=2 seq_position=1 sample=fashionbass/125-f3_mf_rr1.flac
+<region> lokey=52 hikey=54 pitch_keycenter=53 lovel=66 hivel=85 seq_length=2 seq_position=2 sample=fashionbass/126-f3_mf_rr2.flac
+<region> lokey=52 hikey=54 pitch_keycenter=53 lovel=86 hivel=110 seq_length=2 seq_position=1 sample=fashionbass/127-f3_f_rr1.flac
+<region> lokey=52 hikey=54 pitch_keycenter=53 lovel=86 hivel=110 seq_length=2 seq_position=2 sample=fashionbass/128-f3_f_rr2.flac
+<region> lokey=52 hikey=54 pitch_keycenter=53 lovel=111 seq_length=2 seq_position=1 sample=fashionbass/129-f3_ff_rr1.flac
+<region> lokey=52 hikey=54 pitch_keycenter=53 lovel=111 seq_length=2 seq_position=2 sample=fashionbass/130-f3_ff_rr2.flac
+<region> lokey=55 hikey=57 pitch_keycenter=56 hivel=40 seq_length=2 seq_position=1 sample=fashionbass/131-ab3_pp_rr1.flac
+<region> lokey=55 hikey=57 pitch_keycenter=56 hivel=40 seq_length=2 seq_position=2 sample=fashionbass/132-ab3_pp_rr2.flac
+<region> lokey=55 hikey=57 pitch_keycenter=56 lovel=41 hivel=65 seq_length=2 seq_position=1 sample=fashionbass/133-ab3_p_rr1.flac
+<region> lokey=55 hikey=57 pitch_keycenter=56 lovel=41 hivel=65 seq_length=2 seq_position=2 sample=fashionbass/134-ab3_p_rr2.flac
+<region> lokey=55 hikey=57 pitch_keycenter=56 lovel=66 hivel=85 seq_length=2 seq_position=1 sample=fashionbass/135-ab3_mf_rr1.flac
+<region> lokey=55 hikey=57 pitch_keycenter=56 lovel=66 hivel=85 seq_length=2 seq_position=2 sample=fashionbass/136-ab3_mf_rr2.flac
+<region> lokey=55 hikey=57 pitch_keycenter=56 lovel=86 hivel=110 seq_length=2 seq_position=1 sample=fashionbass/137-ab3_f_rr1.flac
+<region> lokey=55 hikey=57 pitch_keycenter=56 lovel=86 hivel=110 seq_length=2 seq_position=2 sample=fashionbass/138-ab3_f_rr2.flac
+<region> lokey=55 hikey=57 pitch_keycenter=56 lovel=111 seq_length=2 seq_position=1 sample=fashionbass/139-ab3_ff_rr1.flac
+<region> lokey=55 hikey=57 pitch_keycenter=56 lovel=111 seq_length=2 seq_position=2 sample=fashionbass/140-ab3_ff_rr2.flac
+<region> lokey=58 hikey=60 pitch_keycenter=59 hivel=40 seq_length=2 seq_position=1 sample=fashionbass/141-b3_pp_rr1.flac
+<region> lokey=58 hikey=60 pitch_keycenter=59 hivel=40 seq_length=2 seq_position=2 sample=fashionbass/142-b3_pp_rr2.flac
+<region> lokey=58 hikey=60 pitch_keycenter=59 lovel=41 hivel=65 seq_length=2 seq_position=1 sample=fashionbass/143-b3_p_rr1.flac
+<region> lokey=58 hikey=60 pitch_keycenter=59 lovel=41 hivel=65 seq_length=2 seq_position=2 sample=fashionbass/144-b3_p_rr2.flac
+<region> lokey=58 hikey=60 pitch_keycenter=59 lovel=66 hivel=85 seq_length=2 seq_position=1 sample=fashionbass/145-b3_mf_rr1.flac
+<region> lokey=58 hikey=60 pitch_keycenter=59 lovel=66 hivel=85 seq_length=2 seq_position=2 sample=fashionbass/146-b3_mf_rr2.flac
+<region> lokey=58 hikey=60 pitch_keycenter=59 lovel=86 hivel=110 seq_length=2 seq_position=1 sample=fashionbass/147-b3_f_rr1.flac
+<region> lokey=58 hikey=60 pitch_keycenter=59 lovel=86 hivel=110 seq_length=2 seq_position=2 sample=fashionbass/148-b3_f_rr2.flac
+<region> lokey=58 hikey=60 pitch_keycenter=59 lovel=111 seq_length=2 seq_position=1 sample=fashionbass/149-b3_ff_rr1.flac
+<region> lokey=58 hikey=60 pitch_keycenter=59 lovel=111 seq_length=2 seq_position=2 sample=fashionbass/150-b3_ff_rr2.flac
+<region> lokey=61 hikey=63 pitch_keycenter=62 hivel=40 seq_length=2 seq_position=1 sample=fashionbass/151-d4_pp_rr1.flac
+<region> lokey=61 hikey=63 pitch_keycenter=62 hivel=40 seq_length=2 seq_position=2 sample=fashionbass/152-d4_pp_rr2.flac
+<region> lokey=61 hikey=63 pitch_keycenter=62 lovel=41 hivel=65 seq_length=2 seq_position=1 sample=fashionbass/153-d4_p_rr1.flac
+<region> lokey=61 hikey=63 pitch_keycenter=62 lovel=41 hivel=65 seq_length=2 seq_position=2 sample=fashionbass/154-d4_p_rr2.flac
+<region> lokey=61 hikey=63 pitch_keycenter=62 lovel=66 hivel=85 seq_length=2 seq_position=1 sample=fashionbass/155-d4_mf_rr1.flac
+<region> lokey=61 hikey=63 pitch_keycenter=62 lovel=66 hivel=85 seq_length=2 seq_position=2 sample=fashionbass/156-d4_mf_rr2.flac
+<region> lokey=61 hikey=63 pitch_keycenter=62 lovel=86 hivel=110 seq_length=2 seq_position=1 sample=fashionbass/157-d4_f_rr1.flac
+<region> lokey=61 hikey=63 pitch_keycenter=62 lovel=86 hivel=110 seq_length=2 seq_position=2 sample=fashionbass/158-d4_f_rr2.flac
+<region> lokey=61 hikey=63 pitch_keycenter=62 lovel=111 seq_length=2 seq_position=1 sample=fashionbass/159-d4_ff_rr1.flac
+<region> lokey=61 hikey=63 pitch_keycenter=62 lovel=111 seq_length=2 seq_position=2 sample=fashionbass/160-d4_ff_rr2.flac
+<region> lokey=64 hikey=66 pitch_keycenter=65 hivel=40 seq_length=2 seq_position=1 sample=fashionbass/161-f4_pp_rr1.flac
+<region> lokey=64 hikey=66 pitch_keycenter=65 hivel=40 seq_length=2 seq_position=2 sample=fashionbass/162-f4_pp_rr2.flac
+<region> lokey=64 hikey=66 pitch_keycenter=65 lovel=41 hivel=65 seq_length=2 seq_position=1 sample=fashionbass/163-f4_p_rr1.flac
+<region> lokey=64 hikey=66 pitch_keycenter=65 lovel=41 hivel=65 seq_length=2 seq_position=2 sample=fashionbass/164-f4_p_rr2.flac
+<region> lokey=64 hikey=66 pitch_keycenter=65 lovel=66 hivel=85 seq_length=2 seq_position=1 sample=fashionbass/165-f4_mf_rr1.flac
+<region> lokey=64 hikey=66 pitch_keycenter=65 lovel=66 hivel=85 seq_length=2 seq_position=2 sample=fashionbass/166-f4_mf_rr2.flac
+<region> lokey=64 hikey=66 pitch_keycenter=65 lovel=86 hivel=110 seq_length=2 seq_position=1 sample=fashionbass/167-f4_f_rr1.flac
+<region> lokey=64 hikey=66 pitch_keycenter=65 lovel=86 hivel=110 seq_length=2 seq_position=2 sample=fashionbass/168-f4_f_rr2.flac
+<region> lokey=64 hikey=66 pitch_keycenter=65 lovel=111 seq_length=2 seq_position=1 sample=fashionbass/169-f4_ff_rr1.flac
+<region> lokey=64 hikey=66 pitch_keycenter=65 lovel=111 seq_length=2 seq_position=2 sample=fashionbass/170-f4_ff_rr2.flac
+<region> lokey=67 hikey=68 pitch_keycenter=68 hivel=40 seq_length=2 seq_position=1 sample=fashionbass/171-ab4_pp_rr1.flac
+<region> lokey=67 hikey=68 pitch_keycenter=68 hivel=40 seq_length=2 seq_position=2 sample=fashionbass/172-ab4_pp_rr2.flac
+<region> lokey=67 hikey=68 pitch_keycenter=68 lovel=41 hivel=65 seq_length=2 seq_position=1 sample=fashionbass/173-ab4_p_rr1.flac
+<region> lokey=67 hikey=68 pitch_keycenter=68 lovel=41 hivel=65 seq_length=2 seq_position=2 sample=fashionbass/174-ab4_p_rr2.flac
+<region> lokey=67 hikey=68 pitch_keycenter=68 lovel=66 hivel=85 seq_length=2 seq_position=1 sample=fashionbass/175-ab4_mf_rr1.flac
+<region> lokey=67 hikey=68 pitch_keycenter=68 lovel=66 hivel=85 seq_length=2 seq_position=2 sample=fashionbass/176-ab4_mf_rr2.flac
+<region> lokey=67 hikey=68 pitch_keycenter=68 lovel=86 hivel=110 seq_length=2 seq_position=1 sample=fashionbass/177-ab4_f_rr1.flac
+<region> lokey=67 hikey=68 pitch_keycenter=68 lovel=86 hivel=110 seq_length=2 seq_position=2 sample=fashionbass/178-ab4_f_rr2.flac
+<region> lokey=67 hikey=68 pitch_keycenter=68 lovel=111 seq_length=2 seq_position=1 sample=fashionbass/179-ab4_ff_rr1.flac
+<region> lokey=67 hikey=68 pitch_keycenter=68 lovel=111 seq_length=2 seq_position=2 sample=fashionbass/180-ab4_ff_rr2.flac
+<region> lokey=69 hikey=72 pitch_keycenter=69 hivel=40 seq_length=2 seq_position=1 sample=fashionbass/181-a4_pp_rr1.flac
+<region> lokey=69 hikey=72 pitch_keycenter=69 hivel=40 seq_length=2 seq_position=2 sample=fashionbass/182-a4_pp_rr2.flac
+<region> lokey=69 hikey=72 pitch_keycenter=69 lovel=41 hivel=65 seq_length=2 seq_position=1 sample=fashionbass/183-a4_p_rr1.flac
+<region> lokey=69 hikey=72 pitch_keycenter=69 lovel=41 hivel=65 seq_length=2 seq_position=2 sample=fashionbass/184-a4_p_rr2.flac
+<region> lokey=69 hikey=72 pitch_keycenter=69 lovel=66 hivel=85 seq_length=2 seq_position=1 sample=fashionbass/185-a4_mf_rr1.flac
+<region> lokey=69 hikey=72 pitch_keycenter=69 lovel=66 hivel=85 seq_length=2 seq_position=2 sample=fashionbass/186-a4_mf_rr2.flac
+<region> lokey=69 hikey=72 pitch_keycenter=69 lovel=86 hivel=110 seq_length=2 seq_position=1 sample=fashionbass/187-a4_f_rr1.flac
+<region> lokey=69 hikey=72 pitch_keycenter=69 lovel=86 hivel=110 seq_length=2 seq_position=2 sample=fashionbass/188-a4_f_rr2.flac
+<region> lokey=69 hikey=72 pitch_keycenter=69 lovel=111 seq_length=2 seq_position=1 sample=fashionbass/189-a4_ff_rr1.flac
+<region> lokey=69 hikey=72 pitch_keycenter=69 lovel=111 seq_length=2 seq_position=2 sample=fashionbass/190-a4_ff_rr2.flac
