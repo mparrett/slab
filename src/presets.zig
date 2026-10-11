@@ -132,9 +132,13 @@ fn scanInto(list: *List, dir_path: []const u8, prefix: []const u8, depth: u8) vo
             var nm_buf: [128]u8 = undefined;
             const nm = std.fmt.bufPrint(&nm_buf, "{s}/{s}", .{ prefix, stem }) catch continue;
             if (nm.len > MAX_NAME) continue;
+            // the factory scans first: a pack's copy of a shipped preset
+            // [factory.py ships some under the pack's names] lists once
+            if (list.contains(nm)) continue;
             list.names[list.count] = Name.set(nm);
         } else {
             if (stem.len > MAX_NAME) continue;
+            if (list.contains(stem)) continue;
             list.names[list.count] = Name.set(stem);
         }
         list.count += 1;
@@ -401,4 +405,21 @@ test "preset dir derivation" {
     var buf: [512]u8 = undefined;
     const dir = dirFromMachinePath(&buf, "machines/drum2/drum2.fy").?;
     try testing.expectEqualStrings("machines/drum2/presets", dir);
+}
+
+test "a preset in the factory and a pack lists once" {
+    const root = ".zig-cache/tmp/presets-dedupe";
+    const f = root ++ "/factory";
+    const p = root ++ "/pack";
+    storage.makeParents(f);
+    storage.makeParents(p);
+    try testing.expect(writeFile(f, "karoryfer/fashionbass", "{}"));
+    try testing.expect(writeFile(p, "karoryfer/fashionbass", "{}"));
+    try testing.expect(writeFile(p, "karoryfer/only-in-pack", "{}"));
+    var list = List{};
+    scanInto(&list, f, "", 0);
+    scanInto(&list, p, "", 0);
+    try testing.expectEqual(@as(usize, 2), list.count);
+    try testing.expect(list.contains("karoryfer/fashionbass"));
+    try testing.expect(list.contains("karoryfer/only-in-pack"));
 }

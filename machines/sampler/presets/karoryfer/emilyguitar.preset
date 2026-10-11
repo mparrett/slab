@@ -1,0 +1,1 @@
+{"slab": "preset", "schema": 1, "machine": "sampler", "note": "Emily, Epiphone electric with flatwounds, direct, clean (Karoryfer, CC0)", "params": {"smp-model": 0, "smp-engine": 0, "smp-loop": 1, "smp-sus": 1.0, "smp-level": 0.7, "smp-atk": 0.001, "smp-rel": 0.1, "smp-vel": 0.5}, "assets": {"smp": "factory:machines/sampler/assets/karoryfer/emilyguitar.sfz"}}

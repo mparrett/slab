@@ -1,0 +1,1 @@
+{"slab": "preset", "schema": 1, "machine": "sampler", "note": "Weresax alto saxophone, condenser mic, piano and forte layers (Karoryfer, CC0)", "params": {"smp-model": 0, "smp-engine": 0, "smp-loop": 1, "smp-sus": 1.0, "smp-level": 0.7, "smp-atk": 0.008, "smp-rel": 0.12, "smp-vel": 0.5}, "assets": {"smp": "factory:machines/sampler/assets/karoryfer/weresax-alto.sfz"}}

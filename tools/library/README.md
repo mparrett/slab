@@ -21,10 +21,17 @@ tools/library/vcsl.py                 # all of it: ~6 GB
 tools/library/vcsl.py --only marimba --only kits
 ```
 
-`vcsl_factory.py` builds the instruments that ship with slab (two
-pianos, the FM piano, harpsichord, marimba, kalimba, ocarina, three kits)
-from those SFZs: 16-bit mono FLAC in `machines/sampler/assets/vcsl/` and
-the sampler's `vcsl/` presets. Run `vcsl.py --only` for them first.
+`factory.py` builds the instruments that ship with slab from the packs'
+SFZs: VCSL's two pianos, FM piano, harpsichord, marimba, kalimba, ocarina
+and three kits; Karoryfer's two basses, electric guitar and alto sax;
+VSCO's string sections, contrabass pizzicato, trumpet and trombone. They
+become 16-bit mono FLAC in `machines/sampler/assets/<pack>/` and sampler
+presets under the packs' own names. Run `vcsl.py --only`, `karoryfer.py`
+and `vsco.py --only` for them first; `factory.py --pack vsco` rebuilds one.
+
+`karoryfer.py` fetches the Karoryfer instruments (pinned GitHub archives)
+and flattens their SFZ for the sampler; `vsco.py` does VSCO 2 CE with
+vcsl.py's mapping. Both are the in-app importers of their packs.
 
 It downloads the library at a pinned commit into `vcsl/samples/`
 (resumable: files already there are skipped), then writes one SFZ per

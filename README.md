@@ -38,8 +38,10 @@ it is.
   reverb, gate, limiter, an era (lo-fi) box, a funk overdrive and an
   amp with its cabinet for bass and guitar.
 - **Sounds that are yours to use.** Factory presets, an FM bank designed
-  from scratch, a sampled-voice bank for the Unfairlight, two pianos and
-  three drum kits. All CC0: use them in any music, no credit owed.
+  from scratch, a sampled-voice bank for the Unfairlight, two pianos,
+  string sections, trumpet and trombone, two sampled basses, an electric
+  guitar, an alto sax and three drum kits. All CC0: use them in any
+  music, no credit owed.
 - **A real studio around them.** Arrangement with clips and folding
   groups, a piano roll with velocity, per-note pitch, pressure and
   slide, automation lanes you can record, buses, sends, sidechain,

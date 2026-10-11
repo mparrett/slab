@@ -1,0 +1,220 @@
+// Emily, Epiphone electric with flatwounds, direct, clean
+// Karoryfer Samples (CC0) - flattened for Slab by tools/library/karoryfer.py
+// shipped with slab as 16-bit mono FLAC at 44.1 kHz (tools/library/factory.py)
+
+<region> lokey=36 hikey=38 hivel=40 pitch_keycenter=37 seq_length=3 seq_position=1 sample=emilyguitar/001-db2_p_rr1.flac
+<region> lokey=36 hikey=38 hivel=40 pitch_keycenter=37 seq_length=3 seq_position=2 sample=emilyguitar/002-db2_p_rr2.flac
+<region> lokey=36 hikey=38 hivel=40 pitch_keycenter=37 seq_length=3 seq_position=3 sample=emilyguitar/003-db2_p_rr3.flac
+<region> lokey=36 hikey=38 lovel=41 hivel=80 pitch_keycenter=37 seq_length=3 seq_position=1 sample=emilyguitar/004-db2_mp_rr1.flac
+<region> lokey=36 hikey=38 lovel=41 hivel=80 pitch_keycenter=37 seq_length=3 seq_position=2 sample=emilyguitar/005-db2_mp_rr2.flac
+<region> lokey=36 hikey=38 lovel=41 hivel=80 pitch_keycenter=37 seq_length=3 seq_position=3 sample=emilyguitar/006-db2_mp_rr3.flac
+<region> lokey=36 hikey=38 lovel=81 hivel=120 pitch_keycenter=37 seq_length=3 seq_position=1 sample=emilyguitar/007-db2_mf_rr1.flac
+<region> lokey=36 hikey=38 lovel=81 hivel=120 pitch_keycenter=37 seq_length=3 seq_position=2 sample=emilyguitar/008-db2_mf_rr2.flac
+<region> lokey=36 hikey=38 lovel=81 hivel=120 pitch_keycenter=37 seq_length=3 seq_position=3 sample=emilyguitar/009-db2_mf_rr3.flac
+<region> lokey=36 hikey=38 lovel=121 pitch_keycenter=37 seq_length=3 seq_position=1 sample=emilyguitar/010-db2_f_rr1.flac
+<region> lokey=36 hikey=38 lovel=121 pitch_keycenter=37 seq_length=3 seq_position=2 sample=emilyguitar/011-db2_f_rr2.flac
+<region> lokey=36 hikey=38 lovel=121 pitch_keycenter=37 seq_length=3 seq_position=3 sample=emilyguitar/012-db2_f_rr3.flac
+<region> lokey=39 hikey=40 hivel=40 pitch_keycenter=40 seq_length=3 seq_position=1 sample=emilyguitar/013-e2_p_rr1.flac
+<region> lokey=39 hikey=40 hivel=40 pitch_keycenter=40 seq_length=3 seq_position=2 sample=emilyguitar/014-e2_p_rr2.flac
+<region> lokey=39 hikey=40 hivel=40 pitch_keycenter=40 seq_length=3 seq_position=3 sample=emilyguitar/015-e2_p_rr3.flac
+<region> lokey=39 hikey=40 lovel=41 hivel=80 pitch_keycenter=40 seq_length=3 seq_position=1 sample=emilyguitar/016-e2_mp_rr1.flac
+<region> lokey=39 hikey=40 lovel=41 hivel=80 pitch_keycenter=40 seq_length=3 seq_position=2 sample=emilyguitar/017-e2_mp_rr2.flac
+<region> lokey=39 hikey=40 lovel=41 hivel=80 pitch_keycenter=40 seq_length=3 seq_position=3 sample=emilyguitar/018-e2_mp_rr3.flac
+<region> lokey=39 hikey=40 lovel=81 hivel=120 pitch_keycenter=40 seq_length=3 seq_position=1 sample=emilyguitar/019-e2_mf_rr1.flac
+<region> lokey=39 hikey=40 lovel=81 hivel=120 pitch_keycenter=40 seq_length=3 seq_position=2 sample=emilyguitar/020-e2_mf_rr2.flac
+<region> lokey=39 hikey=40 lovel=81 hivel=120 pitch_keycenter=40 seq_length=3 seq_position=3 sample=emilyguitar/021-e2_mf_rr3.flac
+<region> lokey=39 hikey=40 lovel=121 pitch_keycenter=40 seq_length=3 seq_position=1 sample=emilyguitar/022-e2_f_rr1.flac
+<region> lokey=39 hikey=40 lovel=121 pitch_keycenter=40 seq_length=3 seq_position=2 sample=emilyguitar/023-e2_f_rr2.flac
+<region> lokey=39 hikey=40 lovel=121 pitch_keycenter=40 seq_length=3 seq_position=3 sample=emilyguitar/024-e2_f_rr3.flac
+<region> lokey=41 hikey=43 hivel=40 pitch_keycenter=42 seq_length=3 seq_position=1 sample=emilyguitar/025-gb2_p_rr1.flac
+<region> lokey=41 hikey=43 hivel=40 pitch_keycenter=42 seq_length=3 seq_position=2 sample=emilyguitar/026-gb2_p_rr2.flac
+<region> lokey=41 hikey=43 hivel=40 pitch_keycenter=42 seq_length=3 seq_position=3 sample=emilyguitar/027-gb2_p_rr3.flac
+<region> lokey=41 hikey=43 lovel=41 hivel=80 pitch_keycenter=42 seq_length=3 seq_position=1 sample=emilyguitar/028-gb2_mp_rr1.flac
+<region> lokey=41 hikey=43 lovel=41 hivel=80 pitch_keycenter=42 seq_length=3 seq_position=2 sample=emilyguitar/029-gb2_mp_rr2.flac
+<region> lokey=41 hikey=43 lovel=41 hivel=80 pitch_keycenter=42 seq_length=3 seq_position=3 sample=emilyguitar/030-gb2_mp_rr3.flac
+<region> lokey=41 hikey=43 lovel=81 hivel=120 pitch_keycenter=42 seq_length=3 seq_position=1 sample=emilyguitar/031-gb2_mf_rr1.flac
+<region> lokey=41 hikey=43 lovel=81 hivel=120 pitch_keycenter=42 seq_length=3 seq_position=2 sample=emilyguitar/032-gb2_mf_rr2.flac
+<region> lokey=41 hikey=43 lovel=81 hivel=120 pitch_keycenter=42 seq_length=3 seq_position=3 sample=emilyguitar/033-gb2_mf_rr3.flac
+<region> lokey=41 hikey=43 lovel=121 pitch_keycenter=42 seq_length=3 seq_position=1 sample=emilyguitar/034-gb2_f_rr1.flac
+<region> lokey=41 hikey=43 lovel=121 pitch_keycenter=42 seq_length=3 seq_position=2 sample=emilyguitar/035-gb2_f_rr2.flac
+<region> lokey=41 hikey=43 lovel=121 pitch_keycenter=42 seq_length=3 seq_position=3 sample=emilyguitar/036-gb2_f_rr3.flac
+<region> lokey=44 hikey=46 hivel=40 pitch_keycenter=45 seq_length=3 seq_position=1 sample=emilyguitar/037-a2_p_rr1.flac
+<region> lokey=44 hikey=46 hivel=40 pitch_keycenter=45 seq_length=3 seq_position=2 sample=emilyguitar/038-a2_p_rr2.flac
+<region> lokey=44 hikey=46 hivel=40 pitch_keycenter=45 seq_length=3 seq_position=3 sample=emilyguitar/039-a2_p_rr3.flac
+<region> lokey=44 hikey=46 lovel=41 hivel=80 pitch_keycenter=45 seq_length=3 seq_position=1 sample=emilyguitar/040-a2_mp_rr1.flac
+<region> lokey=44 hikey=46 lovel=41 hivel=80 pitch_keycenter=45 seq_length=3 seq_position=2 sample=emilyguitar/041-a2_mp_rr2.flac
+<region> lokey=44 hikey=46 lovel=41 hivel=80 pitch_keycenter=45 seq_length=3 seq_position=3 sample=emilyguitar/042-a2_mp_rr3.flac
+<region> lokey=44 hikey=46 lovel=81 hivel=120 pitch_keycenter=45 seq_length=3 seq_position=1 sample=emilyguitar/043-a2_mf_rr1.flac
+<region> lokey=44 hikey=46 lovel=81 hivel=120 pitch_keycenter=45 seq_length=3 seq_position=2 sample=emilyguitar/044-a2_mf_rr2.flac
+<region> lokey=44 hikey=46 lovel=81 hivel=120 pitch_keycenter=45 seq_length=3 seq_position=3 sample=emilyguitar/045-a2_mf_rr3.flac
+<region> lokey=44 hikey=46 lovel=121 pitch_keycenter=45 seq_length=3 seq_position=1 sample=emilyguitar/046-a2_f_rr1.flac
+<region> lokey=44 hikey=46 lovel=121 pitch_keycenter=45 seq_length=3 seq_position=2 sample=emilyguitar/047-a2_f_rr2.flac
+<region> lokey=44 hikey=46 lovel=121 pitch_keycenter=45 seq_length=3 seq_position=3 sample=emilyguitar/048-a2_f_rr3.flac
+<region> lokey=47 hikey=49 hivel=40 pitch_keycenter=48 seq_length=3 seq_position=1 sample=emilyguitar/049-c3_p_rr1.flac
+<region> lokey=47 hikey=49 hivel=40 pitch_keycenter=48 seq_length=3 seq_position=2 sample=emilyguitar/050-c3_p_rr2.flac
+<region> lokey=47 hikey=49 hivel=40 pitch_keycenter=48 seq_length=3 seq_position=3 sample=emilyguitar/051-c3_p_rr3.flac
+<region> lokey=47 hikey=49 lovel=41 hivel=80 pitch_keycenter=48 seq_length=3 seq_position=1 sample=emilyguitar/052-c3_mp_rr1.flac
+<region> lokey=47 hikey=49 lovel=41 hivel=80 pitch_keycenter=48 seq_length=3 seq_position=2 sample=emilyguitar/053-c3_mp_rr2.flac
+<region> lokey=47 hikey=49 lovel=41 hivel=80 pitch_keycenter=48 seq_length=3 seq_position=3 sample=emilyguitar/054-c3_mp_rr3.flac
+<region> lokey=47 hikey=49 lovel=81 hivel=120 pitch_keycenter=48 seq_length=3 seq_position=1 sample=emilyguitar/055-c3_mf_rr1.flac
+<region> lokey=47 hikey=49 lovel=81 hivel=120 pitch_keycenter=48 seq_length=3 seq_position=2 sample=emilyguitar/056-c3_mf_rr2.flac
+<region> lokey=47 hikey=49 lovel=81 hivel=120 pitch_keycenter=48 seq_length=3 seq_position=3 sample=emilyguitar/057-c3_mf_rr3.flac
+<region> lokey=47 hikey=49 lovel=121 pitch_keycenter=48 seq_length=3 seq_position=1 sample=emilyguitar/058-c3_f_rr1.flac
+<region> lokey=47 hikey=49 lovel=121 pitch_keycenter=48 seq_length=3 seq_position=2 sample=emilyguitar/059-c3_f_rr2.flac
+<region> lokey=47 hikey=49 lovel=121 pitch_keycenter=48 seq_length=3 seq_position=3 sample=emilyguitar/060-c3_f_rr3.flac
+<region> lokey=50 hikey=52 hivel=40 pitch_keycenter=51 seq_length=3 seq_position=1 sample=emilyguitar/061-eb3_p_rr1.flac
+<region> lokey=50 hikey=52 hivel=40 pitch_keycenter=51 seq_length=3 seq_position=2 sample=emilyguitar/062-eb3_p_rr2.flac
+<region> lokey=50 hikey=52 hivel=40 pitch_keycenter=51 seq_length=3 seq_position=3 sample=emilyguitar/063-eb3_p_rr3.flac
+<region> lokey=50 hikey=52 lovel=41 hivel=80 pitch_keycenter=51 seq_length=3 seq_position=1 sample=emilyguitar/064-eb3_mp_rr1.flac
+<region> lokey=50 hikey=52 lovel=41 hivel=80 pitch_keycenter=51 seq_length=3 seq_position=2 sample=emilyguitar/065-eb3_mp_rr2.flac
+<region> lokey=50 hikey=52 lovel=41 hivel=80 pitch_keycenter=51 seq_length=3 seq_position=3 sample=emilyguitar/066-eb3_mp_rr3.flac
+<region> lokey=50 hikey=52 lovel=81 hivel=120 pitch_keycenter=51 seq_length=3 seq_position=1 sample=emilyguitar/067-eb3_mf_rr1.flac
+<region> lokey=50 hikey=52 lovel=81 hivel=120 pitch_keycenter=51 seq_length=3 seq_position=2 sample=emilyguitar/068-eb3_mf_rr2.flac
+<region> lokey=50 hikey=52 lovel=81 hivel=120 pitch_keycenter=51 seq_length=3 seq_position=3 sample=emilyguitar/069-eb3_mf_rr3.flac
+<region> lokey=50 hikey=52 lovel=121 pitch_keycenter=51 seq_length=3 seq_position=1 sample=emilyguitar/070-eb3_f_rr1.flac
+<region> lokey=50 hikey=52 lovel=121 pitch_keycenter=51 seq_length=3 seq_position=2 sample=emilyguitar/071-eb3_f_rr2.flac
+<region> lokey=50 hikey=52 lovel=121 pitch_keycenter=51 seq_length=3 seq_position=3 sample=emilyguitar/072-eb3_f_rr3.flac
+<region> lokey=53 hikey=55 hivel=40 pitch_keycenter=54 seq_length=3 seq_position=1 sample=emilyguitar/073-gb3_p_rr1.flac
+<region> lokey=53 hikey=55 hivel=40 pitch_keycenter=54 seq_length=3 seq_position=2 sample=emilyguitar/074-gb3_p_rr2.flac
+<region> lokey=53 hikey=55 hivel=40 pitch_keycenter=54 seq_length=3 seq_position=3 sample=emilyguitar/075-gb3_p_rr3.flac
+<region> lokey=53 hikey=55 lovel=41 hivel=80 pitch_keycenter=54 seq_length=3 seq_position=1 sample=emilyguitar/076-gb3_mp_rr1.flac
+<region> lokey=53 hikey=55 lovel=41 hivel=80 pitch_keycenter=54 seq_length=3 seq_position=2 sample=emilyguitar/077-gb3_mp_rr2.flac
+<region> lokey=53 hikey=55 lovel=41 hivel=80 pitch_keycenter=54 seq_length=3 seq_position=3 sample=emilyguitar/078-gb3_mp_rr3.flac
+<region> lokey=53 hikey=55 lovel=81 hivel=120 pitch_keycenter=54 seq_length=3 seq_position=1 sample=emilyguitar/079-gb3_mf_rr1.flac
+<region> lokey=53 hikey=55 lovel=81 hivel=120 pitch_keycenter=54 seq_length=3 seq_position=2 sample=emilyguitar/080-gb3_mf_rr2.flac
+<region> lokey=53 hikey=55 lovel=81 hivel=120 pitch_keycenter=54 seq_length=3 seq_position=3 sample=emilyguitar/081-gb3_mf_rr3.flac
+<region> lokey=53 hikey=55 lovel=121 pitch_keycenter=54 seq_length=3 seq_position=1 sample=emilyguitar/082-gb3_f_rr1.flac
+<region> lokey=53 hikey=55 lovel=121 pitch_keycenter=54 seq_length=3 seq_position=2 sample=emilyguitar/083-gb3_f_rr2.flac
+<region> lokey=53 hikey=55 lovel=121 pitch_keycenter=54 seq_length=3 seq_position=3 sample=emilyguitar/084-gb3_f_rr3.flac
+<region> lokey=56 hikey=58 hivel=40 pitch_keycenter=57 seq_length=3 seq_position=1 sample=emilyguitar/085-a3_p_rr1.flac
+<region> lokey=56 hikey=58 hivel=40 pitch_keycenter=57 seq_length=3 seq_position=2 sample=emilyguitar/086-a3_p_rr2.flac
+<region> lokey=56 hikey=58 hivel=40 pitch_keycenter=57 seq_length=3 seq_position=3 sample=emilyguitar/087-a3_p_rr3.flac
+<region> lokey=56 hikey=58 lovel=41 hivel=80 pitch_keycenter=57 seq_length=3 seq_position=1 sample=emilyguitar/088-a3_mp_rr1.flac
+<region> lokey=56 hikey=58 lovel=41 hivel=80 pitch_keycenter=57 seq_length=3 seq_position=2 sample=emilyguitar/089-a3_mp_rr2.flac
+<region> lokey=56 hikey=58 lovel=41 hivel=80 pitch_keycenter=57 seq_length=3 seq_position=3 sample=emilyguitar/090-a3_mp_rr3.flac
+<region> lokey=56 hikey=58 lovel=81 hivel=120 pitch_keycenter=57 seq_length=3 seq_position=1 sample=emilyguitar/091-a3_mf_rr1.flac
+<region> lokey=56 hikey=58 lovel=81 hivel=120 pitch_keycenter=57 seq_length=3 seq_position=2 sample=emilyguitar/092-a3_mf_rr2.flac
+<region> lokey=56 hikey=58 lovel=81 hivel=120 pitch_keycenter=57 seq_length=3 seq_position=3 sample=emilyguitar/093-a3_mf_rr3.flac
+<region> lokey=56 hikey=58 lovel=121 pitch_keycenter=57 seq_length=3 seq_position=1 sample=emilyguitar/094-a3_f_rr1.flac
+<region> lokey=56 hikey=58 lovel=121 pitch_keycenter=57 seq_length=3 seq_position=2 sample=emilyguitar/095-a3_f_rr2.flac
+<region> lokey=56 hikey=58 lovel=121 pitch_keycenter=57 seq_length=3 seq_position=3 sample=emilyguitar/096-a3_f_rr3.flac
+<region> lokey=59 hikey=61 hivel=40 pitch_keycenter=59 seq_length=3 seq_position=1 sample=emilyguitar/097-c4_p_rr1.flac
+<region> lokey=59 hikey=61 hivel=40 pitch_keycenter=59 seq_length=3 seq_position=2 sample=emilyguitar/098-c4_p_rr2.flac
+<region> lokey=59 hikey=61 hivel=40 pitch_keycenter=59 seq_length=3 seq_position=3 sample=emilyguitar/099-c4_p_rr3.flac
+<region> lokey=59 hikey=61 lovel=41 hivel=80 pitch_keycenter=59 seq_length=3 seq_position=1 sample=emilyguitar/100-c4_mp_rr1.flac
+<region> lokey=59 hikey=61 lovel=41 hivel=80 pitch_keycenter=59 seq_length=3 seq_position=2 sample=emilyguitar/101-c4_mp_rr2.flac
+<region> lokey=59 hikey=61 lovel=41 hivel=80 pitch_keycenter=59 seq_length=3 seq_position=3 sample=emilyguitar/102-c4_mp_rr3.flac
+<region> lokey=59 hikey=61 lovel=81 hivel=120 pitch_keycenter=59 seq_length=3 seq_position=1 sample=emilyguitar/103-c4_mf_rr1.flac
+<region> lokey=59 hikey=61 lovel=81 hivel=120 pitch_keycenter=59 seq_length=3 seq_position=2 sample=emilyguitar/104-c4_mf_rr2.flac
+<region> lokey=59 hikey=61 lovel=81 hivel=120 pitch_keycenter=59 seq_length=3 seq_position=3 sample=emilyguitar/105-c4_mf_rr3.flac
+<region> lokey=59 hikey=61 lovel=121 pitch_keycenter=59 seq_length=3 seq_position=1 sample=emilyguitar/106-c4_f_rr1.flac
+<region> lokey=59 hikey=61 lovel=121 pitch_keycenter=59 seq_length=3 seq_position=2 sample=emilyguitar/107-c4_f_rr2.flac
+<region> lokey=59 hikey=61 lovel=121 pitch_keycenter=59 seq_length=3 seq_position=3 sample=emilyguitar/108-c4_f_rr3.flac
+<region> lokey=62 hikey=64 hivel=40 pitch_keycenter=63 seq_length=3 seq_position=1 sample=emilyguitar/109-eb4_p_rr1.flac
+<region> lokey=62 hikey=64 hivel=40 pitch_keycenter=63 seq_length=3 seq_position=2 sample=emilyguitar/110-eb4_p_rr2.flac
+<region> lokey=62 hikey=64 hivel=40 pitch_keycenter=63 seq_length=3 seq_position=3 sample=emilyguitar/111-eb4_p_rr3.flac
+<region> lokey=62 hikey=64 lovel=41 hivel=80 pitch_keycenter=63 seq_length=3 seq_position=1 sample=emilyguitar/112-eb4_mp_rr1.flac
+<region> lokey=62 hikey=64 lovel=41 hivel=80 pitch_keycenter=63 seq_length=3 seq_position=2 sample=emilyguitar/113-eb4_mp_rr2.flac
+<region> lokey=62 hikey=64 lovel=41 hivel=80 pitch_keycenter=63 seq_length=3 seq_position=3 sample=emilyguitar/114-eb4_mp_rr3.flac
+<region> lokey=62 hikey=64 lovel=81 hivel=120 pitch_keycenter=63 seq_length=3 seq_position=1 sample=emilyguitar/115-eb4_mf_rr1.flac
+<region> lokey=62 hikey=64 lovel=81 hivel=120 pitch_keycenter=63 seq_length=3 seq_position=2 sample=emilyguitar/116-eb4_mf_rr2.flac
+<region> lokey=62 hikey=64 lovel=81 hivel=120 pitch_keycenter=63 seq_length=3 seq_position=3 sample=emilyguitar/117-eb4_mf_rr3.flac
+<region> lokey=62 hikey=64 lovel=121 pitch_keycenter=63 seq_length=3 seq_position=1 sample=emilyguitar/118-eb4_f_rr1.flac
+<region> lokey=62 hikey=64 lovel=121 pitch_keycenter=63 seq_length=3 seq_position=2 sample=emilyguitar/119-eb4_f_rr2.flac
+<region> lokey=62 hikey=64 lovel=121 pitch_keycenter=63 seq_length=3 seq_position=3 sample=emilyguitar/120-eb4_f_rr3.flac
+<region> lokey=65 hikey=67 hivel=40 pitch_keycenter=66 seq_length=3 seq_position=1 sample=emilyguitar/121-gb4_p_rr1.flac
+<region> lokey=65 hikey=67 hivel=40 pitch_keycenter=66 seq_length=3 seq_position=2 sample=emilyguitar/122-gb4_p_rr2.flac
+<region> lokey=65 hikey=67 hivel=40 pitch_keycenter=66 seq_length=3 seq_position=3 sample=emilyguitar/123-gb4_p_rr3.flac
+<region> lokey=65 hikey=67 lovel=41 hivel=80 pitch_keycenter=66 seq_length=3 seq_position=1 sample=emilyguitar/124-gb4_mp_rr1.flac
+<region> lokey=65 hikey=67 lovel=41 hivel=80 pitch_keycenter=66 seq_length=3 seq_position=2 sample=emilyguitar/125-gb4_mp_rr2.flac
+<region> lokey=65 hikey=67 lovel=41 hivel=80 pitch_keycenter=66 seq_length=3 seq_position=3 sample=emilyguitar/126-gb4_mp_rr3.flac
+<region> lokey=65 hikey=67 lovel=81 hivel=120 pitch_keycenter=66 seq_length=3 seq_position=1 sample=emilyguitar/127-gb4_mf_rr1.flac
+<region> lokey=65 hikey=67 lovel=81 hivel=120 pitch_keycenter=66 seq_length=3 seq_position=2 sample=emilyguitar/128-gb4_mf_rr2.flac
+<region> lokey=65 hikey=67 lovel=81 hivel=120 pitch_keycenter=66 seq_length=3 seq_position=3 sample=emilyguitar/129-gb4_mf_rr3.flac
+<region> lokey=65 hikey=67 lovel=121 pitch_keycenter=66 seq_length=3 seq_position=1 sample=emilyguitar/130-gb4_f_rr1.flac
+<region> lokey=65 hikey=67 lovel=121 pitch_keycenter=66 seq_length=3 seq_position=2 sample=emilyguitar/131-gb4_f_rr2.flac
+<region> lokey=65 hikey=67 lovel=121 pitch_keycenter=66 seq_length=3 seq_position=3 sample=emilyguitar/132-gb4_f_rr3.flac
+<region> lokey=68 hikey=70 hivel=40 pitch_keycenter=69 seq_length=3 seq_position=1 sample=emilyguitar/133-a4_p_rr1.flac
+<region> lokey=68 hikey=70 hivel=40 pitch_keycenter=69 seq_length=3 seq_position=2 sample=emilyguitar/134-a4_p_rr2.flac
+<region> lokey=68 hikey=70 hivel=40 pitch_keycenter=69 seq_length=3 seq_position=3 sample=emilyguitar/135-a4_p_rr3.flac
+<region> lokey=68 hikey=70 lovel=41 hivel=80 pitch_keycenter=69 seq_length=3 seq_position=1 sample=emilyguitar/136-a4_mp_rr1.flac
+<region> lokey=68 hikey=70 lovel=41 hivel=80 pitch_keycenter=69 seq_length=3 seq_position=2 sample=emilyguitar/137-a4_mp_rr2.flac
+<region> lokey=68 hikey=70 lovel=41 hivel=80 pitch_keycenter=69 seq_length=3 seq_position=3 sample=emilyguitar/138-a4_mp_rr3.flac
+<region> lokey=68 hikey=70 lovel=81 hivel=120 pitch_keycenter=69 seq_length=3 seq_position=1 sample=emilyguitar/139-a4_mf_rr1.flac
+<region> lokey=68 hikey=70 lovel=81 hivel=120 pitch_keycenter=69 seq_length=3 seq_position=2 sample=emilyguitar/140-a4_mf_rr2.flac
+<region> lokey=68 hikey=70 lovel=81 hivel=120 pitch_keycenter=69 seq_length=3 seq_position=3 sample=emilyguitar/141-a4_mf_rr3.flac
+<region> lokey=68 hikey=70 lovel=121 pitch_keycenter=69 seq_length=3 seq_position=1 sample=emilyguitar/142-a4_f_rr1.flac
+<region> lokey=68 hikey=70 lovel=121 pitch_keycenter=69 seq_length=3 seq_position=2 sample=emilyguitar/143-a4_f_rr2.flac
+<region> lokey=68 hikey=70 lovel=121 pitch_keycenter=69 seq_length=3 seq_position=3 sample=emilyguitar/144-a4_f_rr3.flac
+<region> lokey=71 hikey=73 hivel=40 pitch_keycenter=72 seq_length=3 seq_position=1 sample=emilyguitar/145-c5_p_rr1.flac
+<region> lokey=71 hikey=73 hivel=40 pitch_keycenter=72 seq_length=3 seq_position=2 sample=emilyguitar/146-c5_p_rr2.flac
+<region> lokey=71 hikey=73 hivel=40 pitch_keycenter=72 seq_length=3 seq_position=3 sample=emilyguitar/147-c5_p_rr3.flac
+<region> lokey=71 hikey=73 lovel=41 hivel=80 pitch_keycenter=72 seq_length=3 seq_position=1 sample=emilyguitar/148-c5_mp_rr1.flac
+<region> lokey=71 hikey=73 lovel=41 hivel=80 pitch_keycenter=72 seq_length=3 seq_position=2 sample=emilyguitar/149-c5_mp_rr2.flac
+<region> lokey=71 hikey=73 lovel=41 hivel=80 pitch_keycenter=72 seq_length=3 seq_position=3 sample=emilyguitar/150-c5_mp_rr3.flac
+<region> lokey=71 hikey=73 lovel=81 hivel=120 pitch_keycenter=72 seq_length=3 seq_position=1 sample=emilyguitar/151-c5_mf_rr1.flac
+<region> lokey=71 hikey=73 lovel=81 hivel=120 pitch_keycenter=72 seq_length=3 seq_position=2 sample=emilyguitar/152-c5_mf_rr2.flac
+<region> lokey=71 hikey=73 lovel=81 hivel=120 pitch_keycenter=72 seq_length=3 seq_position=3 sample=emilyguitar/153-c5_mf_rr3.flac
+<region> lokey=71 hikey=73 lovel=121 pitch_keycenter=72 seq_length=3 seq_position=1 sample=emilyguitar/154-c5_f_rr1.flac
+<region> lokey=71 hikey=73 lovel=121 pitch_keycenter=72 seq_length=3 seq_position=2 sample=emilyguitar/155-c5_f_rr2.flac
+<region> lokey=71 hikey=73 lovel=121 pitch_keycenter=72 seq_length=3 seq_position=3 sample=emilyguitar/156-c5_f_rr3.flac
+<region> lokey=74 hikey=76 hivel=40 pitch_keycenter=75 seq_length=3 seq_position=1 sample=emilyguitar/157-eb5_p_rr1.flac
+<region> lokey=74 hikey=76 hivel=40 pitch_keycenter=75 seq_length=3 seq_position=2 sample=emilyguitar/158-eb5_p_rr2.flac
+<region> lokey=74 hikey=76 hivel=40 pitch_keycenter=75 seq_length=3 seq_position=3 sample=emilyguitar/159-eb5_p_rr3.flac
+<region> lokey=74 hikey=76 lovel=41 hivel=80 pitch_keycenter=75 seq_length=3 seq_position=1 sample=emilyguitar/160-eb5_mp_rr1.flac
+<region> lokey=74 hikey=76 lovel=41 hivel=80 pitch_keycenter=75 seq_length=3 seq_position=2 sample=emilyguitar/161-eb5_mp_rr2.flac
+<region> lokey=74 hikey=76 lovel=41 hivel=80 pitch_keycenter=75 seq_length=3 seq_position=3 sample=emilyguitar/162-eb5_mp_rr3.flac
+<region> lokey=74 hikey=76 lovel=81 hivel=120 pitch_keycenter=75 seq_length=3 seq_position=1 sample=emilyguitar/163-eb5_mf_rr1.flac
+<region> lokey=74 hikey=76 lovel=81 hivel=120 pitch_keycenter=75 seq_length=3 seq_position=2 sample=emilyguitar/164-eb5_mf_rr2.flac
+<region> lokey=74 hikey=76 lovel=81 hivel=120 pitch_keycenter=75 seq_length=3 seq_position=3 sample=emilyguitar/165-eb5_mf_rr3.flac
+<region> lokey=74 hikey=76 lovel=121 pitch_keycenter=75 seq_length=3 seq_position=1 sample=emilyguitar/166-eb5_f_rr1.flac
+<region> lokey=74 hikey=76 lovel=121 pitch_keycenter=75 seq_length=3 seq_position=2 sample=emilyguitar/167-eb5_f_rr2.flac
+<region> lokey=74 hikey=76 lovel=121 pitch_keycenter=75 seq_length=3 seq_position=3 sample=emilyguitar/168-eb5_f_rr3.flac
+<region> lokey=77 hikey=79 hivel=40 pitch_keycenter=78 seq_length=3 seq_position=1 sample=emilyguitar/169-gb5_p_rr1.flac
+<region> lokey=77 hikey=79 hivel=40 pitch_keycenter=78 seq_length=3 seq_position=2 sample=emilyguitar/170-gb5_p_rr2.flac
+<region> lokey=77 hikey=79 hivel=40 pitch_keycenter=78 seq_length=3 seq_position=3 sample=emilyguitar/171-gb5_p_rr3.flac
+<region> lokey=77 hikey=79 lovel=41 hivel=80 pitch_keycenter=78 seq_length=3 seq_position=1 sample=emilyguitar/172-gb5_mp_rr1.flac
+<region> lokey=77 hikey=79 lovel=41 hivel=80 pitch_keycenter=78 seq_length=3 seq_position=2 sample=emilyguitar/173-gb5_mp_rr2.flac
+<region> lokey=77 hikey=79 lovel=41 hivel=80 pitch_keycenter=78 seq_length=3 seq_position=3 sample=emilyguitar/174-gb5_mp_rr3.flac
+<region> lokey=77 hikey=79 lovel=81 hivel=120 pitch_keycenter=78 seq_length=3 seq_position=1 sample=emilyguitar/175-gb5_mf_rr1.flac
+<region> lokey=77 hikey=79 lovel=81 hivel=120 pitch_keycenter=78 seq_length=3 seq_position=2 sample=emilyguitar/176-gb5_mf_rr2.flac
+<region> lokey=77 hikey=79 lovel=81 hivel=120 pitch_keycenter=78 seq_length=3 seq_position=3 sample=emilyguitar/177-gb5_mf_rr3.flac
+<region> lokey=77 hikey=79 lovel=121 pitch_keycenter=78 seq_length=3 seq_position=1 sample=emilyguitar/178-gb5_f_rr1.flac
+<region> lokey=77 hikey=79 lovel=121 pitch_keycenter=78 seq_length=3 seq_position=2 sample=emilyguitar/179-gb5_f_rr2.flac
+<region> lokey=77 hikey=79 lovel=121 pitch_keycenter=78 seq_length=3 seq_position=3 sample=emilyguitar/180-gb5_f_rr3.flac
+<region> lokey=80 hikey=82 hivel=40 pitch_keycenter=81 seq_length=3 seq_position=1 sample=emilyguitar/181-a5_p_rr1.flac
+<region> lokey=80 hikey=82 hivel=40 pitch_keycenter=81 seq_length=3 seq_position=2 sample=emilyguitar/182-a5_p_rr2.flac
+<region> lokey=80 hikey=82 hivel=40 pitch_keycenter=81 seq_length=3 seq_position=3 sample=emilyguitar/183-a5_p_rr3.flac
+<region> lokey=80 hikey=82 lovel=41 hivel=80 pitch_keycenter=81 seq_length=3 seq_position=1 sample=emilyguitar/184-a5_mp_rr1.flac
+<region> lokey=80 hikey=82 lovel=41 hivel=80 pitch_keycenter=81 seq_length=3 seq_position=2 sample=emilyguitar/185-a5_mp_rr2.flac
+<region> lokey=80 hikey=82 lovel=41 hivel=80 pitch_keycenter=81 seq_length=3 seq_position=3 sample=emilyguitar/186-a5_mp_rr3.flac
+<region> lokey=80 hikey=82 lovel=81 hivel=120 pitch_keycenter=81 seq_length=3 seq_position=1 sample=emilyguitar/187-a5_mf_rr1.flac
+<region> lokey=80 hikey=82 lovel=81 hivel=120 pitch_keycenter=81 seq_length=3 seq_position=2 sample=emilyguitar/188-a5_mf_rr2.flac
+<region> lokey=80 hikey=82 lovel=81 hivel=120 pitch_keycenter=81 seq_length=3 seq_position=3 sample=emilyguitar/189-a5_mf_rr3.flac
+<region> lokey=80 hikey=82 lovel=121 pitch_keycenter=81 seq_length=3 seq_position=1 sample=emilyguitar/190-a5_f_rr1.flac
+<region> lokey=80 hikey=82 lovel=121 pitch_keycenter=81 seq_length=3 seq_position=2 sample=emilyguitar/191-a5_f_rr2.flac
+<region> lokey=80 hikey=82 lovel=121 pitch_keycenter=81 seq_length=3 seq_position=3 sample=emilyguitar/192-a5_f_rr3.flac
+<region> lokey=83 hikey=84 hivel=40 pitch_keycenter=84 seq_length=3 seq_position=1 sample=emilyguitar/193-c6_p_rr1.flac
+<region> lokey=83 hikey=84 hivel=40 pitch_keycenter=84 seq_length=3 seq_position=2 sample=emilyguitar/194-c6_p_rr2.flac
+<region> lokey=83 hikey=84 hivel=40 pitch_keycenter=84 seq_length=3 seq_position=3 sample=emilyguitar/195-c6_p_rr3.flac
+<region> lokey=83 hikey=84 lovel=41 hivel=80 pitch_keycenter=84 seq_length=3 seq_position=1 sample=emilyguitar/196-c6_mp_rr1.flac
+<region> lokey=83 hikey=84 lovel=41 hivel=80 pitch_keycenter=84 seq_length=3 seq_position=2 sample=emilyguitar/197-c6_mp_rr2.flac
+<region> lokey=83 hikey=84 lovel=41 hivel=80 pitch_keycenter=84 seq_length=3 seq_position=3 sample=emilyguitar/198-c6_mp_rr3.flac
+<region> lokey=83 hikey=84 lovel=81 hivel=120 pitch_keycenter=84 seq_length=3 seq_position=1 sample=emilyguitar/199-c6_mf_rr1.flac
+<region> lokey=83 hikey=84 lovel=81 hivel=120 pitch_keycenter=84 seq_length=3 seq_position=2 sample=emilyguitar/200-c6_mf_rr2.flac
+<region> lokey=83 hikey=84 lovel=81 hivel=120 pitch_keycenter=84 seq_length=3 seq_position=3 sample=emilyguitar/201-c6_mf_rr3.flac
+<region> lokey=83 hikey=84 lovel=121 pitch_keycenter=84 seq_length=3 seq_position=1 sample=emilyguitar/202-c6_f_rr1.flac
+<region> lokey=83 hikey=84 lovel=121 pitch_keycenter=84 seq_length=3 seq_position=2 sample=emilyguitar/203-c6_f_rr2.flac
+<region> lokey=83 hikey=84 lovel=121 pitch_keycenter=84 seq_length=3 seq_position=3 sample=emilyguitar/204-c6_f_rr3.flac
+<region> lokey=85 hikey=89 hivel=40 pitch_keycenter=86 seq_length=3 seq_position=1 sample=emilyguitar/205-d6_p_rr1.flac
+<region> lokey=85 hikey=89 hivel=40 pitch_keycenter=86 seq_length=3 seq_position=2 sample=emilyguitar/206-d6_p_rr2.flac
+<region> lokey=85 hikey=89 hivel=40 pitch_keycenter=86 seq_length=3 seq_position=3 sample=emilyguitar/207-d6_p_rr3.flac
+<region> lokey=85 hikey=89 lovel=41 hivel=80 pitch_keycenter=86 seq_length=3 seq_position=1 sample=emilyguitar/208-d6_mp_rr1.flac
+<region> lokey=85 hikey=89 lovel=41 hivel=80 pitch_keycenter=86 seq_length=3 seq_position=2 sample=emilyguitar/209-d6_mp_rr2.flac
+<region> lokey=85 hikey=89 lovel=41 hivel=80 pitch_keycenter=86 seq_length=3 seq_position=3 sample=emilyguitar/210-d6_mp_rr3.flac
+<region> lokey=85 hikey=89 lovel=81 hivel=120 pitch_keycenter=86 seq_length=3 seq_position=1 sample=emilyguitar/211-d6_mf_rr1.flac
+<region> lokey=85 hikey=89 lovel=81 hivel=120 pitch_keycenter=86 seq_length=3 seq_position=2 sample=emilyguitar/212-d6_mf_rr2.flac
+<region> lokey=85 hikey=89 lovel=81 hivel=120 pitch_keycenter=86 seq_length=3 seq_position=3 sample=emilyguitar/213-d6_mf_rr3.flac
+<region> lokey=85 hikey=89 lovel=121 pitch_keycenter=86 seq_length=3 seq_position=1 sample=emilyguitar/214-d6_f_rr1.flac
+<region> lokey=85 hikey=89 lovel=121 pitch_keycenter=86 seq_length=3 seq_position=2 sample=emilyguitar/215-d6_f_rr2.flac
+<region> lokey=85 hikey=89 lovel=121 pitch_keycenter=86 seq_length=3 seq_position=3 sample=emilyguitar/216-d6_f_rr3.flac

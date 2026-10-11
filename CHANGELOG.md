@@ -12,9 +12,11 @@ GitHub are its section here (`tools/release.sh` copies them), so add to
   plucked and heard, and which string and fret the note falls on.
   Presets for fingers, the bridge pickup, pick, slap, pop, flatwounds and
   palm muting. Its tone is a direct recording's; put an amp after it.
-- **Karoryfer and VSCO in the Library:** two new packs to download from
-  the Library page, the Karoryfer instruments (basses, electric guitar,
-  alto sax) and the VSCO 2 CE chamber orchestra, both CC0.
+- **More instruments ship with Slab:** violin, viola and cello sections,
+  contrabass pizzicato, trumpet and trombone (from VSCO 2 CE), two
+  fingered electric basses, a clean electric guitar and an alto sax
+  (from Karoryfer), all CC0 and ready in the sampler without a download.
+  The full Karoryfer and VSCO libraries are new packs in the Library.
 - **Ampstack, an amp and cabinet for bass and guitar.** Four amp voices
   (a tube bass head, a clean American combo, British crunch and high
   gain), each with its own three-knob tone stack that interacts like the

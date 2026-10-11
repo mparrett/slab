@@ -91,12 +91,22 @@ They are never shared or published.
 
 A **pack** is a set of samples too large to ship with slab, or not
 slab's to ship. Examples:
-- **Free:** VCSL, about 6 GB. A few basics from it ship with slab
-  instead (two pianos, the FM piano, harpsichord, marimba, kalimba,
-  ocarina and three kits, 76 MB of 16-bit mono FLAC in
-  `machines/sampler/assets/vcsl/`, made by `tools/library/vcsl_factory.py`):
-  the sampler's `vcsl/` bank, and Unfairlight's VCSL presets load the
-  same SFZs.
+- **Free:** VCSL (about 6 GB), Karoryfer (1.6 GB) and VSCO 2 CE
+  (3.2 GB). A few instruments from each ship with slab instead, as
+  16-bit mono FLAC in `machines/sampler/assets/<pack>/`, made by
+  `tools/library/factory.py`:
+  - VCSL: two pianos, the FM piano, harpsichord, marimba, kalimba,
+    ocarina and three kits (76 MB), the sampler's `vcsl/` bank;
+    Unfairlight's VCSL presets load the same SFZs;
+  - Karoryfer: two fingered basses, the clean electric guitar and the
+    alto sax (108 MB);
+  - VSCO: violin, viola and cello sections, contrabass pizzicato,
+    trumpet and trombone (49 MB).
+
+  The Karoryfer and VSCO presets ship under the names their packs use
+  (`karoryfer/fashionbass`, `vsco-strings/cello-section-susvib`), so a
+  song made with the pack plays without it; with the pack installed the
+  shipped copy wins and the menu lists it once.
 - **Yours to own:** the Fairlight CMI disks, the Reverb drum machine
   collection, a commercial library.
 
