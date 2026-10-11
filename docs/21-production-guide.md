@@ -394,6 +394,12 @@ Leave pads alone; they're already even.
 - `sat2`: TAPE for warmth and glue on drums or bass at mix 0.4–0.6.
   TUBE for keys. XFMR for bass weight. DIODE and FUZZ are effects. Keep
   `out` compensating so the stem level doesn't jump.
+- `amp2` (Ampstack) is the amp and speaker for a bass or a guitar: put it
+  first on the track. Fretwire is a direct signal, so a bass usually
+  wants `bass-blend` (tube head, 8x10, the DI under it), `bass-vintage-15`
+  or `bass-grind`. Guitars: `guitar-clean`, `guitar-crunch`,
+  `guitar-lead`, `guitar-heavy`. Leave CAB on unless another cabinet
+  follows, and use BLEND, not a parallel track, to keep the DI's low end.
 - `chorus2`: `juno-i` / `juno-ii` for pads and keys. Never on bass or
   kick; it smears the low end out of mono.
 - **Share spaces with sends.** Put a fully wet reverb on a bus and send

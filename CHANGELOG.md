@@ -12,6 +12,11 @@ GitHub are its section here (`tools/release.sh` copies them), so add to
   plucked and heard, and which string and fret the note falls on.
   Presets for fingers, the bridge pickup, pick, slap, pop, flatwounds and
   palm muting. Its tone is a direct recording's; put an amp after it.
+- **Ampstack, an amp and cabinet for bass and guitar.** Four amp voices
+  (a tube bass head, a clean American combo, British crunch and high
+  gain), each with its own three-knob tone stack that interacts like the
+  real circuit, a power amp that sags, five speaker cabinets with a mic
+  position, and a DI blend for bass. Presets for bass and guitar.
 - **FLAC files import as audio clips**: Import audio… and the sampler's
   file picker accept .flac, and the browser lists FLAC samples in your
   Samples folder, a project's audio and library packs.

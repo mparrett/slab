@@ -1,0 +1,1 @@
+{"slab": "preset", "schema": 1, "machine": "amp2", "note": "Bass: clean and scooped through a 4x10 with a horn, slap and pick", "params": {"amp-voice": 1, "amp-gain": 0.3, "amp-tight": 20.0, "amp-bass": 0.55, "amp-mid": 0.35, "amp-treble": 0.6, "amp-pres": 0.5, "amp-master": 0.3, "amp-sag": 0.3, "amp-cab": 5, "amp-mic": 0.2, "amp-blend": 0.4, "amp-level": 0.0}}

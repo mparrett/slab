@@ -19,6 +19,7 @@ project or preset stores (docs/19): real units for knobs, the option
 | [`rhodes`](#rhodes) | Rhodes E-Piano | instrument | 8 | `rd-` |
 | [`sampler`](#sampler) | Sampler | instrument | 8 | `smp-` |
 | [`unfairlight`](#unfairlight) | Unfairlight TMI | instrument | 8 | `cmi-` |
+| [`amp2`](#amp2) | Ampstack | effect | — | `amp-` |
 | [`bus2`](#bus2) | Bus | effect | — | `bus-` |
 | [`char2`](#char2) | Char | effect | — | `char-` |
 | [`chorus2`](#chorus2) | Chorus | effect | — | `chorus-` |
@@ -826,6 +827,37 @@ Presets:
 - `slab/violin` — Slab: a solo violin, looped. Source made with Stable Audio 3 Small Music (Stability AI), prompt "solo violin playing one long sustained bowed note with gentle vibrato, expressive, dry close microphone, no accompaniment", seed 406; stored as CMI voice RAM, 8-bit at 24 kHz. CC0.
 - `slab/water-drop` — Slab: a water drop's bloop. Source made with Stable Audio 3 Small SFX (Stability AI), prompt "one drop of water falling into a sink, a clear hollow bloop, single sound, quiet room", seed 402; stored as CMI voice RAM, 8-bit at 24 kHz. CC0.
 - `slab/whip-slap` — Slab: a sharp whip-crack slap. Source made with Stable Audio 3 Small SFX (Stability AI), prompt "a single sharp whip crack slap, dry close microphone", seed 408; stored as CMI voice RAM, 8-bit at 24 kHz. CC0.
+
+## amp2
+
+**Ampstack**, stereo insert effect.
+
+| param | section | label | range | default | notes |
+|---|---|---|---|---|---|
+| `amp-voice` | PREAMP | VOICE | 0 BASS / 1 CLEAN / 2 BRIT / 3 HIGAIN | 1 | switch |
+| `amp-gain` | PREAMP | GAIN | 0 … 1 | 0.3 | linear |
+| `amp-tight` | PREAMP | TIGHT | 10 … 400 | 20 | exp |
+| `amp-bass` | TONE | BASS | 0 … 1 | 0.5 | linear |
+| `amp-mid` | TONE | MID | 0 … 1 | 0.5 | linear |
+| `amp-treble` | TONE | TREBLE | 0 … 1 | 0.5 | linear |
+| `amp-pres` | TONE | PRES | 0 … 1 | 0.25 | linear |
+| `amp-master` | POWER | MASTER | 0 … 1 | 0.3 | linear |
+| `amp-sag` | POWER | SAG | 0 … 1 | 0.3 | linear |
+| `amp-cab` | CAB | CAB | 0 OFF / 1 1x12 / 2 4x12 / 3 1x15 / 4 8x10 / 5 4x10 | 1 | switch |
+| `amp-mic` | CAB | MIC | 0 … 1 | 0.2 | linear |
+| `amp-blend` | OUT | BLEND | 0 … 1 | 0 | linear |
+| `amp-level` | OUT | LEVEL | -24 … 24 | 0 | linear |
+
+Presets:
+
+- `bass-blend` — Bass: a tube head into an 8x10 with the DI under it, the studio default
+- `bass-grind` — Bass: driven mids through an 8x10, clean lows from the DI
+- `bass-modern` — Bass: clean and scooped through a 4x10 with a horn, slap and pick
+- `bass-vintage-15` — Bass: a small tube combo with one 15, warm and woody, Motown to dub
+- `guitar-clean` — Guitar: a blackface combo with one 12, sparkle and spank
+- `guitar-crunch` — Guitar: a British head into a 4x12, rhythm crunch
+- `guitar-heavy` — Guitar: tight high-gain rhythm, scooped, palm mutes
+- `guitar-lead` — Guitar: hot-rodded high gain for leads, singing sustain
 
 ## bus2
 

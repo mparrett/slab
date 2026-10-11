@@ -33,9 +33,10 @@ it is.
   - **Fretwire**, a physically modeled electric bass: fingers, pick,
     slap and pop on a waveguide string
   - **Sampler**, for WAV, FLAC, SFZ and folder kits
-- **Fifteen effects:** EQ, graphic EQ, compressor, bus compressor,
+- **Sixteen effects:** EQ, graphic EQ, compressor, bus compressor,
   multiband, a character compressor, saturator, tape, chorus, delay,
-  reverb, gate, limiter, an era (lo-fi) box and a funk overdrive.
+  reverb, gate, limiter, an era (lo-fi) box, a funk overdrive and an
+  amp with its cabinet for bass and guitar.
 - **Sounds that are yours to use.** Factory presets, an FM bank designed
   from scratch, a sampled-voice bank for the Unfairlight, two pianos and
   three drum kits. All CC0: use them in any music, no credit owed.
