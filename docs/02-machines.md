@@ -40,9 +40,12 @@ storage in its manifest instead of growing its state struct:
 ```
 
 At create, the host allocates `ceil(seconds × sample-rate)` zeroed f64
-cells per channel (UI thread — never the audio thread) and writes the
-base pointer and element count into that channel's state at the two
-introspected offsets. Kernels read them back with `p@64` / `f@64` and
+cells per state region (UI thread — never the audio thread) and writes
+the base pointer and element count into that region's state at the two
+introspected offsets. A region is a channel for effects and a voice for
+voice machines, so every voice of a polyphonic machine owns its own ring
+(Fretwire's strings are each a delay loop). Machines with buffers don't
+unison: the pool never grows past `voices!`. Kernels read them back with `p@64` / `f@64` and
 index with `f@i` / `f!i`. Reset memsets state, zeroes the buffers, and
 re-injects the pointers. Dual-mono effect machines get per-channel state
 regions, so L and R own independent rings. A `stereo` effect runs one
@@ -59,7 +62,7 @@ asset`; at create the host loads the WAV (src/wav.zig — PCM 8/16/24/32,
 float 32/64, folded to f64 mono) from a path relative to the machine
 directory and injects the base pointer, sample count, and native sample
 rate into **params** (shared and read-only, so one copy serves every
-voice — unlike buffers, which are per-channel and writable). Kernels read
+voice — unlike buffers, which are per-region and writable). Kernels read
 it with `p@64` / `f@i`; an unloaded asset points at silence so a clamped
 read is never out of bounds. The sampler is the first consumer (voice
 pool + resampled playback); wavetable synths and convolution reverb use
@@ -132,7 +135,7 @@ The entry words and their stack effects are in docs/04 §Kernel ABI.
 |---|---|---|
 | `knob`, `switch`/`opt`, `as-fader`, … | controls, with a stable id, a range, a default and a taper | docs/15 |
 | `strip`, `row`, `cell`, `item`, `page` | the panel layout | docs/15 |
-| `buffer` | host-allocated per-channel audio storage | below |
+| `buffer` | host-allocated audio storage, per channel or voice | below |
 | `asset` | a host-loaded read-only WAV | below |
 | `wavetable` | a host-loaded wavetable, band-limited into mip levels | below |
 | `sidechain`, `key-flag!` | the detector can be keyed from another track | docs/23 |

@@ -416,9 +416,10 @@ pub const FyRawMachine = struct {
     preset_ref: [MAX_CONTROLS]f32 = [_]f32{0} ** MAX_CONTROLS,
     preset_ref_on: [MAX_CONTROLS]bool = [_]bool{false} ** MAX_CONTROLS,
     // Host-allocated audio buffers (manifest `buffer` requests), one per
-    // channel. Base pointer + element count are injected into each channel's
-    // state at the request's introspected offsets.
-    buffer_mem: [machine_desc.MAX_BUFFERS][2][]f64 = undefined,
+    // state region: per channel for effects, per voice for voice machines.
+    // Base pointer + element count are injected into each region's state
+    // at the request's introspected offsets.
+    buffer_mem: [machine_desc.MAX_BUFFERS][MAX_REGIONS][]f64 = [_][MAX_REGIONS][]f64{[_][]f64{&.{}} ** MAX_REGIONS} ** machine_desc.MAX_BUFFERS,
     // Read-only audio assets loaded from disk at create (manifest `asset`),
     // shared across voices via params.
     asset_mem: [machine_desc.MAX_ASSETS]wav.Sample = [_]wav.Sample{.{ .data = &.{}, .sample_rate = 0 }} ** machine_desc.MAX_ASSETS,
@@ -569,9 +570,6 @@ pub const FyRawMachine = struct {
         const desc = try machine_desc.read(host);
         if (desc.state_size > MAX_STATE or desc.params_size > MAX_PARAMS) return error.RawMachineStorageTooLarge;
         if (desc.voices > MAX_REGIONS) return error.RawMachineTooManyVoices;
-        // Host buffers are allocated per channel (2); polyphonic machines
-        // would need per-voice rings — not wired yet.
-        if (desc.voices > 1 and desc.buffer_count > 0) return error.RawMachineVoicesWithBuffers;
 
         try validateWord(host, desc.renderWord());
         if (desc.renderLiteWord()) |word| try validateWord(host, word);
@@ -926,30 +924,38 @@ pub const FyRawMachine = struct {
         errdefer self.freeBuffersUpTo(alloc, done);
         for (self.desc.buffers[0..self.desc.buffer_count], 0..) |*req, bi| {
             const n: usize = @max(1, @as(usize, @intFromFloat(@ceil(req.seconds * BUFFER_SR))));
-            const mem_l = try alloc.alloc(f64, n);
-            errdefer alloc.free(mem_l);
-            // A true-stereo effect runs one pass on region 0, so it gets
-            // one copy; a stereo kernel wanting two rings declares two.
-            const mem_r = try alloc.alloc(f64, if (self.desc.stereo) 0 else n);
-            @memset(mem_l, 0);
-            @memset(mem_r, 0);
-            self.buffer_mem[bi] = .{ mem_l, mem_r };
+            // One contiguous block sliced per region, so a failure frees
+            // everything this request took.
+            const regions = self.bufferRegions();
+            const mem = try alloc.alloc(f64, n * regions);
+            @memset(mem, 0);
+            for (0..regions) |r| self.buffer_mem[bi][r] = mem[r * n ..][0..n];
             done = bi + 1;
         }
         self.injectBuffers();
     }
 
     fn freeBuffersUpTo(self: *FyRawMachine, alloc: std.mem.Allocator, count: usize) void {
-        for (self.buffer_mem[0..count]) |pair| {
-            for (pair) |mem| alloc.free(mem);
+        for (self.buffer_mem[0..count]) |rings| {
+            const regions = self.bufferRegions();
+            alloc.free(rings[0].ptr[0 .. rings[0].len * regions]);
         }
     }
 
-    // Write each buffer's base pointer + element count into both channel
-    // states. Must rerun after any state memset (reset).
+    // Regions that own a copy of each buffer: every voice of a voice
+    // machine, both channels of a dual-mono effect, and the one pass of a
+    // true-stereo effect (a stereo kernel wanting two rings declares two).
+    // Buffered voice machines don't unison, so the pool never grows.
+    fn bufferRegions(self: *const FyRawMachine) usize {
+        if (self.desc.mode == .voice_sample) return @max(self.desc.voices, 1);
+        return if (self.desc.stereo) 1 else 2;
+    }
+
+    // Write each buffer's base pointer + element count into every region's
+    // state. Must rerun after any state memset (reset).
     fn injectBuffers(self: *FyRawMachine) void {
         for (self.desc.buffers[0..self.desc.buffer_count], 0..) |*req, bi| {
-            for (0..@as(usize, if (self.desc.stereo) 1 else 2)) |ch| {
+            for (0..self.bufferRegions()) |ch| {
                 const mem = self.buffer_mem[bi][ch];
                 self.writeStateUsize(ch, req.ptr_offset, @intFromPtr(mem.ptr));
                 self.writeStateF64(ch, req.len_offset, @floatFromInt(mem.len));
@@ -2945,8 +2951,8 @@ fn resetImpl(state: *anyopaque) void {
     @memset(self.voice_idle[0..], true);
     self.mono_held_n = 0;
     @memset(self.params_buf[0..self.desc.params_size], 0);
-    for (self.buffer_mem[0..self.desc.buffer_count]) |pair| {
-        for (pair) |mem| @memset(mem, 0);
+    for (self.buffer_mem[0..self.desc.buffer_count]) |rings| {
+        for (rings) |mem| @memset(mem, 0);
     }
     self.injectBuffers();
     self.injectAssets(); // params were memset; restore the asset pointers
