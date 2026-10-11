@@ -91,6 +91,9 @@ ustruct: StringState
   f64 sl-env    ( slide noise: fret crossings and finger speed )
   f64 sl-rng
   f64 sl-hp  f64 sl-lp
+  f64 vib-t     ( finger vibrato depth asked for, 0..1 [expression slide] )
+  f64 vib       ( the depth, smoothed )
+  f64 vib-ph
 ;
 
 ustruct: StringParams
@@ -113,6 +116,8 @@ ustruct: StringParams
   f64 level
   f64 motion     ( 0 AUTO, 1 BEND, 2 SLIDE: what a note's pitch curve does )
   f64 slide      ( 0..1 slide noise: the finger on the windings, fret ticks )
+  f64 vib-rate   ( Hz: finger vibrato )
+  f64 vib-depth  ( semitones at full depth: how far the finger bends the string )
   ( the instrument, set by the machine [const-f64] )
   f64 ref-hz     ( the pitch HF DEC, SOFT and THUMP are stated at: the low string )
   f64 b-ref      ( the pitch STIFF's B is stated at )
@@ -126,6 +131,7 @@ ustruct: StringParams
   f64 pk-d
   f64 tens-a
   f64 sl-hpa  f64 sl-lpa  f64 sl-dec
+  f64 vib-inc  f64 vib-a
 ;
 
 ( |x| <= 1: atan to ~1e-5 rad, enough for phase-delay tuning. )
@@ -157,6 +163,9 @@ dsp: string-block-prepare | ctx:Ctx state params:StringParams |
   sr 700.0 svf-dc-coeff -> params.sl-hpa
   sr 5000.0 svf-dc-coeff -> params.sl-lpa
   -1.0 0.015 sr f* f/ exp -> params.sl-dec
+  params.vib-rate params.inv-sr f* -> params.vib-inc
+  ( vibrato depth follows its curve over ~30 ms: the 32-sample steps vanish )
+  sr 5.0 svf-dc-coeff -> params.vib-a
 ;
 
 ( params hz hand -- ratio : how much shorter than open the vibrating
@@ -264,6 +273,8 @@ dsp: string-note-on | ctx:Ctx state:StringState params:StringParams -- |
   state.apx& | xs |  state.apy& | ys |
   0.0 AP-N [ | i |  leg xs i f@i 0.0 select xs i f!i  leg ys i f@i 0.0 select ys i f!i  i 1.0 f+ ] times drop
   leg state.tens 0.0 select -> state.tens
+  leg state.vib-t 0.0 select -> state.vib-t
+  leg state.vib 0.0 select -> state.vib
   ctx.vel 0.0001 1.0 fclamp log2 1.3 f* exp2 | a |
   leg  a  up HAMMER-AMP PULL-AMP select f*  a  select -> state.amp
   ( width: soft at low velocity, sharp at high; a fingertip twice as soft )
@@ -302,6 +313,7 @@ dsp: string-note-expr | ctx:Ctx state:StringState params:StringParams -- |
   q state.q f- fabs 1.0 fmin  sl f* 0.6 f*  state.sl-env f+ 1.5 fmin -> state.sl-env
   q -> state.q
   state.p0 e f+ 69.0 f- 0.08333333333333333 f* exp2 440.0 f* -> state.hz
+  ctx.slide 0.0 1.0 fclamp -> state.vib-t
   state params string-tune
 ;
 
@@ -361,7 +373,16 @@ dsp: k-string-voice | io:Io ctx state:StringState params:StringParams -- |
   ( loop delay: glide toward the target, shortened by tension )
   state.dl  state.dl-tgt state.dl f- 0.002 f* f+ | dl |
   dl -> state.dl
-  dl  1.0 state.tens state.tens f* state.th-k f* 0.1 fmin f-  f* | d |
+  ( finger vibrato: the finger pushes the string sharp and lets it back,
+    never below the note; a smoothstep of a triangle, near a sine )
+  state.vib  state.vib-t state.vib f- params.vib-a f* f+ | vd |
+  vd -> state.vib
+  state.vib-ph params.vib-inc f+ ffrac | vph |
+  vph -> state.vib-ph
+  1.0  vph 2.0 f* 1.0 f- fabs f- | tri |
+  tri tri f*  3.0 2.0 tri f* f-  f* | vw |
+  1.0  vd params.vib-depth f* vw f* 0.057762265046662105 f*  f- | vm |
+  dl vm f*  1.0 state.tens state.tens f* state.th-k f* 0.1 fmin f-  f* | d |
   state.w | w |
   buf len  w d f- len f+  st-read | r |
   live r 0.0 select | rr |

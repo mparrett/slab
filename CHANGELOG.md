@@ -12,6 +12,10 @@ GitHub are its section here (`tools/release.sh` copies them), so add to
   plucked and heard, and which string and fret the note falls on.
   Presets for fingers, the bridge pickup, pick, slap, pop, flatwounds and
   palm muting. Its tone is a direct recording's; put an amp after it.
+- **Finger vibrato on Fretwire.** A note's slide expression is its
+  vibrato depth: draw it rising under a held bend and the string sings,
+  pushed sharp and back like a guitarist's finger. VIBRATO RATE and DEPTH
+  on the panel.
 - **Hammer-ons and pull-offs.** On the Fretwire bass and guitar, a note
   that overlaps the one before it (up to a fourth away, in a single-note
   line) plays on the same ringing string: the finger hammers on or pulls

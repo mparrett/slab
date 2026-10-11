@@ -61,12 +61,17 @@ include "../lib/manifest.fy"
   "FEEL" "LEVEL" "gt-level" StringParams.level 0.0 1.0 0.5 curve-pow knob
   "FEEL" 3 strip
 
+  "VIBRATO" "RATE"  "gt-vibrate"  StringParams.vib-rate  2.0 9.0 5.0 curve-lin knob
+  "VIBRATO" "DEPTH" "gt-vibdepth" StringParams.vib-depth 0.0 2.0 0.8 curve-lin knob
+  "VIBRATO" 1 strip
+
   1.0 row
     1.0 cell  "STRING" 1.0 item
     1.0 cell  "PLUCK" 1.0 item
   1.0 row
     1.0 cell  "PICKUP" 1.0 item
     1.0 cell  "FEEL" 1.0 item
+    0.5 cell  "VIBRATO" 1.0 item
 
   machine-desc
 ;

@@ -61,6 +61,8 @@ project or preset stores (docs/19): real units for knobs, the option
 | `bs-motion` | FEEL | MOTION | 0 AUTO / 1 BEND / 2 SLIDE | 0 | switch |
 | `bs-slide` | FEEL | SLIDE | 0 … 1 | 0.4 | linear |
 | `bs-level` | FEEL | LEVEL | 0 … 1 | 0.55 | pow |
+| `bs-vibrate` | VIBRATO | RATE | 2 … 9 | 5 | linear |
+| `bs-vibdepth` | VIBRATO | DEPTH | 0 … 2 | 0.5 | linear |
 
 Presets:
 
@@ -519,6 +521,8 @@ Presets:
 | `gt-motion` | FEEL | MOTION | 0 AUTO / 1 BEND / 2 SLIDE | 0 | switch |
 | `gt-slide` | FEEL | SLIDE | 0 … 1 | 0.4 | linear |
 | `gt-level` | FEEL | LEVEL | 0 … 1 | 0.5 | pow |
+| `gt-vibrate` | VIBRATO | RATE | 2 … 9 | 5 | linear |
+| `gt-vibdepth` | VIBRATO | DEPTH | 0 … 2 | 0.8 | linear |
 
 Presets:
 
