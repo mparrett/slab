@@ -22,6 +22,14 @@ include "../lib/manifest.fy"
   StringState.size  state-size!
   StringParams.size params-size!
   "ring" StringState.buf StringState.buf-len 0.045 buffer
+  ( a four-string bass in standard tuning; B, HF DEC, SOFT, THUMP stated at its low end )
+  StringParams.ref-hz 41.2 const-f64
+  StringParams.b-ref 36.71 const-f64
+  StringParams.hf-track 0.75 const-f64
+  StringParams.out-g 2.25 const-f64
+  StringParams.o1 41.2 const-f64   StringParams.o2 55.0 const-f64
+  StringParams.o3 73.42 const-f64  StringParams.o4 98.0 const-f64
+  StringParams.o5 1000000000.0 const-f64  StringParams.o6 1000000000.0 const-f64
   520.0 panel-w!
 
   "STRING" "DECAY"   "bs-decay"   StringParams.decay    0.3 40.0 12.0 curve-exp knob
@@ -45,6 +53,9 @@ include "../lib/manifest.fy"
 
   "FEEL" "THUMP" "bs-thump" StringParams.thump 0.0 1.0 0.5 curve-lin knob
   "FEEL" "BUZZ"  "bs-buzz"  StringParams.buzz  0.0 1.0 0.0 curve-lin knob
+  "FEEL" "MOTION" "bs-motion" StringParams.motion 0.0 switch
+    "AUTO" 0.0 opt  "BEND" 1.0 opt  "SLIDE" 2.0 opt  as-list
+  "FEEL" "SLIDE" "bs-slide" StringParams.slide 0.0 1.0 0.4 curve-lin knob
   "FEEL" "LEVEL" "bs-level" StringParams.level 0.0 1.0 0.55 curve-pow knob
   "FEEL" 3 strip
 

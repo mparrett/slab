@@ -12,6 +12,10 @@ GitHub are its section here (`tools/release.sh` copies them), so add to
   plucked and heard, and which string and fret the note falls on.
   Presets for fingers, the bridge pickup, pick, slap, pop, flatwounds and
   palm muting. Its tone is a direct recording's; put an amp after it.
+- **Fretwire bends and slides.** A note's pitch curve bends the
+  string smoothly, or with MOTION on SLIDE moves it fret by fret with the
+  rasp of a finger on the windings. AUTO tells them apart: a curve that
+  goes further than a string can bend becomes a slide.
 - **More instruments ship with Slab:** violin, viola and cello sections,
   contrabass pizzicato, trumpet and trombone (from VSCO 2 CE), two
   fingered electric basses, a clean electric guitar and an alto sax

@@ -84,6 +84,12 @@ ustruct: StringState
   f64 tens      ( amplitude follower for THUMP )
   f64 th-k      ( THUMP: delay shortening per tens^2, this note )
   f64 s1  f64 s2  ( pickup resonance )
+  f64 p0        ( MIDI pitch at note-on: where bends and slides start )
+  f64 slid      ( 1 once this note's pitch motion is a slide [AUTO latches] )
+  f64 q         ( the slide's fret offset from p0, semitones )
+  f64 sl-env    ( slide noise: fret crossings and finger speed )
+  f64 sl-rng
+  f64 sl-hp  f64 sl-lp
 ;
 
 ustruct: StringParams
@@ -104,12 +110,21 @@ ustruct: StringParams
   f64 thump      ( tension modulation 0..1 )
   f64 buzz       ( fret buzz 0..1 )
   f64 level
+  f64 motion     ( 0 AUTO, 1 BEND, 2 SLIDE: what a note's pitch curve does )
+  f64 slide      ( 0..1 slide noise: the finger on the windings, fret ticks )
+  ( the instrument, set by the machine [const-f64] )
+  f64 ref-hz     ( the pitch HF DEC, SOFT and THUMP are stated at: the low string )
+  f64 b-ref      ( the pitch STIFF's B is stated at )
+  f64 hf-track   ( HF DEC scales as [ref-hz / f]^hf-track: 0.75 a bass, 0 a guitar )
+  f64 out-g      ( output gain: LEVEL 0.55 sits with the other instruments )
+  f64 o1 f64 o2 f64 o3 f64 o4 f64 o5 f64 o6   ( open strings, low to high, Hz; unused 1e9 )
   ( derived — string-block-prepare )
   f64 sr
   f64 inv-sr
   f64 pk-g
   f64 pk-d
   f64 tens-a
+  f64 sl-hpa  f64 sl-lpa  f64 sl-dec
 ;
 
 ( |x| <= 1: atan to ~1e-5 rad, enough for phase-delay tuning. )
@@ -137,21 +152,27 @@ dsp: string-block-prepare | ctx:Ctx state params:StringParams |
   0.7 params.res 0.64 f* f- -> params.pk-d
   ( THUMP follower: ~8 ms )
   sr 20.0 svf-dc-coeff -> params.tens-a
+  ( slide noise: the windings' rasp, 700 Hz - 5 kHz, a 15 ms tick )
+  sr 700.0 svf-dc-coeff -> params.sl-hpa
+  sr 5000.0 svf-dc-coeff -> params.sl-lpa
+  -1.0 0.015 sr f* f/ exp -> params.sl-dec
 ;
 
-( hz hand -- ratio : how much shorter than open the vibrating string is.
-  The note goes on the highest string [E1 A1 D2 G2] where it sits at or
-  above the hand's fret; below that, the E string.  Pickup and pluck sit
-  at fixed distances from the bridge, so their share of the vibrating
-  length grows by this ratio up the neck: the 12th fret puts the neck
-  pickup a third of the way along, and the tone changes string to string
-  the way it does on a bass. )
-dsp: st-fret | hz hand -- ratio |
+( params hz hand -- ratio : how much shorter than open the vibrating
+  string is.  The note goes on the highest open string [o1..o6] it sits at
+  or above the hand's fret on; below them all, the lowest.  Pickup and
+  pluck sit at fixed distances from the bridge, so their share of the
+  vibrating length grows by this ratio up the neck: the 12th fret puts a
+  neck pickup a third of the way along, and the tone changes string to
+  string the way it does on the instrument. )
+dsp: st-fret | params:StringParams hz hand -- ratio |
   hand 0.08333333333333333 f* exp2 | h |
-  hz 41.2 f/
-  hz 55.0 h f* f>=  hz 55.0 f/  rot select
-  hz 73.42 h f* f>=  hz 73.42 f/  rot select
-  hz 98.0 h f* f>=  hz 98.0 f/  rot select
+  hz params.o1 f/
+  hz params.o2 h f* f>=  hz params.o2 f/  rot select
+  hz params.o3 h f* f>=  hz params.o3 f/  rot select
+  hz params.o4 h f* f>=  hz params.o4 f/  rot select
+  hz params.o5 h f* f>=  hz params.o5 f/  rot select
+  hz params.o6 h f* f>=  hz params.o6 f/  rot select
   1.0 fmax
 ;
 
@@ -182,7 +203,7 @@ dsp: string-tune | state:StringState params:StringParams -- |
   ( per-period gains: low partials, upper partials, released )
   params.decay | t0 |
   -6.907755278982137 t0 hz f* f/ exp | glo |
-  params.hf-decay  41.2 hz f/ log2 0.75 f* exp2  f*  t0 fmin | t1 |
+  params.hf-decay  params.ref-hz hz f/ log2 params.hf-track f* exp2  f*  t0 fmin | t1 |
   -6.907755278982137 t1 hz f* f/ exp | ghi |
   -6.907755278982137 params.release hz f* f/ exp | grel |
   -6.283185307179586 params.knee f* hz f* sr f/ exp 0.0 0.9999 fclamp | a |
@@ -199,7 +220,7 @@ dsp: string-tune | state:StringState params:StringParams -- |
   a -> state.la
   im re f/ st-atan w0 f/ | pdl |
   ( dispersion coefficient from B, key-tracked like a real set of strings )
-  params.stiff 0.0001 f*  36.71 hz f/ fsqrt  f* | b |
+  params.stiff 0.0001 f*  params.b-ref hz f/ fsqrt  f* | b |
   3.0 b f* n f* n f* n f*  78.95683520871486 AP-NF f* f/ 0.000000001 fmax | kk |
   2.0 kk f/ log2 0.3333333333333333 f* exp2 0.001 1.0 fclamp
   8 [ | u |  1.0 u f- 2.0 u f- f* kk f/ log2 0.3333333333333333 f* exp2 0.001 1.0 fclamp ] times
@@ -210,13 +231,16 @@ dsp: string-tune | state:StringState params:StringParams -- |
   ac -> state.apc
   1.0  ac sw f*  1.0 ac cw f* f+  f/ st-atan 2.0 f* w0 f/  f- | pda |
   n pdl f- pda AP-NF f* f-  4.0  state.buf-len 16.0 f-  fclamp -> state.dl-tgt
-  params.pickup hz params.hand st-fret f* 0.5 fmin n f* 1.0 fmax -> state.pk
+  params.pickup params hz params.hand st-fret f* 0.5 fmin n f* 1.0 fmax -> state.pk
   ( THUMP: pitch rises with displacement squared, velocity / f )
-  41.2 hz f/ dup f*  params.thump f* THUMP-K f* -> state.th-k
+  params.ref-hz hz f/ dup f*  params.thump f* THUMP-K f* -> state.th-k
 ;
 
 dsp: string-note-on | ctx:Ctx state:StringState params:StringParams -- |
   ctx.hz -> state.hz
+  ctx.pitch -> state.p0
+  params.motion 1.5 f> mask>f -> state.slid
+  0.0 -> state.q
   ctx.vel -> state.vel
   0.0 -> state.age
   1.0 -> state.gate
@@ -229,23 +253,41 @@ dsp: string-note-on | ctx:Ctx state:StringState params:StringParams -- |
   0.0 -> state.tens
   ctx.vel 0.0001 1.0 fclamp log2 1.3 f* exp2 -> state.amp
   ( width: soft at low velocity, sharp at high )
-  params.soft 0.001 f* params.sr f*  41.2 ctx.hz 20.0 4000.0 fclamp f/ fsqrt f*
+  params.soft 0.001 f* params.sr f*  params.ref-hz ctx.hz 20.0 4000.0 fclamp f/ fsqrt f*
     1.4 ctx.vel 0.8 f* f-  f*  1.0 fmax | wid |
   1.0 wid f/ -> state.inv-w
   2.0 params.soft f/ fsqrt 0.5 4.0 fclamp -> state.pu-g
   ctx.hz 20.0 4000.0 fclamp | hz |
-  params.pos hz params.hand st-fret f* 0.5 fmin  params.sr hz f/ f* -> state.pd
+  params.pos params hz params.hand st-fret f* 0.5 fmin  params.sr hz f/ f* -> state.pd
   1.0 -> state.nz-env
   -1.0  0.002 wid params.inv-sr f* f+  params.sr f*  f/ exp -> state.nz-k
   state.rng& ctx.chan 3.0 f+ rand-seed-once
+  state.sl-rng& ctx.chan 11.0 f+ rand-seed-once
 ;
 
 dsp: string-note-off | ctx state:StringState params -- |
   0.0 -> state.gate
 ;
 
+( Per-note expression [docs/22]: the note's pitch curve moves the string.
+  As a BEND the pitch follows the curve.  As a SLIDE it moves fret by
+  fret: the offset from the note's start rounds to semitones, each step
+  glides in about 10 ms [the loop's delay glide], and each fret crossed
+  ticks the slide noise.  AUTO is a bend until the curve goes further
+  than a bend can, more than BEND-MAX up or any way below where the note
+  started, and a slide from then on. )
+:: BEND-MAX 3.5 ;
 dsp: string-note-expr | ctx:Ctx state:StringState params:StringParams -- |
-  ctx.hz -> state.hz
+  ctx.pitch state.p0 f- | d |
+  d BEND-MAX f>  d -0.25 f<  or mask>f  state.slid fmax | auto |
+  params.motion 0.5 f<  auto  params.motion 1.5 f> mask>f  select | sl |
+  sl -> state.slid
+  d 0.5 f+ floor | q |
+  sl 0.5 f>  q d select | e |
+  ( fret ticks: a step in q while sliding )
+  q state.q f- fabs 1.0 fmin  sl f* 0.6 f*  state.sl-env f+ 1.5 fmin -> state.sl-env
+  q -> state.q
+  state.p0 e f+ 69.0 f- 0.08333333333333333 f* exp2 440.0 f* -> state.hz
   state params string-tune
 ;
 
@@ -266,6 +308,22 @@ dsp: st-read | buf len pos -- y |
   dp1 dm1 f* dm2 f* 0.5 f* x0 f*  f+
   dp1 d f* dm2 f* -0.5 f* x1 f*  f+
   dp1 d f* dm1 f* 0.16666666666666666 f* x2 f*  f+
+;
+
+( state params -- n : the slide's noise, into the string: the finger
+  rasping over the windings while the pitch moves, and a tick at each
+  fret crossed.  0 unless the note is sliding. )
+dsp: st-slide-noise | state:StringState params:StringParams -- n |
+  state.dl-tgt state.dl f- fabs state.dl f/ 3000.0 f* 1.0 fmin | speed |
+  state.sl-env params.sl-dec f* -> state.sl-env
+  state.sl-env speed f+  state.slid f*  params.slide f*  state.amp f* | a |
+  state.sl-rng& rand-b | w |
+  state.sl-hp  w state.sl-hp f- params.sl-hpa f* f+ | hl |
+  hl -> state.sl-hp
+  w hl f- | hp |
+  state.sl-lp  hp state.sl-lp f- params.sl-lpa f* f+ | lp |
+  lp -> state.sl-lp
+  lp a f* 0.01 f*
 ;
 
 ( Smoothed step 0 -> 1 over the width, and a raised-cosine pulse, at
@@ -313,7 +371,7 @@ dsp: k-string-voice | io:Io ctx state:StringState params:StringParams -- |
     [ y 3.0 f* tanh-fast 0.3333333333333333 f* y f- params.buzz f* y f+ ]
     [ y ]
   ifte | y |
-  state params string-excite | e |
+  state params string-excite  state params st-slide-noise f+ | e |
   y e f+ | nw |
   nw buf w f!i
   w 1.0 f+ dup len f>= 0.0 rot select -> state.w
@@ -327,6 +385,6 @@ dsp: k-string-voice | io:Io ctx state:StringState params:StringParams -- |
   ( old note fading out while the ring refills )
   r  1.0 t 0.015625 f* f- 0.0 fmax f*  live 0.0 rot select  f+ | o |
   state.s1& state.s2& o params.pk-g params.pk-d tpt-svf-lp-step | out |
-  io.out-l  out params.level f* 2.25 f* f+ -> io.out-l
+  io.out-l  out params.level f* params.out-g f* f+ -> io.out-l
   t 1.0 f+ -> state.age
 ;
