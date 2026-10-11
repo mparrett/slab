@@ -19,6 +19,8 @@ include "../lib/manifest.fy"
   "string-block-prepare" block-prepare!
   "string-control" 64    control!
   4 voices!
+  ( overlapping single notes up to a fourth apart: hammer-ons, pull-offs )
+  5.0 legato-span!
   StringState.size  state-size!
   StringParams.size params-size!
   "ring" StringState.buf StringState.buf-len 0.045 buffer

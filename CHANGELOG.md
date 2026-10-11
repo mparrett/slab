@@ -12,6 +12,10 @@ GitHub are its section here (`tools/release.sh` copies them), so add to
   plucked and heard, and which string and fret the note falls on.
   Presets for fingers, the bridge pickup, pick, slap, pop, flatwounds and
   palm muting. Its tone is a direct recording's; put an amp after it.
+- **Hammer-ons and pull-offs.** On the Fretwire bass and guitar, a note
+  that overlaps the one before it (up to a fourth away, in a single-note
+  line) plays on the same ringing string: the finger hammers on or pulls
+  off instead of plucking again. Chords and strums are left alone.
 - **Fretwire Guitar.** The waveguide string strung as a six-string
   electric guitar, fitted to a sampled guitar, with presets for the neck
   and bridge pickups, fingerstyle, funk, jazz, palm muting and slide.

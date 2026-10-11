@@ -85,6 +85,12 @@ struct: MachineDesc
                        destinations the panel shows [docs/15 §Modulation] )
   ptr matrix         ( cstr or 0 - the mod matrix's control-id prefix )
   ptr matrix-slots   ( int slot count )
+  ptr legato-span    ( float semitones, 0 = none: a poly voice machine's
+                       legato.  A note starting while exactly one note
+                       is held, within this interval of it and at least
+                       30 ms after it, takes over that note's voice with
+                       ctx.legato = 1 instead of a voice of its own: a
+                       hammer-on or pull-off on a string [docs/08] )
 ;
 
 struct: ControlDesc
@@ -215,6 +221,9 @@ struct: AssetDesc   ptr next  ptr name  ptr ptr-offset  ptr len-offset  ptr sr-o
   counts already [a delay's ring]; a negative time never lets it skip the
   machine - one that makes sound from nothing [docs/04 Idle skipping] )
 : tail!  ( f -- )  _mf-md@ MachineDesc.tail! drop ;
+( semitones legato-span! : overlapping single notes within this interval
+  play legato on one voice [see MachineDesc.legato-span] )
+: legato-span!  ( f -- )  _mf-md@ MachineDesc.legato-span! drop ;
 : render-lite!  ( str offset -- )
   _mf-md@ MachineDesc.render-lite-sel! drop
   cstr-new _mf-md@ MachineDesc.render-lite! drop ;

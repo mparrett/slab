@@ -218,7 +218,9 @@ e.g. `slab/glass-lead`),
 `rhodes` Rhodes E-Piano, `bass` Fretwire and `guitar` Fretwire Guitar
 (waveguide strings: the string, pluck and pickup are modeled, HAND picks
 the string a note is played on, and a note's pitch curve bends the
-string or slides it fret by fret, MOTION), `sampler` Sampler, `concoction` Concoction (a
+string or slides it fret by fret, MOTION; a note that overlaps the one
+before it, up to a fourth away, is a hammer-on or pull-off: in slabkit
+`melody(..., gate=1.15)`), `sampler` Sampler, `concoction` Concoction (a
 clean digital wavetable synth after Serum: fixed oscillator phase, a
 built-in table bank or any Serum wavetable, an 8-slot mod matrix).
 

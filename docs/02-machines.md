@@ -140,6 +140,7 @@ The entry words and their stack effects are in docs/04 §Kernel ABI.
 | `wavetable` | a host-loaded wavetable, band-limited into mip levels | below |
 | `sidechain`, `key-flag!` | the detector can be keyed from another track | docs/23 |
 | `offset latency!` | latency in samples, read from a params field | docs/04, docs/07 PDC |
+| `semitones legato-span!` | overlapping single notes within the span play legato on one voice (`ctx.legato`), hammer-ons on a string | docs/04 §Poly legato |
 | `seconds tail!` | stored sound beyond the buffers (`-1.0` = never idle-skip) | docs/04 §Idle skipping |
 | `derive!`, `derive-data!` | a per-block word that computes derived params, and its data | docs/04 |
 | `note-pitch`, `note-label` | raw MIDI pitch and named notes (drum machines) | docs/16 |

@@ -63,6 +63,7 @@ ustruct: StringState
   f64 hz
   f64 vel
   f64 age       ( samples since note-on )
+  f64 et        ( samples since the excitation began: note-on or a legato note )
   f64 gate      ( 1 held, 0 released )
   f64 clear-n   ( feedback masked while age < clear-n )
   f64 g-hi      ( loss shelf: per-period gain above the knee )
@@ -236,30 +237,43 @@ dsp: string-tune | state:StringState params:StringParams -- |
   params.ref-hz hz f/ dup f*  params.thump f* THUMP-K f* -> state.th-k
 ;
 
+( A note-on plucks the string.  A legato one [ctx.legato, the host's
+  poly legato, docs/08] doesn't: the finger lands on a fret of the string
+  that is ringing [a hammer-on, upward] or leaves one [a pull-off,
+  downward], so the loop takes the new length at once, the string keeps
+  its sound and its filters their state, and a small excitation from the
+  finger joins it, softer and wider than a pluck; a pull-off plucks a
+  little as the finger lets go. )
+:: HAMMER-AMP 0.3 ;
+:: PULL-AMP 0.5 ;
 dsp: string-note-on | ctx:Ctx state:StringState params:StringParams -- |
+  ctx.legato 0.5 f> | leg |
+  ctx.pitch state.p0 f> | up |
   ctx.hz -> state.hz
   ctx.pitch -> state.p0
   params.motion 1.5 f> mask>f -> state.slid
   0.0 -> state.q
   ctx.vel -> state.vel
-  0.0 -> state.age
+  leg state.age 0.0 select -> state.age
+  0.0 -> state.et
   1.0 -> state.gate
   state params string-tune
   state.dl-tgt -> state.dl
-  state.dl-tgt 2.0 f+ -> state.clear-n
-  0.0 -> state.lp1
+  leg state.clear-n state.dl-tgt 2.0 f+ select -> state.clear-n
+  leg state.lp1 0.0 select -> state.lp1
   state.apx& | xs |  state.apy& | ys |
-  0.0 AP-N [ | i |  0.0 xs i f!i  0.0 ys i f!i  i 1.0 f+ ] times drop
-  0.0 -> state.tens
-  ctx.vel 0.0001 1.0 fclamp log2 1.3 f* exp2 -> state.amp
-  ( width: soft at low velocity, sharp at high )
+  0.0 AP-N [ | i |  leg xs i f@i 0.0 select xs i f!i  leg ys i f@i 0.0 select ys i f!i  i 1.0 f+ ] times drop
+  leg state.tens 0.0 select -> state.tens
+  ctx.vel 0.0001 1.0 fclamp log2 1.3 f* exp2 | a |
+  leg  a  up HAMMER-AMP PULL-AMP select f*  a  select -> state.amp
+  ( width: soft at low velocity, sharp at high; a fingertip twice as soft )
   params.soft 0.001 f* params.sr f*  params.ref-hz ctx.hz 20.0 4000.0 fclamp f/ fsqrt f*
-    1.4 ctx.vel 0.8 f* f-  f*  1.0 fmax | wid |
+    1.4 ctx.vel 0.8 f* f-  f*  leg 2.0 1.0 select f*  1.0 fmax | wid |
   1.0 wid f/ -> state.inv-w
   2.0 params.soft f/ fsqrt 0.5 4.0 fclamp -> state.pu-g
   ctx.hz 20.0 4000.0 fclamp | hz |
   params.pos params hz params.hand st-fret f* 0.5 fmin  params.sr hz f/ f* -> state.pd
-  1.0 -> state.nz-env
+  leg 0.3 1.0 select -> state.nz-env
   -1.0  0.002 wid params.inv-sr f* f+  params.sr f*  f/ exp -> state.nz-k
   state.rng& ctx.chan 3.0 f+ rand-seed-once
   state.sl-rng& ctx.chan 11.0 f+ rand-seed-once
@@ -332,7 +346,7 @@ dsp: st-step | x iw -- s |  x iw f* 0.0 1.0 fclamp cospi -0.5 f* 0.5 f+ ;
 dsp: st-pulse | x iw -- s |  x iw f* 0.0 1.0 fclamp 2.0 f* cospi -0.5 f* 0.5 f+ ;
 
 dsp: string-excite | state:StringState params:StringParams -- e |
-  state.age | t |  t state.pd f- | td |  state.inv-w | iw |
+  state.et | t |  t state.pd f- | td |  state.inv-w | iw |
   t iw st-step  td iw st-step f- | pl |
   t iw st-pulse td iw st-pulse f- state.pu-g f* | pu |
   pl pu f- params.shape f* pu f+  state.amp f*
@@ -387,4 +401,5 @@ dsp: k-string-voice | io:Io ctx state:StringState params:StringParams -- |
   state.s1& state.s2& o params.pk-g params.pk-d tpt-svf-lp-step | out |
   io.out-l  out params.level f* params.out-g f* f+ -> io.out-l
   t 1.0 f+ -> state.age
+  state.et 1.0 f+ -> state.et
 ;
