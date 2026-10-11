@@ -2,6 +2,8 @@
 
 MIDI pitch numbers throughout; C4 = 60 (middle C), A4 = 69.
 """
+import functools
+import itertools
 import re
 
 NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
@@ -150,6 +152,60 @@ def voice_lead(chords, near=60, voices=4, spread=False):
         out.append(pick)
         prev = pick
     return out
+
+
+# Guitar standard tuning, low to high (E2 A2 D3 G3 B3 E4).
+GUITAR = [40, 45, 50, 55, 59, 64]
+
+
+def guitar_voicing(chord, position=0, tuning=GUITAR, span=3):
+    """A chord shape a guitarist would play: one fret or open string per
+    string, low to high, as MIDI pitches. The lowest sounded string is the
+    root (or the slash bass), strings below it are muted, no string inside
+    the shape is skipped, every chord tone sounds (a fifth may go on
+    chords of four or more notes), and the fretted notes fit in `span`
+    frets. `position` is the fret the hand sits at: 0 finds open chords
+    (C x32010, G 320003, F 133211), higher numbers barre shapes up the
+    neck (C at 3: x35553)."""
+    if isinstance(chord, str):
+        chord = Chord.parse(chord)
+    return list(_guitar_shape(tuple(chord.tones), len(chord.intervals), chord.root,
+                              chord.root if chord.bass is None else chord.bass,
+                              position, tuple(tuning), span, chord.name))
+
+
+@functools.lru_cache(maxsize=4096)
+def _guitar_shape(tones, n_int, root, bass, position, tuning, span, name):
+    tones = set(tones)
+    must = tones if n_int <= 3 else tones - {(root + 7) % 12}
+    best = None
+    for p in range(0, 13):
+        lo = max(p, 1)
+        opts = ([0] if p <= 2 else []) + list(range(lo, lo + span + 1))
+        for s0 in range(0, 3):
+            f0 = [f for f in opts if (tuning[s0] + f) % 12 == bass]
+            rest = [[f for f in opts if (tuning[s] + f) % 12 in tones] for s in range(s0 + 1, len(tuning))]
+            if not f0 or not all(rest):
+                continue
+            for shape in itertools.product(f0, *rest):
+                fretted = [f for f in shape if f]
+                if fretted and max(fretted) - min(fretted) > span:
+                    continue
+                if not must <= {(tuning[s0 + k] + f) % 12 for k, f in enumerate(shape)}:
+                    continue
+                opens = shape.count(0)
+                # an open low string above a fretted bass is a shape no one
+                # plays [F as 103211 rather than the barre 133211]
+                odd = sum(1 for k in range(1, 3 - s0) if shape[0] > 0 and shape[k] == 0)
+                score = (3 * abs(p - position) - 2 * len(shape) - (opens if position <= 2 else 0)
+                         + (max(fretted) - min(fretted) if fretted else 0) + 3 * odd
+                         + 0.01 * sum(shape))
+                if best is None or score < best[0]:
+                    best = (score, s0, shape)
+    if best is None:
+        raise ValueError(f"no guitar shape for {name} near fret {position}")
+    _, s0, shape = best
+    return tuple(tuning[s0 + k] + f for k, f in enumerate(shape))
 
 
 _ROMAN = {"I": 1, "II": 2, "III": 3, "IV": 4, "V": 5, "VI": 6, "VII": 7}

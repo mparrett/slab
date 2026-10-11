@@ -229,7 +229,7 @@ built-in table bank or any Serum wavetable, an 8-slot mod matrix).
 | drums | `drum2`: `gated-snare-kit` (80s pop), `polite-studio-kit`, `909-punch`, `808-boom`, `tight-funk-kit`, `light-disco-kit` |
 | bass | `bass` (the electric bass guitar): `default` (fingers, neck pickup), `fingers-bridge`, `pick`, `slap`, `pop`, `flatwound`, `palm-mute`. `concoction`: `crisp-saw-bass`, `clean-sine-bass`, `pluck-bass`, `kick-bass`, `reese`, `wobble` (the clean, punchy digital basses). `cream`: `outstanding-funk-bass`, `synthwave-bass`, `deep-sub-bass`. `profit5`: `heavy-bass`, `clang-fm-bass`. `ms20`: `rubber-bass`, `acid-bass`, `octave-night-bass`. `fm86`: `bass-1` (DX slap) |
 | harmonic bed | `juno2`: `wide-sunny-pad`, `lush-pad`, `strings`, `string-machine-wash`. `profit5`: `poly-strings`, `ob-pad`. `fm86`: `strings-1` |
-| guitar | `guitar` (electric guitar, into `amp2`): `default`, `bridge`, `fingers`, `funk`, `jazz`, `palm-mute`, `slide` |
+| guitar | `guitar` (electric guitar, into `amp2`): `default`, `bridge`, `fingers`, `funk`, `jazz`, `palm-mute`, `slide`. Rhythm parts: `clip.strums("G D Em C", "D.DU.UDU")` plays real chord shapes with down and up strums |
 | rhythmic comping | `fm86`: `e-piano-1` (the DX7 ballad piano), `clav-1`. `rhodes`: `default`, `mellow`. `juno2`: `warm-chord-plucks`, `polite-synth-pop-keys`. `profit5`: `pluck-keys` |
 | lead / vocal line | `cream`: `cream-lead`, `whistle`. `ms20`: `vibrato-lead`, `portamento-highway-lead`. `fm86`: `syn-lead-1`, `flute-1`. `profit5`: `sync-lead`, `shred-lead` |
 | stabs / brass | `juno2`: `bright-brass-stab`, `brass-stab`, `posh-brass-poly`. `profit5`: `prophet-brass`, `ob-jump-brass`. `fm86`: `brass-1` |

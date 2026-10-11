@@ -16,6 +16,11 @@ GitHub are its section here (`tools/release.sh` copies them), so add to
   vibrato depth: draw it rising under a held bend and the string sings,
   pushed sharp and back like a guitarist's finger. VIBRATO RATE and DEPTH
   on the panel.
+- **Strummed guitar in slabkit.** `clip.strums(prog, "D.DU.UDU")` plays a
+  progression as a guitarist would: real chord shapes (open chords, barre
+  shapes up the neck), down strums low to high and up strums over the top
+  strings, the pick's timing across them, softer strings as it goes, and
+  dead strums. `clip.strum` is one strum.
 - **Hammer-ons and pull-offs.** On the Fretwire bass and guitar, a note
   that overlaps the one before it (up to a fourth away, in a single-note
   line) plays on the same ringing string: the finger hammers on or pulls
