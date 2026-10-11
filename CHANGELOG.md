@@ -16,6 +16,8 @@ GitHub are its section here (`tools/release.sh` copies them), so add to
   vibrato depth: draw it rising under a held bend and the string sings,
   pushed sharp and back like a guitarist's finger. VIBRATO RATE and DEPTH
   on the panel.
+- **Long Light**, a new demo song: a slow rock ballad whose guitar solo
+  bends, slides, hammers on and shakes its notes, after David Gilmour.
 - **Strummed guitar in slabkit.** `clip.strums(prog, "D.DU.UDU")` plays a
   progression as a guitarist would: real chord shapes (open chords, barre
   shapes up the neck), down strums low to high and up strums over the top
