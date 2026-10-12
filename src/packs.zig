@@ -131,7 +131,9 @@ pub const Catalog = struct {
     alloc: std.mem.Allocator,
     arena: std.heap.ArenaAllocator,
     packs: std.ArrayList(Pack) = .empty,
-    jobs: [MAX_JOBS]Job = undefined,
+    // Initialized, not undefined: startImport reads a fresh slot's
+    // `running` before resetting it.
+    jobs: [MAX_JOBS]Job = @splat(.{}),
     n_jobs: usize = 0,
     /// Packs the user said they have the files for ("I HAVE THE FILES").
     have: [8][64]u8 = undefined,

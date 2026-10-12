@@ -9,6 +9,8 @@ GitHub are its section here (`tools/release.sh` copies them), so add to
 - **The Extract pack finds uv when Slab is opened from Finder.** Its
   download said uv was missing unless Slab was started from a terminal; it
   now looks in Homebrew's, `~/.local/bin` and `~/.cargo/bin` too.
+- **Starting a pack download can no longer crash Slab.** Clicking Download
+  or Import sometimes quit the app as the import began.
 
 ## 0.0.12 — 2026-10-12
 
