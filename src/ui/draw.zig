@@ -93,8 +93,21 @@ pub const Renderer = struct {
         return r.zoom * c.rl.GetWindowScaleDPI().x;
     }
 
+    /// Framebuffer units per window point. BeginMode2D replaces the
+    /// modelview, so it drops raylib's screenScale. raylib 5.5 on macOS
+    /// didn't need it (render size = window points, the viewport stretched
+    /// to the retina framebuffer), so this is 1 there. raylib 6.0 sizes the
+    /// render in device pixels and scales with screenScale, so a camera
+    /// that doesn't carry it draws at half size on a 2x display.
+    fn framebufferScale() f32 {
+        const sw = c.rl.GetScreenWidth();
+        if (sw <= 0) return 1;
+        return @as(f32, @floatFromInt(c.rl.GetRenderWidth())) / @as(f32, @floatFromInt(sw));
+    }
+
     pub fn flush(r: *Renderer, lists: []const *const DrawList) void {
-        const cam = c.rl.Camera2D{ .offset = .{ .x = 0, .y = 0 }, .target = .{ .x = 0, .y = 0 }, .rotation = 0, .zoom = r.zoom };
+        const zoom = r.zoom * framebufferScale();
+        const cam = c.rl.Camera2D{ .offset = .{ .x = 0, .y = 0 }, .target = .{ .x = 0, .y = 0 }, .rotation = 0, .zoom = zoom };
         c.rl.BeginMode2D(cam);
         r.clip_depth = 0;
         for (lists) |dl| {

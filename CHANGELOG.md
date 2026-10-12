@@ -6,6 +6,12 @@ GitHub are its section here (`tools/release.sh` copies them), so add to
 
 ## Unreleased
 
+- **Slab looks right with raylib 6.** Built against raylib 6.0 (what
+  `brew install raylib` gives now), the interface drew at half size in the
+  window's corner on a Retina display, and the window could open mostly
+  off-screen. It now fills the window, and the window opens inside the
+  display, shrunk to fit a 13-inch laptop.
+
 ## 0.0.11 — 2026-10-11
 
 Strings you can play. Slab gains a modeled electric bass and guitar that
