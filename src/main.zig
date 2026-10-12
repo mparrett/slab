@@ -851,6 +851,7 @@ pub fn main(init: std.process.Init) !void {
         splash.bootFrame(ui, screenRect(), msg, frac);
         reg.loadFyMachine(path) catch |err| std.log.err("machine {s} failed to load: {s}", .{ path, @errorName(err) });
     }
+    reg.loadUserMachines();
     reg.loadNative() catch |err| std.log.err("native machines failed to load: {s}", .{@errorName(err)});
     splash.bootFrame(ui, screenRect(), "STARTING AUDIO", 1);
 
@@ -5976,6 +5977,7 @@ fn renderHeadless(alloc: std.mem.Allocator, project: []const u8, cli: Cli) !void
     var reg = registry_mod.Registry.init(alloc);
     defer reg.deinit();
     for (registry_mod.builtin_machines) |path| try reg.loadFyMachine(path);
+    reg.loadUserMachines();
     var pool = audio_pool_mod.AudioPool.init(alloc);
     defer pool.deinit();
     document_mod.setPool(&pool);

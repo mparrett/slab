@@ -1,4 +1,5 @@
-//! `slab --describe out.json`: dump every builtin machine's controls as
+//! `slab --describe out.json`: dump every machine's controls (the builtins,
+//! then the home folder's user machines) as
 //! JSON — the param ids, ranges and options that projects and presets
 //! reference. Read by tools/slabkit to validate generated songs, and the
 //! source of the param tables in docs/19.
@@ -14,7 +15,12 @@ pub fn run(alloc: std.mem.Allocator, out_path: []const u8) !void {
     defer out.deinit(alloc);
     try out.appendSlice(alloc, "{\"schema\":1,\"machines\":[");
     var first = true;
-    for (registry_mod.builtin_machines) |path| {
+    var user_machines: registry_mod.UserMachines = .{};
+    user_machines.scan();
+    var paths: [registry_mod.builtin_machines.len + registry_mod.MAX_USER_MACHINES][]const u8 = undefined;
+    for (registry_mod.builtin_machines, 0..) |path, i| paths[i] = path;
+    for (0..user_machines.count) |i| paths[registry_mod.builtin_machines.len + i] = user_machines.path(i);
+    for (paths[0 .. registry_mod.builtin_machines.len + user_machines.count]) |path| {
         var host = FyHost.init(alloc);
         defer host.deinit();
         host.compileFile(path) catch |err| {
@@ -40,6 +46,10 @@ fn writeMachine(alloc: std.mem.Allocator, out: *std.ArrayList(u8), path: []const
     try document_mod.appendJsonString(alloc, out, id);
     try out.appendSlice(alloc, ",\"name\":");
     try document_mod.appendJsonString(alloc, out, d.nameSlice());
+    // Relative for a builtin (to the factory root), absolute for a user
+    // machine: slabkit finds presets beside it.
+    try out.appendSlice(alloc, ",\"path\":");
+    try document_mod.appendJsonString(alloc, out, path);
     try out.appendSlice(alloc, ",\"kind\":");
     try document_mod.appendJsonString(alloc, out, if (d.mode == .voice_sample) "instrument" else "effect");
     try fmt(alloc, out, ",\"voices\":{d},\"stereo\":{},\"note_pitch\":{},\"sidechain\":{}", .{ d.voices, d.stereo, d.note_pitch, d.sidechain });

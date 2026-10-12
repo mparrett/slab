@@ -261,6 +261,11 @@ include "mathlib.fy"
 
 Reads and compiles the file. All definitions enter the current scope.
 
+A relative path resolves against the including file's directory. If no
+file is there and the embedder has set `Fy.include_root`, the path is
+tried under that root too, like a C `-I` directory. Slab sets it to its
+factory root so machines outside its tree can include its kernels.
+
 ### `import` — Namespaced Import
 
 ```forth

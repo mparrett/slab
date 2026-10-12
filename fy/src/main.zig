@@ -85,6 +85,10 @@ pub const Fy = struct {
     userWords: std.StringHashMap(Word),
     importedFiles: std.StringHashMap(void),
     file_ns_map: std.StringHashMap([]const u8), // abs file path -> namespace prefix for hot-patching
+    // Searched for a relative include/import that isn't next to the
+    // including file, like a C -I path. An embedder sets it so code
+    // outside its tree can include the embedder's library.
+    include_root: ?[]const u8 = null,
     data_stack_mem: ?[*]align(std.heap.page_size_min) u8 = null,
     data_stack_top: usize = 0, // x21/x22 init value = top of usable region
     macro_data_stack_mem: ?[*]align(std.heap.page_size_min) u8 = null,
@@ -5405,16 +5409,33 @@ pub const Fy = struct {
             if (raw_path.len > 0 and raw_path[0] == '/') {
                 return self.fy.fyalloc.dupe(u8, raw_path);
             }
-            // Resolve relative to base_dir (directory of the importing file)
-            if (self.base_dir) |bd| {
-                const result = try self.fy.fyalloc.alloc(u8, bd.len + 1 + raw_path.len);
-                @memcpy(result[0..bd.len], bd);
-                result[bd.len] = '/';
-                @memcpy(result[bd.len + 1 ..], raw_path);
-                return result;
+            // Resolve relative to base_dir (directory of the importing file),
+            // or with no base_dir use the path as-is (relative to cwd)
+            const local = if (self.base_dir) |bd| try joinPath(self.fy.fyalloc, bd, raw_path) else try self.fy.fyalloc.dupe(u8, raw_path);
+            const root = self.fy.include_root orelse return local;
+            if (fileExists(self.fy.fyalloc, local)) return local;
+            const rooted = try joinPath(self.fy.fyalloc, root, raw_path);
+            if (!fileExists(self.fy.fyalloc, rooted)) {
+                // Neither exists: keep the local path, so the error names it
+                self.fy.fyalloc.free(rooted);
+                return local;
             }
-            // No base_dir — use path as-is (relative to cwd)
-            return self.fy.fyalloc.dupe(u8, raw_path);
+            self.fy.fyalloc.free(local);
+            return rooted;
+        }
+
+        fn joinPath(alloc: std.mem.Allocator, dir: []const u8, rel: []const u8) ![]u8 {
+            const result = try alloc.alloc(u8, dir.len + 1 + rel.len);
+            @memcpy(result[0..dir.len], dir);
+            result[dir.len] = '/';
+            @memcpy(result[dir.len + 1 ..], rel);
+            return result;
+        }
+
+        fn fileExists(alloc: std.mem.Allocator, path: []const u8) bool {
+            const z = alloc.dupeZ(u8, path) catch return false;
+            defer alloc.free(z);
+            return std.c.access(z, 0) == 0;
         }
 
         /// Get directory part of a path (everything before the last '/')

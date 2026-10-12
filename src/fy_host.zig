@@ -17,6 +17,7 @@ const Fy = @import("fy").Fy;
 const machine_mod = @import("machine.zig");
 const MachineCtx = machine_mod.MachineCtx;
 const c = @import("c.zig");
+const storage = @import("storage.zig");
 
 /// fy currently exposes callback/runtime state through global variables
 /// (`Fy.Builtins.fyPtr` among them). Until that state is made thread-local
@@ -357,6 +358,9 @@ pub const FyHost = struct {
         const saved_file = self.fy.src_file;
         self.fy.src_file = path;
         defer self.fy.src_file = saved_file;
+        var root_buf: [storage.MAX_PATH]u8 = undefined;
+        self.fy.include_root = factoryRoot(&root_buf);
+        defer self.fy.include_root = null;
         _ = try self.fy.runWithBaseDir(src, base_dir);
     }
 
@@ -568,6 +572,9 @@ fn hotPatchHandleConn(host: *FyHost, fd: c_int) void {
 
     Fy.Builtins.fyPtr = @intFromPtr(&host.fy);
     const base_dir = dirName(file_path);
+    var root_buf: [storage.MAX_PATH]u8 = undefined;
+    host.fy.include_root = factoryRoot(&root_buf);
+    defer host.fy.include_root = null;
     _ = host.fy.runWithBaseDir(code, base_dir) catch |err| {
         var ebuf: [64]u8 = undefined;
         const msg = std.fmt.bufPrint(&ebuf, "error:0:{s}\n", .{@errorName(err)}) catch "error:0:?\n";
@@ -577,6 +584,14 @@ fn hotPatchHandleConn(host: *FyHost, fd: c_int) void {
 
     _ = host.hot_reload_count.fetchAdd(1, .release);
     fdWrite(fd, "ok\n");
+}
+
+/// The factory root as fy's include root: a machine outside the tree (a
+/// user machine, docs/25) includes the shipped kernels and manifest.fy as
+/// "kernels/..." and "machines/lib/manifest.fy". Null when unknown.
+fn factoryRoot(buf: []u8) ?[]const u8 {
+    const root = storage.factory(buf);
+    return if (root.len == 0) null else root;
 }
 
 fn dirName(path: []const u8) ?[]const u8 {
