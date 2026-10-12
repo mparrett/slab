@@ -100,6 +100,9 @@ pub const Renderer = struct {
     /// render in device pixels and scales with screenScale, so a camera
     /// that doesn't carry it draws at half size on a 2x display.
     fn framebufferScale() f32 {
+        // 5.x: the render size tracks the framebuffer after the window moves
+        // between displays, so the ratio would double-scale there.
+        if (comptime c.rl.RAYLIB_VERSION_MAJOR < 6) return 1;
         const sw = c.rl.GetScreenWidth();
         if (sw <= 0) return 1;
         return @as(f32, @floatFromInt(c.rl.GetRenderWidth())) / @as(f32, @floatFromInt(sw));
