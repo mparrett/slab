@@ -70,6 +70,9 @@ pub const builtin_machines = [_][]const u8{
     "machines/sampler/sampler.fy",
     "machines/concoction/concoction.fy",
     "machines/unfairlight/unfairlight.fy",
+    "machines/shift2/shift2.fy",
+    "machines/resonator2/resonator2.fy",
+    "machines/buffer2/buffer2.fy",
 };
 
 // Soft cap used to size UI-side menu arrays; the registry itself is a
@@ -219,7 +222,6 @@ pub const Registry = struct {
         self.entries[self.count] = e;
         self.count += 1;
     }
-
 };
 
 fn copyEntryString(dest: []u8, len: *u8, src: []const u8) !void {
@@ -353,4 +355,3 @@ test "fy manifest loads + instantiates the delay machine" {
     const m = try reg.instantiate(0);
     defer if (m.deinit) |d| d(m.state, std.testing.allocator);
 }
-

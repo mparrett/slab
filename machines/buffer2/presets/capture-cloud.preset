@@ -1,0 +1,20 @@
+{
+  "slab": "preset",
+  "schema": 1,
+  "machine": "buffer2",
+  "note": "Dense long grains; capture first, then engage FREEZE to sustain the cloud",
+  "params": {
+    "buf-mode": 0,
+    "buf-span": 2.8,
+    "buf-grain": 250,
+    "buf-density": 28,
+    "buf-position": 0.65,
+    "buf-spray": 0.3,
+    "buf-pitch": -5,
+    "buf-jitter": 0.7,
+    "buf-width": 0.75,
+    "buf-fb": 0.22,
+    "buf-tone": 10000,
+    "buf-mix": 0.7
+  }
+}

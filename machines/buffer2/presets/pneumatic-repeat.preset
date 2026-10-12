@@ -1,0 +1,15 @@
+{
+  "slab": "preset",
+  "schema": 1,
+  "machine": "buffer2",
+  "note": "Tempo-synced sixteenth repeat; FREEZE holds the captured loop",
+  "params": {
+    "buf-mode": 1,
+    "buf-sync": 1,
+    "buf-div": 1,
+    "buf-pitch": 0,
+    "buf-mix": 0.6,
+    "buf-fb": 0.15,
+    "buf-tone": 9200
+  }
+}

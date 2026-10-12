@@ -1,0 +1,12 @@
+{
+  "slab": "preset",
+  "schema": 1,
+  "machine": "shift2",
+  "note": "Shifted feedback repeats progressively move up in Hz",
+  "params": {
+    "shift-hz": 85,
+    "shift-fb": 0.6,
+    "shift-mix": 0.5,
+    "shift-tone": 6500
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "slab": "preset",
+  "schema": 1,
+  "machine": "resonator2",
+  "note": "A short, stretched metallic mode bank for hits and rattles",
+  "params": {
+    "rs-hz": 311.127,
+    "rs-material": 1,
+    "rs-decay": 0.12,
+    "rs-damp": 0.8,
+    "rs-inharm": 0.35,
+    "rs-drive": 9,
+    "rs-out": 6,
+    "rs-mix": 0.45
+  }
+}

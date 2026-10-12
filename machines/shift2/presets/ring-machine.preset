@@ -1,0 +1,14 @@
+{
+  "slab": "preset",
+  "schema": 1,
+  "machine": "shift2",
+  "note": "Two-sideband ring modulation at 430 Hz",
+  "params": {
+    "shift-mode": 1,
+    "shift-hz": 430,
+    "shift-spread": 0,
+    "shift-mix": 0.65,
+    "shift-fb": 0.07,
+    "shift-tone": 10000
+  }
+}

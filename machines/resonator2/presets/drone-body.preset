@@ -1,0 +1,17 @@
+{
+  "slab": "preset",
+  "schema": 1,
+  "machine": "resonator2",
+  "note": "Long low pipe modes; excite with noise or a sustained texture",
+  "params": {
+    "rs-hz": 55,
+    "rs-material": 2,
+    "rs-inharm": 0.05,
+    "rs-decay": 12,
+    "rs-damp": 0.2,
+    "rs-spread": 0.2,
+    "rs-drive": 18,
+    "rs-out": 18,
+    "rs-mix": 1
+  }
+}

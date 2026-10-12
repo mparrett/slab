@@ -9051,3 +9051,265 @@ test "poly legato: an overlapping single note takes over the ringing voice" {
     testRender(mach, &ctx, &l, &r);
     try testing.expectEqual(@as(usize, 2), gated(inst));
 }
+
+// Industrial audio effects: exercise the same adapter, rings, reset and
+// parameter mapping as project playback, with spectral/behavioral checks.
+fn industrialStream(mach: machine.Machine, sr: f64, block: usize, il: []const f32, ir: []const f32, ol: []f32, or_: []f32) void {
+    var ctx = std.mem.zeroes(machine.MachineCtx);
+    ctx.sample_rate = sr;
+    ctx.tempo_bpm = 120;
+    ctx.audio_in_count = 2;
+    var pos: usize = 0;
+    while (pos < il.len) {
+        const n = @min(block, il.len - pos);
+        const ports = [_][*]const f32{ il[pos..].ptr, ir[pos..].ptr };
+        ctx.audio_in = @ptrCast(&ports[0]);
+        ctx.block_size = @intCast(n);
+        ctx.ppq_position = @as(f64, @floatFromInt(pos)) / sr * 2;
+        testRender(mach, &ctx, ol[pos..][0..n], or_[pos..][0..n]);
+        pos += n;
+    }
+}
+
+fn industrialPower(xs: []const f32, hz: f64, sr: f64) f64 {
+    var re: f64 = 0;
+    var im: f64 = 0;
+    for (xs, 0..) |x, i| {
+        const phase = 2 * std.math.pi * hz * @as(f64, @floatFromInt(i)) / sr;
+        re += x * @cos(phase);
+        im += x * @sin(phase);
+    }
+    const n: f64 = @floatFromInt(xs.len);
+    return (re * re + im * im) / (n * n);
+}
+
+fn industrialEnergy(xs: []const f32) f64 {
+    var e: f64 = 0;
+    for (xs) |x| e += @as(f64, x) * x;
+    return e / @as(f64, @floatFromInt(xs.len));
+}
+
+test "industrial shift2: signed shift rejects the opposite sideband at three sample rates" {
+    const inst = try FyRawMachine.create(testing.allocator, "machines/shift2/shift2.fy");
+    const mach = inst.machineInterface();
+    defer mach.deinit.?(mach.state, testing.allocator);
+    mach.set_param.?(mach.state, "shift-mix", 1);
+    mach.set_param.?(mach.state, "shift-tone", 20000);
+    const n = 48000;
+    const il = try testing.allocator.alloc(f32, n);
+    defer testing.allocator.free(il);
+    const zero = try testing.allocator.alloc(f32, n);
+    defer testing.allocator.free(zero);
+    @memset(zero, 0);
+    const ol = try testing.allocator.alloc(f32, n);
+    defer testing.allocator.free(ol);
+    const or_ = try testing.allocator.alloc(f32, n);
+    defer testing.allocator.free(or_);
+    for ([_]f64{ 44100, 48000, 96000 }) |sr| {
+        for (il, 0..) |*x, i| x.* = @floatCast(0.2 * @sin(2 * std.math.pi * 1000 * @as(f64, @floatFromInt(i)) / sr));
+        for ([_]f64{ -250, 250 }) |shift| {
+            mach.set_param.?(mach.state, "shift-hz", shift);
+            mach.reset(mach.state);
+            industrialStream(mach, sr, 257, il, zero, ol, or_);
+            const wanted = industrialPower(ol[12000..], 1000 + shift, sr);
+            const image = industrialPower(ol[12000..], 1000 - shift, sr);
+            try testing.expect(wanted > 0.007);
+            try testing.expect(image / wanted < 0.0001); // >40 dB rejection
+            for (or_) |x| try testing.expectEqual(@as(f32, 0), x);
+        }
+    }
+}
+
+test "industrial shift2: ring modulation keeps both sidebands and dry bypass is exact" {
+    const inst = try FyRawMachine.create(testing.allocator, "machines/shift2/shift2.fy");
+    const mach = inst.machineInterface();
+    defer mach.deinit.?(mach.state, testing.allocator);
+    mach.set_param.?(mach.state, "shift-mode", 1);
+    mach.set_param.?(mach.state, "shift-hz", 250);
+    mach.set_param.?(mach.state, "shift-mix", 1);
+    const n = 24000;
+    var il: [n]f32 = undefined;
+    for (&il, 0..) |*x, i| x.* = @floatCast(0.2 * @sin(2 * std.math.pi * 1000 * @as(f64, @floatFromInt(i)) / 48000));
+    var ol: [n]f32 = undefined;
+    var or_: [n]f32 = undefined;
+    industrialStream(mach, 48000, 256, &il, &il, &ol, &or_);
+    const upper = industrialPower(ol[6000..], 1250, 48000);
+    const lower = industrialPower(ol[6000..], 750, 48000);
+    try testing.expect(upper > 0.002);
+    try testing.expectApproxEqRel(upper, lower, 0.02);
+    mach.set_param.?(mach.state, "shift-mix", 0);
+    industrialStream(mach, 48000, 256, &il, &il, &ol, &or_);
+    try testing.expectEqualSlices(f32, &il, &ol);
+    try testing.expectEqualSlices(f32, &il, &or_);
+}
+
+test "industrial resonator2: tuned harmonic modes and T60 decay with isolated stereo" {
+    const sets = [_]ParamSet{ .{ "rs-hz", 440 }, .{ "rs-material", 0 }, .{ "rs-inharm", 0 }, .{ "rs-damp", 0 }, .{ "rs-decay", 1 }, .{ "rs-mix", 1 }, .{ "rs-drive", 0 }, .{ "rs-out", 0 } };
+    const out = try renderEffectImpulse("machines/resonator2/resonator2.fy", &sets, 1, 0, 96000);
+    defer for (out) |o| testing.allocator.free(o);
+    const fundamental = industrialPower(out[0][4800..9600], 440, 48000);
+    const second = industrialPower(out[0][4800..9600], 880, 48000);
+    const off = industrialPower(out[0][4800..9600], 477, 48000);
+    // Peak-normalized modes intentionally have a small impulse response.
+    // Compare its demodulated amplitude with the normalized pole decay.
+    const pole = @exp(-@log(@as(f64, 1000)) / 48000);
+    var weight_sum: f64 = 0;
+    for (1..9) |i| weight_sum += 0.25 / @sqrt(@as(f64, @floatFromInt(i)));
+    const amplitude = std.math.tanh(@as(f64, 1)) * 0.5 / 4800 / weight_sum *
+        std.math.pow(f64, pole, 4800) * (1 - std.math.pow(f64, pole, 4800));
+    try testing.expectApproxEqRel(amplitude * amplitude / 4, fundamental, 0.1);
+    try testing.expect(second > 1e-11);
+    try testing.expect(off < fundamental * 0.01);
+    const early = industrialEnergy(out[0][4800..9600]);
+    const late = industrialEnergy(out[0][52800..57600]);
+    try testing.expectApproxEqAbs(@as(f64, -60), 10 * @log10(late / early), 0.5);
+    for (out[0], out[1]) |l, r| {
+        try testing.expect(std.math.isFinite(l));
+        try testing.expectEqual(@as(f32, 0), r);
+    }
+}
+
+test "industrial buffer2: frozen repeat survives new input, reverses, and reset clears capture" {
+    const inst = try FyRawMachine.create(testing.allocator, "machines/buffer2/buffer2.fy");
+    const mach = inst.machineInterface();
+    defer mach.deinit.?(mach.state, testing.allocator);
+    try testing.expectEqual(@as(usize, 2), inst.desc.buffer_count);
+    mach.set_param.?(mach.state, "buf-mode", 1);
+    mach.set_param.?(mach.state, "buf-span", 0.05);
+    mach.set_param.?(mach.state, "buf-mix", 1);
+    const n = 24000;
+    var il: [n]f32 = undefined;
+    for (&il, 0..) |*x, i| x.* = @floatCast(0.2 * @sin(2 * std.math.pi * 400 * @as(f64, @floatFromInt(i)) / 48000));
+    const zero = [_]f32{0} ** n;
+    var ol: [n]f32 = undefined;
+    var or_: [n]f32 = undefined;
+    industrialStream(mach, 48000, 128, &il, &zero, &ol, &or_);
+    const req = inst.desc.buffers[0];
+    const head = try fyFieldOffset(inst, "BufferState.write");
+    const frozen_head = inst.readStateF64(0, head);
+    try testing.expectEqual(@as(f64, n), frozen_head);
+    const captured = try testing.allocator.dupe(f64, inst.buffer_mem[0][0]);
+    defer testing.allocator.free(captured);
+    mach.set_param.?(mach.state, "buf-freeze", 1);
+    industrialStream(mach, 48000, 257, &zero, &zero, &ol, &or_);
+    try testing.expect(industrialEnergy(ol[12000..]) > 0.01);
+    try testing.expectEqual(frozen_head, inst.readStateF64(0, head));
+    try testing.expectEqualSlices(f64, captured, inst.buffer_mem[0][0]);
+    for (or_) |x| try testing.expectEqual(@as(f32, 0), x);
+    mach.set_param.?(mach.state, "buf-reverse", 1);
+    industrialStream(mach, 48000, 128, &zero, &zero, &ol, &or_);
+    try testing.expect(industrialPower(ol[12000..], 400, 48000) > 0.005);
+    mach.reset(mach.state);
+    const ptr_bits: *align(8) const usize = @ptrCast(@alignCast(&inst.state_buf[req.ptr_offset]));
+    try testing.expectEqual(@intFromPtr(inst.buffer_mem[0][0].ptr), ptr_bits.*);
+    industrialStream(mach, 48000, 256, &zero, &zero, &ol, &or_);
+    for (ol, or_) |l, r| {
+        try testing.expectEqual(@as(f32, 0), l);
+        try testing.expectEqual(@as(f32, 0), r);
+    }
+}
+
+test "industrial buffer2: grains preserve pitch, stereo isolation, and block partitioning" {
+    const inst = try FyRawMachine.create(testing.allocator, "machines/buffer2/buffer2.fy");
+    const mach = inst.machineInterface();
+    defer mach.deinit.?(mach.state, testing.allocator);
+    mach.set_param.?(mach.state, "buf-mix", 1);
+    mach.set_param.?(mach.state, "buf-width", 0);
+    mach.set_param.?(mach.state, "buf-spray", 0);
+    mach.set_param.?(mach.state, "buf-pitch", 12);
+    // Phase-aligned launches isolate pitch from the intentional interference
+    // of overlapping grains: 400 Hz has exactly 50 cycles per 8 Hz launch.
+    mach.set_param.?(mach.state, "buf-density", 8);
+    mach.set_param.?(mach.state, "buf-grain", 80);
+    const n = 48000;
+    const il = try testing.allocator.alloc(f32, n);
+    defer testing.allocator.free(il);
+    const zero = try testing.allocator.alloc(f32, n);
+    defer testing.allocator.free(zero);
+    @memset(zero, 0);
+    for (il, 0..) |*x, i| x.* = @floatCast(0.2 * @sin(2 * std.math.pi * 400 * @as(f64, @floatFromInt(i)) / 48000));
+    const a = try testing.allocator.alloc(f32, n);
+    defer testing.allocator.free(a);
+    const b = try testing.allocator.alloc(f32, n);
+    defer testing.allocator.free(b);
+    const r = try testing.allocator.alloc(f32, n);
+    defer testing.allocator.free(r);
+    industrialStream(mach, 48000, 128, il, zero, a, r);
+    try testing.expect(industrialPower(a[24000..], 800, 48000) > 0.0008);
+    for (r) |x| try testing.expectEqual(@as(f32, 0), x);
+    mach.reset(mach.state);
+    industrialStream(mach, 48000, 257, il, zero, b, r);
+    for (a, b) |x, y| try testing.expectApproxEqAbs(x, y, 1e-6);
+    mach.set_param.?(mach.state, "buf-mix", 0);
+    industrialStream(mach, 48000, 512, il, zero, a, r);
+    try testing.expectEqualSlices(f32, il, a);
+}
+
+test "industrial effects: factory presets render finite audio and declare stored tails" {
+    const n = 8192;
+    var il: [n]f32 = undefined;
+    var ir: [n]f32 = undefined;
+    var ol: [n]f32 = undefined;
+    var or_: [n]f32 = undefined;
+    for (&il, &ir, 0..) |*l, *r, i| {
+        const t = @as(f64, @floatFromInt(i)) / 48000;
+        l.* = @floatCast(0.15 * @sin(2 * std.math.pi * 110 * t) + 0.12 * @sin(2 * std.math.pi * 1800 * t));
+        r.* = @floatCast(0.1 * @sin(2 * std.math.pi * 750 * t));
+    }
+    inline for (.{ "shift2", "resonator2", "buffer2" }) |id| {
+        const inst = try FyRawMachine.create(testing.allocator, "machines/" ++ id ++ "/" ++ id ++ ".fy");
+        const mach = inst.machineInterface();
+        defer mach.deinit.?(mach.state, testing.allocator);
+        try testing.expect(inst.presets.count > 0);
+        if (comptime std.mem.eql(u8, id, "buffer2")) {
+            try testing.expectEqual(machine.TAIL_FOREVER, mach.idleHold(48000, 0));
+        } else if (comptime std.mem.eql(u8, id, "resonator2")) {
+            try testing.expectEqual(@as(u32, 18 * 48000), mach.idleHold(48000, 0));
+        }
+        for (0..inst.presets.count) |p| {
+            const name = inst.presets.names[p].slice();
+            if (std.mem.startsWith(u8, name, "User/") or std.mem.startsWith(u8, name, "Project/")) continue;
+            mach.apply_preset.?(mach.state, @intCast(p));
+            mach.reset(mach.state);
+            industrialStream(mach, 48000, 256, &il, &ir, &ol, &or_);
+            try testing.expect(!inst.failed);
+            for (ol, or_) |l, r| {
+                try testing.expect(std.math.isFinite(l) and std.math.isFinite(r));
+                try testing.expect(@abs(l) < 32 and @abs(r) < 32);
+            }
+        }
+    }
+}
+
+test "industrial buffer2: dense pitch-jitter feedback stays bounded and frozen-empty stays silent" {
+    const inst = try FyRawMachine.create(testing.allocator, "machines/buffer2/buffer2.fy");
+    const mach = inst.machineInterface();
+    defer mach.deinit.?(mach.state, testing.allocator);
+    for ([_]ParamSet{ .{ "buf-density", 32 }, .{ "buf-grain", 250 }, .{ "buf-pitch", 24 }, .{ "buf-jitter", 12 }, .{ "buf-spray", 1 }, .{ "buf-width", 1 }, .{ "buf-fb", 0.85 }, .{ "buf-mix", 1 } }) |p|
+        mach.set_param.?(mach.state, p[0], p[1]);
+    var il: [256]f32 = undefined;
+    for (&il, 0..) |*x, i| x.* = @as(f32, @floatFromInt(i % 31)) / 31 - 0.5;
+    const zero = [_]f32{0} ** 256;
+    var ol: [256]f32 = undefined;
+    var or_: [256]f32 = undefined;
+    for ([_]f64{ 44100, 48000, 96000 }) |sr| {
+        mach.reset(mach.state);
+        for (0..180) |k| {
+            if (k == 100) mach.set_param.?(mach.state, "buf-freeze", 1);
+            if (k == 130) mach.set_param.?(mach.state, "buf-reverse", 1);
+            industrialStream(mach, sr, 256, &il, &zero, &ol, &or_);
+            for (ol, or_) |l, r| {
+                try testing.expect(std.math.isFinite(l) and std.math.isFinite(r));
+                try testing.expect(@abs(l) < 4 and @abs(r) < 4);
+            }
+        }
+        mach.set_param.?(mach.state, "buf-freeze", 1);
+        mach.reset(mach.state);
+        industrialStream(mach, sr, 256, &zero, &zero, &ol, &or_);
+        for (ol, or_) |l, r| {
+            try testing.expectEqual(@as(f32, 0), l);
+            try testing.expectEqual(@as(f32, 0), r);
+        }
+        mach.set_param.?(mach.state, "buf-freeze", 0);
+    }
+}

@@ -1,0 +1,19 @@
+{
+  "slab": "preset",
+  "schema": 1,
+  "machine": "buffer2",
+  "note": "Reverse each new grain an octave down; sounding grains keep their launch settings",
+  "params": {
+    "buf-mode": 0,
+    "buf-span": 1.2,
+    "buf-grain": 110,
+    "buf-density": 18,
+    "buf-position": 0.45,
+    "buf-spray": 0.2,
+    "buf-pitch": -12,
+    "buf-reverse": 1,
+    "buf-width": 0.4,
+    "buf-fb": 0.1,
+    "buf-mix": 0.7
+  }
+}

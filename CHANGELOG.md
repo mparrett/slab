@@ -6,6 +6,14 @@ GitHub are its section here (`tools/release.sh` copies them), so add to
 
 ## Unreleased
 
+- **Three audio manipulation effects.** Buffer Loom (`buffer2`) captures
+  live stereo audio for granular scatter, reverse grains, frozen textures
+  and clocked repeat. Modal Bank (`resonator2`) tunes eight damped resonances
+  to harmonic, metallic or pipe-like series. Sideband (`shift2`) shifts
+  frequencies up/down in Hz or applies ring modulation, with stereo offsets
+  and controlled feedback. Each has five factory presets and normal insert,
+  send and automation support. See docs/35 for controls and an audition demo.
+
 ## 0.0.11 — 2026-10-11
 
 Strings you can play. Slab gains a modeled electric bass and guitar that
