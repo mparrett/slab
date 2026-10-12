@@ -6,12 +6,16 @@ GitHub are its section here (`tools/release.sh` copies them), so add to
 
 ## Unreleased
 
+## 0.0.12 — 2026-10-12
+
+Machines from your own folder, and Slab on raylib 6.
+
 - **Slab looks right with raylib 6.** Built against raylib 6.0 (what
   `brew install raylib` gives now), the interface drew at half size in the
   window's corner on a Retina display, and the window could open mostly
   off-screen. It now fills the window, and the window opens inside the
-  display, shrunk to fit a 13-inch laptop.
-
+  display, shrunk to fit a 13-inch laptop. Dragging the window between
+  displays keeps the scale right.
 - **Machines from your own folder.** Slab loads machines from
   `~/Music/Slab/Machines/<id>/<id>.fy` as well as its own, with their
   presets and assets beside them. A machine there can include Slab's
