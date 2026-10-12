@@ -1,0 +1,15 @@
+{
+  "slab": "preset",
+  "schema": 1,
+  "machine": "buffer2",
+  "note": "Quarter-note captured loop read an octave down at half speed",
+  "params": {
+    "buf-mode": 1,
+    "buf-sync": 1,
+    "buf-div": 3,
+    "buf-pitch": -12,
+    "buf-mix": 0.7,
+    "buf-fb": 0,
+    "buf-tone": 12000
+  }
+}

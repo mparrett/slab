@@ -1,0 +1,14 @@
+{
+  "slab": "preset",
+  "schema": 1,
+  "machine": "shift2",
+  "note": "Downward metallic sidebands with controlled recirculation",
+  "params": {
+    "shift-hz": -140,
+    "shift-spread": 6,
+    "shift-fb": 0.27,
+    "shift-tone": 7000,
+    "shift-mix": 0.65,
+    "shift-out": -1
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "slab": "preset",
+  "schema": 1,
+  "machine": "phaser2",
+  "note": "47 Hz twelve-stage modulation for metallic synth and foley sidebands",
+  "params": {
+    "ph-stages": 2,
+    "ph-hz": 2200,
+    "ph-depth": 1.1,
+    "ph-feedback": 0.35,
+    "ph-rate": 47,
+    "ph-sync": 0,
+    "ph-div": 2,
+    "ph-shape": 0,
+    "ph-spread": 90,
+    "ph-drive": 0,
+    "ph-mode": 0,
+    "ph-mix": 1,
+    "ph-out": 0
+  }
+}

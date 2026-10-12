@@ -110,6 +110,10 @@ status and the source before assuming a feature is absent or complete.
 34. [33-composing.md](33-composing.md) — practical composing walkthrough
 35. [34-production-wishlist.md](34-production-wishlist.md) — production
     improvements, evidence and acceptance criteria
+36. [35-industrial-effects.md](35-industrial-effects.md) — live capture/grains,
+    modal resonance, signed frequency shifting and ring modulation
+37. [36-phaser.md](36-phaser.md) — stereo 4/6/12-stage phasing, resonance,
+    beat-locked sweeps, presets and comparison demo
 
 ## Terminology crib sheet
 

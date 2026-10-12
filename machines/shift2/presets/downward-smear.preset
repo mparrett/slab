@@ -1,0 +1,12 @@
+{
+  "slab": "preset",
+  "schema": 1,
+  "machine": "shift2",
+  "note": "A dark recirculating downward shift",
+  "params": {
+    "shift-hz": -210,
+    "shift-fb": 0.45,
+    "shift-tone": 4500,
+    "shift-mix": 0.5
+  }
+}

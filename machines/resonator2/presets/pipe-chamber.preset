@@ -1,0 +1,17 @@
+{
+  "slab": "preset",
+  "schema": 1,
+  "machine": "resonator2",
+  "note": "Odd-harmonic pipe resonances, subtly split in stereo",
+  "params": {
+    "rs-hz": 110,
+    "rs-material": 2,
+    "rs-inharm": 0,
+    "rs-decay": 1.8,
+    "rs-damp": 0.5,
+    "rs-spread": 0.4,
+    "rs-drive": 9,
+    "rs-out": 12,
+    "rs-mix": 0.8
+  }
+}

@@ -21,6 +21,7 @@ project or preset stores (docs/19): real units for knobs, the option
 | [`sampler`](#sampler) | Sampler | instrument | 8 | `smp-` |
 | [`unfairlight`](#unfairlight) | Unfairlight TMI | instrument | 8 | `cmi-` |
 | [`amp2`](#amp2) | Ampstack | effect | — | `amp-` |
+| [`buffer2`](#buffer2) | Buffer Loom | effect | — | `buf-` |
 | [`bus2`](#bus2) | Bus | effect | — | `bus-` |
 | [`char2`](#char2) | Char | effect | — | `char-` |
 | [`chorus2`](#chorus2) | Chorus | effect | — | `chorus-` |
@@ -33,7 +34,10 @@ project or preset stores (docs/19): real units for knobs, the option
 | [`geq8`](#geq8) | GEQ | effect | — | `geq-` |
 | [`limiter2`](#limiter2) | Limiter | effect | — | `lim-` |
 | [`multi2`](#multi2) | Multi | effect | — | `—` |
+| [`phaser2`](#phaser2) | Phaser | effect | — | `ph-` |
+| [`resonator2`](#resonator2) | Modal Bank | effect | — | `rs-` |
 | [`sat2`](#sat2) | Saturator | effect | — | `sat-` |
+| [`shift2`](#shift2) | Sideband | effect | — | `shift-` |
 | [`tape2`](#tape2) | Tape | effect | — | `tape-` |
 | [`verb2`](#verb2) | Verb | effect | — | `verb-` |
 
@@ -916,6 +920,38 @@ Presets:
 - `guitar-heavy` — Guitar: tight high-gain rhythm, scooped, palm mutes
 - `guitar-lead` — Guitar: hot-rodded high gain for leads, singing sustain
 
+## buffer2
+
+**Buffer Loom**, stereo insert effect.
+
+| param | section | label | range | default | notes |
+|---|---|---|---|---|---|
+| `buf-mode` | CAPTURE | MODE | 0 GRAINS / 1 REPEAT | 0 | switch |
+| `buf-freeze` | CAPTURE | FREEZE | 0 OFF / 1 ON | 0 | switch |
+| `buf-span` | CAPTURE | SPAN | 0.05 … 4 | 0.5 | exp |
+| `buf-position` | CAPTURE | POS | 0 … 1 | 0.5 | linear |
+| `buf-grain` | GRAINS | SIZE MS | 10 … 250 | 90 | exp |
+| `buf-density` | GRAINS | DENSITY | 1 … 32 | 12 | exp |
+| `buf-spray` | GRAINS | SPRAY | 0 … 1 | 0.15 | linear |
+| `buf-jitter` | GRAINS | JITTER | 0 … 12 | 0 | linear |
+| `buf-sync` | CLOCK | SYNC | 0 FREE / 1 SYNC | 0 | switch |
+| `buf-div` | CLOCK | DIV | 0 1/32 / 1 1/16 / 2 1/8 / 3 1/4 / 4 1/2 / 5 1 BAR | 1 | switch |
+| `buf-pitch` | CLOCK | PITCH | -24 … 24 | 0 | linear |
+| `buf-reverse` | CLOCK | REVERSE | 0 OFF / 1 ON | 0 | switch |
+| `buf-width` | OUT | WIDTH | 0 … 1 | 0.3 | linear |
+| `buf-fb` | OUT | FB | 0 … 0.85 | 0 | pow |
+| `buf-tone` | OUT | TONE | 1000 … 20000 | 14000 | exp |
+| `buf-mix` | OUT | MIX | 0 … 1 | 0.5 | linear |
+| `buf-out` | OUT | LEVEL | -24 … 12 | 0 | linear |
+
+Presets:
+
+- `capture-cloud` — Dense long grains; capture first, then engage FREEZE to sustain the cloud
+- `half-speed-loop` — Quarter-note captured loop read an octave down at half speed
+- `pneumatic-repeat` — Tempo-synced sixteenth repeat; FREEZE holds the captured loop
+- `reverse-grains` — Reverse each new grain an octave down; sounding grains keep their launch settings
+- `steel-scrambler` — Short scattered grains, pitch jitter and bounded feedback for industrial foley
+
 ## bus2
 
 **Bus**, stereo insert effect.
@@ -1276,6 +1312,62 @@ Presets:
 - `radio` — dense and loud: all bands 4:1, quick, upward lift under the quiet parts
 - `upward-lift` — brings the detail up: gentle downward, strong upward below each threshold
 
+## phaser2
+
+**Phaser**, stereo insert effect.
+
+| param | section | label | range | default | notes |
+|---|---|---|---|---|---|
+| `ph-stages` | PHASE | STAGES | 0 4 / 1 6 / 2 12 | 1 | switch |
+| `ph-hz` | PHASE | SWEEP HZ | 30 … 8000 | 800 | exp |
+| `ph-depth` | PHASE | DEPTH OCT | 0 … 3 | 2 | linear |
+| `ph-feedback` | PHASE | RES | -0.9 … 0.9 | 0.25 | linear |
+| `ph-rate` | LFO | RATE HZ | 0.01 … 250 | 0.3 | exp |
+| `ph-sync` | LFO | SYNC | 0 FREE / 1 SYNC | 0 | switch |
+| `ph-div` | LFO | DIV | 0 4 BAR / 1 2 BAR / 2 1 BAR / 3 1/2 / 4 1/4 / 5 1/8 / 6 1/16 / 7 1/32 / 8 1/4D / 9 1/8D / 10 1/8T | 4 | switch |
+| `ph-shape` | LFO | SHAPE | 0 SINE / 1 TRI | 0 | switch |
+| `ph-spread` | OUT | SPREAD DEG | 0 … 180 | 90 | linear |
+| `ph-drive` | OUT | DRIVE DB | 0 … 24 | 0 | linear |
+| `ph-mode` | OUT | MODE | 0 MAIN / 1 AUX | 0 | switch |
+| `ph-mix` | OUT | MIX | 0 … 1 | 1 | linear |
+| `ph-out` | OUT | LEVEL DB | -24 … 12 | 0 | linear |
+
+Presets:
+
+- `audio-rate-metal` — 47 Hz twelve-stage modulation for metallic synth and foley sidebands
+- `auxiliary-haze` — Inverted six-stage output with negative feedback; hollow slow texture
+- `clockwork-funk` — Bar-locked triangle sweep for rhythmic keys and clipped chords
+- `dub-undertow` — Slow low-centered six-stage motion for dub chord returns and echoes
+- `four-stage-bite` — Four-stage sweep with feedback and a compensated soft-driven input
+- `four-stage-silk` — Smooth four-stage, no-feedback sweep for clean guitar or keys
+- `six-stage-keys` — Slow six-stage swirl with moderate stereo motion for electric piano and pads
+- `steel-vortex` — Wide resonant twelve-stage movement for industrial foley; compensated drive
+- `twelve-stage-orbit` — Deep twelve-stage sweep; opposite stereo LFOs for sustained synths
+
+## resonator2
+
+**Modal Bank**, stereo insert effect.
+
+| param | section | label | range | default | notes |
+|---|---|---|---|---|---|
+| `rs-hz` | BODY | HZ | 30 … 2000 | 110 | exp |
+| `rs-material` | BODY | MATERIAL | 0 STRING / 1 PLATE / 2 PIPE | 1 | switch |
+| `rs-inharm` | BODY | INHARM | 0 … 1 | 0.1 | linear |
+| `rs-decay` | RING | DECAY | 0.08 … 12 | 1.4 | exp |
+| `rs-damp` | RING | DAMP | 0 … 1 | 0.4 | linear |
+| `rs-spread` | RING | SPREAD | 0 … 8 | 0 | linear |
+| `rs-drive` | OUT | EXCITE | 0 … 24 | 6 | linear |
+| `rs-mix` | OUT | MIX | 0 … 1 | 0.5 | linear |
+| `rs-out` | OUT | LEVEL | -24 … 24 | 6 | linear |
+
+Presets:
+
+- `drone-body` — Long low pipe modes; excite with noise or a sustained texture
+- `harmonic-string` — Eight harmonic modes around A3, fully wet for tuned percussion
+- `pipe-chamber` — Odd-harmonic pipe resonances, subtly split in stereo
+- `short-iron` — A short, stretched metallic mode bank for hits and rattles
+- `steel-body` — An inharmonic plate around F3, higher modes damped quickly
+
 ## sat2
 
 **Saturator**, stereo insert effect.
@@ -1311,6 +1403,28 @@ Presets:
 - `valve-crunch` — VALVE pushed into the top: crunch for guitars, Rhodes and bass leads
 - `valve-hot` — VALVE cranked: hard top, and the sag blocks and blooms under loud notes
 - `valve-preamp` — VALVE barely driven: a clean triode preamp, second harmonic only
+
+## shift2
+
+**Sideband**, stereo insert effect.
+
+| param | section | label | range | default | notes |
+|---|---|---|---|---|---|
+| `shift-hz` | SHIFT | HZ | -4000 … 4000 | 40 | linear |
+| `shift-spread` | SHIFT | SPREAD | -200 … 200 | 0 | linear |
+| `shift-mode` | SHIFT | MODE | 0 SHIFT / 1 RING | 0 | switch |
+| `shift-fb` | LOOP | FB | 0 … 0.85 | 0 | pow |
+| `shift-tone` | LOOP | TONE | 800 … 20000 | 16000 | exp |
+| `shift-mix` | OUT | MIX | 0 … 1 | 0.5 | linear |
+| `shift-out` | OUT | LEVEL | -24 … 12 | 0 | linear |
+
+Presets:
+
+- `downward-smear` — A dark recirculating downward shift
+- `ring-machine` — Two-sideband ring modulation at 430 Hz
+- `slow-sidebands` — Slow signed frequency movement with a small stereo offset
+- `upward-spiral` — Shifted feedback repeats progressively move up in Hz
+- `warped-steel` — Downward metallic sidebands with controlled recirculation
 
 ## tape2
 

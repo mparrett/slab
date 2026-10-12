@@ -1,0 +1,17 @@
+{
+  "slab": "preset",
+  "schema": 1,
+  "machine": "resonator2",
+  "note": "Eight harmonic modes around A3, fully wet for tuned percussion",
+  "params": {
+    "rs-hz": 220,
+    "rs-material": 0,
+    "rs-inharm": 0,
+    "rs-decay": 0.9,
+    "rs-damp": 0.3,
+    "rs-spread": 0,
+    "rs-drive": 6,
+    "rs-out": 18,
+    "rs-mix": 1
+  }
+}

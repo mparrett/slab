@@ -1,0 +1,21 @@
+{
+  "slab": "preset",
+  "schema": 1,
+  "machine": "phaser2",
+  "note": "Deep twelve-stage sweep; opposite stereo LFOs for sustained synths",
+  "params": {
+    "ph-stages": 2,
+    "ph-hz": 1100,
+    "ph-depth": 2.8,
+    "ph-feedback": 0.55,
+    "ph-rate": 0.08,
+    "ph-sync": 0,
+    "ph-div": 2,
+    "ph-shape": 0,
+    "ph-spread": 180,
+    "ph-drive": 0,
+    "ph-mode": 0,
+    "ph-mix": 1,
+    "ph-out": 0
+  }
+}

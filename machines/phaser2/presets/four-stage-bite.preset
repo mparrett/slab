@@ -1,0 +1,21 @@
+{
+  "slab": "preset",
+  "schema": 1,
+  "machine": "phaser2",
+  "note": "Four-stage sweep with feedback and a compensated soft-driven input",
+  "params": {
+    "ph-stages": 0,
+    "ph-hz": 750,
+    "ph-depth": 1.6,
+    "ph-feedback": 0.35,
+    "ph-rate": 0.7,
+    "ph-sync": 0,
+    "ph-div": 2,
+    "ph-shape": 0,
+    "ph-spread": 0,
+    "ph-drive": 6,
+    "ph-mode": 0,
+    "ph-mix": 1,
+    "ph-out": 0
+  }
+}

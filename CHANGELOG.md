@@ -8,7 +8,7 @@ GitHub are its section here (`tools/release.sh` copies them), so add to
 
 ## 0.0.12 — 2026-10-12
 
-Machines from your own folder, and Slab on raylib 6.
+Machines from your own folder, four new effects, and Slab on raylib 6.
 
 - **Slab looks right with raylib 6.** Built against raylib 6.0 (what
   `brew install raylib` gives now), the interface drew at half size in the
@@ -21,6 +21,20 @@ Machines from your own folder, and Slab on raylib 6.
   presets and assets beside them. A machine there can include Slab's
   shipped kernels, and the folder can be a link to a machine kept in its
   own repository. slabkit and `slab --describe` see them too.
+
+- **Native stereo Phaser** (`phaser2`), inspired by Moog MF-103 and MXR
+  Phase 90 controls: four/six/twelve stages, signed resonance, manual or
+  tempo-locked sweep, stereo LFO offsets, main/aux response and nine factory
+  presets. Beat-synced machine preparation now follows the actual clock
+  within automation/smoothing sub-blocks. See docs/36 for an audition demo.
+
+- **Three audio manipulation effects.** Buffer Loom (`buffer2`) captures
+  live stereo audio for granular scatter, reverse grains, frozen textures
+  and clocked repeat. Modal Bank (`resonator2`) tunes eight damped resonances
+  to harmonic, metallic or pipe-like series. Sideband (`shift2`) shifts
+  frequencies up/down in Hz or applies ring modulation, with stereo offsets
+  and controlled feedback. Each has five factory presets and normal insert,
+  send and automation support. See docs/35 for controls and an audition demo.
 
 ## 0.0.11 — 2026-10-11
 

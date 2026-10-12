@@ -1,0 +1,13 @@
+{
+  "slab": "preset",
+  "schema": 1,
+  "machine": "shift2",
+  "note": "Slow signed frequency movement with a small stereo offset",
+  "params": {
+    "shift-hz": 3.5,
+    "shift-spread": 0.7,
+    "shift-mix": 0.5,
+    "shift-fb": 0.1,
+    "shift-tone": 16000
+  }
+}

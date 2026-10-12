@@ -1,0 +1,16 @@
+{
+  "slab": "preset",
+  "schema": 1,
+  "machine": "resonator2",
+  "note": "An inharmonic plate around F3, higher modes damped quickly",
+  "params": {
+    "rs-hz": 174.614,
+    "rs-material": 1,
+    "rs-inharm": 0.08,
+    "rs-decay": 0.75,
+    "rs-damp": 0.6,
+    "rs-drive": 12,
+    "rs-mix": 0.55,
+    "rs-out": 9
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "slab": "preset",
+  "schema": 1,
+  "machine": "phaser2",
+  "note": "Wide resonant twelve-stage movement for industrial foley; compensated drive",
+  "params": {
+    "ph-stages": 2,
+    "ph-hz": 1600,
+    "ph-depth": 2.6,
+    "ph-feedback": 0.78,
+    "ph-rate": 0.45,
+    "ph-sync": 0,
+    "ph-div": 2,
+    "ph-shape": 0,
+    "ph-spread": 150,
+    "ph-drive": 12,
+    "ph-mode": 0,
+    "ph-mix": 1,
+    "ph-out": 0
+  }
+}

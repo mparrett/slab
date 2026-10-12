@@ -1,0 +1,21 @@
+{
+  "slab": "preset",
+  "schema": 1,
+  "machine": "phaser2",
+  "note": "Inverted six-stage output with negative feedback; hollow slow texture",
+  "params": {
+    "ph-stages": 1,
+    "ph-hz": 700,
+    "ph-depth": 2.2,
+    "ph-feedback": -0.4,
+    "ph-rate": 0.11,
+    "ph-sync": 0,
+    "ph-div": 2,
+    "ph-shape": 0,
+    "ph-spread": 120,
+    "ph-drive": 0,
+    "ph-mode": 1,
+    "ph-mix": 0.8,
+    "ph-out": 0
+  }
+}
