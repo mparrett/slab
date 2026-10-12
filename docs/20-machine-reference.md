@@ -34,6 +34,7 @@ project or preset stores (docs/19): real units for knobs, the option
 | [`geq8`](#geq8) | GEQ | effect | — | `geq-` |
 | [`limiter2`](#limiter2) | Limiter | effect | — | `lim-` |
 | [`multi2`](#multi2) | Multi | effect | — | `—` |
+| [`phaser2`](#phaser2) | Phaser | effect | — | `ph-` |
 | [`resonator2`](#resonator2) | Modal Bank | effect | — | `rs-` |
 | [`sat2`](#sat2) | Saturator | effect | — | `sat-` |
 | [`shift2`](#shift2) | Sideband | effect | — | `shift-` |
@@ -1310,6 +1311,38 @@ Presets:
 - `master-balance` — mastering: every band a little - low 2:1 slow, mid 1.5:1, top 2:1 on peaks
 - `radio` — dense and loud: all bands 4:1, quick, upward lift under the quiet parts
 - `upward-lift` — brings the detail up: gentle downward, strong upward below each threshold
+
+## phaser2
+
+**Phaser**, stereo insert effect.
+
+| param | section | label | range | default | notes |
+|---|---|---|---|---|---|
+| `ph-stages` | PHASE | STAGES | 0 4 / 1 6 / 2 12 | 1 | switch |
+| `ph-hz` | PHASE | SWEEP HZ | 30 … 8000 | 800 | exp |
+| `ph-depth` | PHASE | DEPTH OCT | 0 … 3 | 2 | linear |
+| `ph-feedback` | PHASE | RES | -0.9 … 0.9 | 0.25 | linear |
+| `ph-rate` | LFO | RATE HZ | 0.01 … 250 | 0.3 | exp |
+| `ph-sync` | LFO | SYNC | 0 FREE / 1 SYNC | 0 | switch |
+| `ph-div` | LFO | DIV | 0 4 BAR / 1 2 BAR / 2 1 BAR / 3 1/2 / 4 1/4 / 5 1/8 / 6 1/16 / 7 1/32 / 8 1/4D / 9 1/8D / 10 1/8T | 4 | switch |
+| `ph-shape` | LFO | SHAPE | 0 SINE / 1 TRI | 0 | switch |
+| `ph-spread` | OUT | SPREAD DEG | 0 … 180 | 90 | linear |
+| `ph-drive` | OUT | DRIVE DB | 0 … 24 | 0 | linear |
+| `ph-mode` | OUT | MODE | 0 MAIN / 1 AUX | 0 | switch |
+| `ph-mix` | OUT | MIX | 0 … 1 | 1 | linear |
+| `ph-out` | OUT | LEVEL DB | -24 … 12 | 0 | linear |
+
+Presets:
+
+- `audio-rate-metal` — 47 Hz twelve-stage modulation for metallic synth and foley sidebands
+- `auxiliary-haze` — Inverted six-stage output with negative feedback; hollow slow texture
+- `clockwork-funk` — Bar-locked triangle sweep for rhythmic keys and clipped chords
+- `dub-undertow` — Slow low-centered six-stage motion for dub chord returns and echoes
+- `four-stage-bite` — Four-stage sweep with feedback and a compensated soft-driven input
+- `four-stage-silk` — Smooth four-stage, no-feedback sweep for clean guitar or keys
+- `six-stage-keys` — Slow six-stage swirl with moderate stereo motion for electric piano and pads
+- `steel-vortex` — Wide resonant twelve-stage movement for industrial foley; compensated drive
+- `twelve-stage-orbit` — Deep twelve-stage sweep; opposite stereo LFOs for sustained synths
 
 ## resonator2
 

@@ -1,0 +1,21 @@
+{
+  "slab": "preset",
+  "schema": 1,
+  "machine": "phaser2",
+  "note": "Smooth four-stage, no-feedback sweep for clean guitar or keys",
+  "params": {
+    "ph-stages": 0,
+    "ph-hz": 650,
+    "ph-depth": 1.8,
+    "ph-feedback": 0,
+    "ph-rate": 0.35,
+    "ph-sync": 0,
+    "ph-div": 2,
+    "ph-shape": 0,
+    "ph-spread": 0,
+    "ph-drive": 0,
+    "ph-mode": 0,
+    "ph-mix": 1,
+    "ph-out": 0
+  }
+}

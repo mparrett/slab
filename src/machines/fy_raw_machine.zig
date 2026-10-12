@@ -2284,6 +2284,11 @@ fn renderImpl(state: *anyopaque, ctx: *const machine.MachineCtx, l: []f32, r: []
     var pos: usize = 0;
     while (pos < frames) : (pos += chunk) {
         const n = @min(chunk, frames - pos);
+        // Block-prepare sees the same sub-block clock as automation/audio.
+        // Beat-synced effects must not restart at the outer block on every
+        // smoothing chunk.
+        self.kctx.beat = ctx.ppq_position + @as(f64, @floatFromInt(pos)) * beats_per_sample;
+        self.kctx.frames = @floatFromInt(n);
         if (auto) self.evalAutomation(view.?, ctx.ppq_position + @as(f64, @floatFromInt(pos)) * beats_per_sample);
         _ = self.advanceSmoothing(if (gliding) n else frames);
         self.syncRawParams(ctx.sample_rate, ctx.tempo_bpm);
@@ -9312,4 +9317,242 @@ test "industrial buffer2: dense pitch-jitter feedback stays bounded and frozen-e
         }
         mach.set_param.?(mach.state, "buf-freeze", 0);
     }
+}
+
+// Fit both sine quadratures rather than taking a finite-window DFT bin.
+// The gram matrix removes leakage bias when the window isn't whole cycles.
+fn phaserSineAmplitudeSquared(xs: []const f32, hz: f64, sr: f64) f64 {
+    var cc: f64 = 0;
+    var ss: f64 = 0;
+    var cs: f64 = 0;
+    var xc: f64 = 0;
+    var xs_: f64 = 0;
+    for (xs, 0..) |x, i| {
+        const phase = 2 * std.math.pi * hz * @as(f64, @floatFromInt(i)) / sr;
+        const c_ = @cos(phase);
+        const s_ = @sin(phase);
+        cc += c_ * c_;
+        ss += s_ * s_;
+        cs += c_ * s_;
+        xc += x * c_;
+        xs_ += x * s_;
+    }
+    const det = cc * ss - cs * cs;
+    const re = (xc * ss - xs_ * cs) / det;
+    const im = (xs_ * cc - xc * cs) / det;
+    return re * re + im * im;
+}
+
+test "phaser2: static 4/6/12-stage notch positions and feedback response at three sample rates" {
+    const inst = try FyRawMachine.create(testing.allocator, "machines/phaser2/phaser2.fy");
+    const mach = inst.machineInterface();
+    defer mach.deinit.?(mach.state, testing.allocator);
+    mach.set_param.?(mach.state, "ph-hz", 800);
+    mach.set_param.?(mach.state, "ph-depth", 0);
+    mach.set_param.?(mach.state, "ph-spread", 0);
+    const n = 24000;
+    var il: [n]f32 = undefined;
+    const zero = [_]f32{0} ** n;
+    var ol: [n]f32 = undefined;
+    var or_: [n]f32 = undefined;
+    for ([_]f64{ 44100, 48000, 96000 }) |sr| {
+        const g = @tan(std.math.pi * 800 / sr);
+        for ([_]f64{ 4, 6, 12 }, 0..) |stages, index| {
+            mach.set_param.?(mach.state, "ph-stages", @floatFromInt(index));
+            for ([_]f64{ 0, 0.8, -0.8 }) |fb| {
+                mach.set_param.?(mach.state, "ph-feedback", fb);
+                for (0..@as(usize, @intFromFloat(stages / 2))) |k| {
+                    const hz = sr / std.math.pi * std.math.atan(g * @tan((2 * @as(f64, @floatFromInt(k)) + 1) * std.math.pi / (2 * stages)));
+                    for (&il, 0..) |*x, i| x.* = @floatCast(0.2 * @sin(2 * std.math.pi * hz * @as(f64, @floatFromInt(i)) / sr));
+                    mach.reset(mach.state);
+                    industrialStream(mach, sr, 257, &il, &zero, &ol, &or_);
+                    try testing.expect(!inst.failed);
+                    try testing.expect(industrialEnergy(ol[12000..]) < 1e-8);
+                    for (or_) |x| try testing.expectEqual(@as(f32, 0), x);
+                }
+                // Independently derived transfer: (1-|fb|)(1+H)/2(1-fb H).
+                const hz: f64 = 333;
+                const angle = -2 * stages * std.math.atan(@tan(std.math.pi * hz / sr) / g);
+                const power_ratio = (1 - @abs(fb)) * (1 - @abs(fb)) *
+                    (2 + 2 * @cos(angle)) / (4 * (1 + fb * fb - 2 * fb * @cos(angle)));
+                for (&il, 0..) |*x, i| x.* = @floatCast(0.2 * @sin(2 * std.math.pi * hz * @as(f64, @floatFromInt(i)) / sr));
+                mach.reset(mach.state);
+                industrialStream(mach, sr, 128, &il, &zero, &ol, &or_);
+                try testing.expectApproxEqAbs(power_ratio, phaserSineAmplitudeSquared(ol[12000..], hz, sr) / phaserSineAmplitudeSquared(il[12000..], hz, sr), 0.0001);
+            }
+        }
+    }
+}
+
+test "phaser2: exact dry, mono compatibility, stereo modulation and complementary output" {
+    const inst = try FyRawMachine.create(testing.allocator, "machines/phaser2/phaser2.fy");
+    const mach = inst.machineInterface();
+    defer mach.deinit.?(mach.state, testing.allocator);
+    const n = 24000;
+    var il: [n]f32 = undefined;
+    var a: [n]f32 = undefined;
+    var b: [n]f32 = undefined;
+    var r: [n]f32 = undefined;
+    for (&il, 0..) |*x, i| x.* = @floatCast(0.2 * @sin(2 * std.math.pi * 700 * @as(f64, @floatFromInt(i)) / 48000));
+    mach.set_param.?(mach.state, "ph-mix", 0);
+    mach.reset(mach.state);
+    industrialStream(mach, 48000, 128, &il, &il, &a, &r);
+    try testing.expectEqualSlices(f32, &il, &a);
+    try testing.expectEqualSlices(f32, &il, &r);
+    mach.set_param.?(mach.state, "ph-mix", 1);
+    mach.set_param.?(mach.state, "ph-spread", 0);
+    mach.set_param.?(mach.state, "ph-feedback", 0);
+    mach.set_param.?(mach.state, "ph-rate", 2);
+    mach.reset(mach.state);
+    industrialStream(mach, 48000, 128, &il, &il, &a, &r);
+    try testing.expectEqualSlices(f32, &a, &r);
+    mach.set_param.?(mach.state, "ph-mode", 1);
+    mach.reset(mach.state);
+    industrialStream(mach, 48000, 128, &il, &il, &b, &r);
+    for (il, a, b) |x, main, aux| try testing.expectApproxEqAbs(x, main + aux, 1e-6);
+    mach.set_param.?(mach.state, "ph-mode", 0);
+    mach.set_param.?(mach.state, "ph-spread", 180);
+    mach.reset(mach.state);
+    industrialStream(mach, 48000, 128, &il, &il, &b, &r);
+    var difference: f64 = 0;
+    for (b, r) |l, right| difference += @abs(l - right);
+    try testing.expect(difference / n > 0.01);
+}
+
+test "phaser2: free and beat-locked sweeps are block-invariant and synced rate ignores Hz" {
+    const inst = try FyRawMachine.create(testing.allocator, "machines/phaser2/phaser2.fy");
+    const mach = inst.machineInterface();
+    defer mach.deinit.?(mach.state, testing.allocator);
+    const n = 96000;
+    const il = try testing.allocator.alloc(f32, n);
+    defer testing.allocator.free(il);
+    const a = try testing.allocator.alloc(f32, n);
+    defer testing.allocator.free(a);
+    const b = try testing.allocator.alloc(f32, n);
+    defer testing.allocator.free(b);
+    const r = try testing.allocator.alloc(f32, n);
+    defer testing.allocator.free(r);
+    for (il, 0..) |*x, i| x.* = @floatCast(0.2 * @sin(2 * std.math.pi * 400 * @as(f64, @floatFromInt(i)) / 48000));
+    mach.set_param.?(mach.state, "ph-div", 4); // one quarter note
+    for ([_]f64{ 0, 1 }) |sync| {
+        mach.set_param.?(mach.state, "ph-sync", sync);
+        mach.set_param.?(mach.state, "ph-rate", 1);
+        mach.reset(mach.state);
+        industrialStream(mach, 48000, 128, il, il, a, r);
+        mach.reset(mach.state);
+        industrialStream(mach, 48000, 257, il, il, b, r);
+        for (a, b) |x, y| try testing.expectApproxEqAbs(x, y, 1e-6);
+        if (sync == 1) {
+            // 120 BPM / quarter note: exactly 24000 frames per sweep.
+            for (a[48000..72000], a[72000..96000]) |x, y| try testing.expectApproxEqAbs(x, y, 1e-6);
+            mach.set_param.?(mach.state, "ph-rate", 200);
+            mach.reset(mach.state);
+            industrialStream(mach, 48000, 257, il, il, b, r);
+            for (a, b) |x, y| try testing.expectApproxEqAbs(x, y, 1e-6);
+        }
+    }
+}
+
+test "phaser2: factory presets and extreme automated stage/resonance changes stay finite" {
+    const inst = try FyRawMachine.create(testing.allocator, "machines/phaser2/phaser2.fy");
+    const mach = inst.machineInterface();
+    defer mach.deinit.?(mach.state, testing.allocator);
+    try testing.expect(inst.presets.count >= 9);
+    try testing.expectEqual(@as(u32, 20 * 48000), mach.idleHold(48000, 0));
+    var il: [1024]f32 = undefined;
+    var ir: [1024]f32 = undefined;
+    var ol: [1024]f32 = undefined;
+    var or_: [1024]f32 = undefined;
+    for (&il, &ir, 0..) |*l, *r, i| {
+        const t = @as(f64, @floatFromInt(i)) / 48000;
+        l.* = @floatCast(0.3 * @sin(2 * std.math.pi * 110 * t) + 0.2 * @sin(2 * std.math.pi * 1800 * t));
+        r.* = @floatCast(0.4 * @sin(2 * std.math.pi * 750 * t));
+    }
+    for (0..inst.presets.count) |p| {
+        const name = inst.presets.names[p].slice();
+        if (std.mem.startsWith(u8, name, "User/") or std.mem.startsWith(u8, name, "Project/")) continue;
+        mach.apply_preset.?(mach.state, @intCast(p));
+        mach.reset(mach.state);
+        industrialStream(mach, 48000, 256, &il, &ir, &ol, &or_);
+        try testing.expect(!inst.failed);
+        for (ol, or_) |l, r| try testing.expect(std.math.isFinite(l) and std.math.isFinite(r) and @abs(l) < 2 and @abs(r) < 2);
+    }
+    mach.set_param.?(mach.state, "ph-out", 0);
+    mach.set_param.?(mach.state, "ph-depth", 3);
+    mach.set_param.?(mach.state, "ph-spread", 180);
+    mach.set_param.?(mach.state, "ph-rate", 250);
+    for ([_]f64{ 44100, 48000, 96000 }) |sr| {
+        mach.reset(mach.state);
+        for (0..100) |i| {
+            mach.set_param.?(mach.state, "ph-stages", @floatFromInt(i % 3));
+            mach.set_param.?(mach.state, "ph-hz", if (i % 2 == 0) 30 else 8000);
+            mach.set_param.?(mach.state, "ph-feedback", if (i % 2 == 0) -0.9 else 0.9);
+            mach.set_param.?(mach.state, "ph-mode", @floatFromInt(i % 2));
+            mach.set_param.?(mach.state, "ph-drive", if (i % 2 == 0) 0 else 24);
+            industrialStream(mach, sr, 257, &il, &ir, &ol, &or_);
+            try testing.expect(!inst.failed);
+            for (ol, or_) |l, r| try testing.expect(std.math.isFinite(l) and std.math.isFinite(r) and @abs(l) < 4 and @abs(r) < 4);
+        }
+    }
+}
+
+test "phaser2: maximum fixed resonance decays within the declared tail" {
+    const sets = [_]ParamSet{ .{ "ph-hz", 30 }, .{ "ph-depth", 0 }, .{ "ph-stages", 2 }, .{ "ph-feedback", 0.9 }, .{ "ph-spread", 0 }, .{ "ph-drive", 0 } };
+    const out = try renderEffectImpulse("machines/phaser2/phaser2.fy", &sets, 1, 0, 960000);
+    defer for (out) |o| testing.allocator.free(o);
+    for (out[0][955200..]) |x| try testing.expect(@abs(x) < 1e-6);
+    for (out[1]) |x| try testing.expectEqual(@as(f32, 0), x);
+}
+
+test "phaser2: no-op automation keeps the synchronized sweep aligned at a nonzero beat" {
+    const a = try FyRawMachine.create(testing.allocator, "machines/phaser2/phaser2.fy");
+    const ma = a.machineInterface();
+    defer ma.deinit.?(ma.state, testing.allocator);
+    const b = try FyRawMachine.create(testing.allocator, "machines/phaser2/phaser2.fy");
+    const mb = b.machineInterface();
+    defer mb.deinit.?(mb.state, testing.allocator);
+    for ([_]machine.Machine{ ma, mb }) |m| {
+        m.set_param.?(m.state, "ph-sync", 1);
+        m.set_param.?(m.state, "ph-div", 4);
+        m.set_param.?(m.state, "ph-out", 0);
+        m.reset(m.state);
+    }
+    var ci: usize = 0;
+    while (!std.mem.eql(u8, b.desc.controls[ci].idSlice(), "ph-out")) ci += 1;
+    const norm = valueToNorm(b.desc.controls[ci], 0);
+    var snap = std.mem.zeroes(snapshot.TrackSnapshot);
+    snap.auto_points[0] = .{ .beat = 0, .value = norm };
+    snap.auto_points[1] = .{ .beat = 100, .value = norm };
+    snap.auto_point_count = 2;
+    snap.lanes[0] = .{ .kind = .inst, .control = @intCast(ci), .points_start = 0, .points_count = 2 };
+    snap.lane_count = 1;
+    var cursors = [_]u32{0} ** snapshot.MAX_LANES_PER_TRACK;
+    const view = snapshot.AutoView{ .snap = &snap, .cursors = &cursors, .kind = .inst };
+    const block = 256;
+    var input: [block]f32 = undefined;
+    var la: [block]f32 = undefined;
+    var ra: [block]f32 = undefined;
+    var lb: [block]f32 = undefined;
+    var rb: [block]f32 = undefined;
+    const ports = [_][*]const f32{ &input, &input };
+    var ctx = std.mem.zeroes(machine.MachineCtx);
+    ctx.sample_rate = 48000;
+    ctx.tempo_bpm = 143;
+    ctx.block_size = block;
+    ctx.audio_in_count = 2;
+    ctx.audio_in = @ptrCast(&ports[0]);
+    for (0..256) |blk| {
+        for (&input, 0..) |*x, i| x.* = @floatCast(0.2 * @sin(2 * std.math.pi * 333 * @as(f64, @floatFromInt(blk * block + i)) / 48000));
+        ctx.ppq_position = 13.375 + @as(f64, @floatFromInt(blk * block)) * 143 / (60 * 48000);
+        ctx.automation = null;
+        testRender(ma, &ctx, &la, &ra);
+        ctx.automation = &view;
+        testRender(mb, &ctx, &lb, &rb);
+        for (la, lb, ra, rb) |l1, l2, r1, r2| {
+            try testing.expectApproxEqAbs(l1, l2, 1e-6);
+            try testing.expectApproxEqAbs(r1, r2, 1e-6);
+        }
+    }
+    const beat_off = try fyFieldOffset(b, "PhaserState.beat");
+    try testing.expectApproxEqAbs(ctx.ppq_position + @as(f64, block) * 143 / (60.0 * 48000), b.readStateF64(0, beat_off), 1e-10);
 }

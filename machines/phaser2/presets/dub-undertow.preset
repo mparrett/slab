@@ -1,0 +1,21 @@
+{
+  "slab": "preset",
+  "schema": 1,
+  "machine": "phaser2",
+  "note": "Slow low-centered six-stage motion for dub chord returns and echoes",
+  "params": {
+    "ph-stages": 1,
+    "ph-hz": 280,
+    "ph-depth": 1.2,
+    "ph-feedback": 0.65,
+    "ph-rate": 0.06,
+    "ph-sync": 0,
+    "ph-div": 2,
+    "ph-shape": 0,
+    "ph-spread": 100,
+    "ph-drive": 0,
+    "ph-mode": 0,
+    "ph-mix": 0.65,
+    "ph-out": 0
+  }
+}

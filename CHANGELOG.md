@@ -6,6 +6,12 @@ GitHub are its section here (`tools/release.sh` copies them), so add to
 
 ## Unreleased
 
+- **Native stereo Phaser** (`phaser2`), inspired by Moog MF-103 and MXR
+  Phase 90 controls: four/six/twelve stages, signed resonance, manual or
+  tempo-locked sweep, stereo LFO offsets, main/aux response and nine factory
+  presets. Beat-synced machine preparation now follows the actual clock
+  within automation/smoothing sub-blocks. See docs/36 for an audition demo.
+
 - **Three audio manipulation effects.** Buffer Loom (`buffer2`) captures
   live stereo audio for granular scatter, reverse grains, frozen textures
   and clocked repeat. Modal Bank (`resonator2`) tunes eight damped resonances

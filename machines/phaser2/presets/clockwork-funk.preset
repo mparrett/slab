@@ -1,0 +1,21 @@
+{
+  "slab": "preset",
+  "schema": 1,
+  "machine": "phaser2",
+  "note": "Bar-locked triangle sweep for rhythmic keys and clipped chords",
+  "params": {
+    "ph-stages": 0,
+    "ph-hz": 850,
+    "ph-depth": 1.8,
+    "ph-feedback": 0.2,
+    "ph-rate": 0.3,
+    "ph-sync": 1,
+    "ph-div": 3,
+    "ph-shape": 1,
+    "ph-spread": 45,
+    "ph-drive": 0,
+    "ph-mode": 0,
+    "ph-mix": 0.85,
+    "ph-out": 0
+  }
+}
