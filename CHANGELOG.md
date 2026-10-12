@@ -6,6 +6,12 @@ GitHub are its section here (`tools/release.sh` copies them), so add to
 
 ## Unreleased
 
+- **Machines from your own folder.** Slab loads machines from
+  `~/Music/Slab/Machines/<id>/<id>.fy` as well as its own, with their
+  presets and assets beside them. A machine there can include Slab's
+  shipped kernels, and the folder can be a link to a machine kept in its
+  own repository. slabkit and `slab --describe` see them too.
+
 ## 0.0.11 — 2026-10-11
 
 Strings you can play. Slab gains a modeled electric bass and guitar that

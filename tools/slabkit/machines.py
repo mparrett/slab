@@ -2,7 +2,8 @@
 
 Param data comes from the live manifests via `slab --describe`, cached at
 zig-out/machines.json and refreshed whenever the slab binary is newer than
-the cache (so a knob added in fy shows up here after `zig build`).
+the cache (so a knob added in fy shows up here after `zig build`), or a
+user machine in <home>/Machines changed.
 """
 import difflib
 import json
@@ -66,6 +67,9 @@ class Machine:
         self.id = d["id"]
         self.name = d["name"]
         self.kind = d["kind"]          # instrument | effect
+        # The machine's .fy: relative to the repo for a builtin, absolute
+        # for a user machine (<home>/Machines/<id>/<id>.fy).
+        self.path = d.get("path")
         self.voices = d["voices"]
         self.note_pitch = d["note_pitch"]
         # The detector takes a sidechain key: fx(..., key=track) (docs/23).
@@ -121,7 +125,8 @@ def _load():
     if _db is not None:
         return _db
     stale = not os.path.exists(CACHE) or (
-        os.path.exists(SLAB) and os.path.getmtime(SLAB) > os.path.getmtime(CACHE))
+        os.path.exists(SLAB) and os.path.getmtime(SLAB) > os.path.getmtime(CACHE)) or (
+        _user_machines_mtime() > os.path.getmtime(CACHE))
     if stale:
         if not os.path.exists(SLAB):
             raise SlabError(f"{SLAB} not found — run `zig build` first")
@@ -130,6 +135,20 @@ def _load():
     with open(CACHE) as f:
         _db = {m["id"]: Machine(m) for m in json.load(f)["machines"]}
     return _db
+
+
+def _user_machines_mtime():
+    """The newest change under <home>/Machines: a machine added, removed
+    or edited there (the folder's own time covers the first two)."""
+    base = os.path.join(home_dir(), "Machines")
+    if not os.path.isdir(base):
+        return 0.0
+    times = [os.path.getmtime(base)]
+    for mid in os.listdir(base):
+        fy = os.path.join(base, mid, mid + ".fy")
+        if os.path.exists(fy):
+            times.append(os.path.getmtime(fy))
+    return max(times)
 
 
 def machines():
@@ -145,9 +164,14 @@ def machine(mid):
 
 
 def _preset_dirs(mid):
-    """Where a machine's presets live: the factory's folder, then each
-    installed pack's <library>/<pack>/presets/<mid> (docs/25 §Pack presets)."""
-    dirs = [os.path.join(MACHINES_DIR, mid, "presets")]
+    """Where a machine's presets live: beside its .fy (the factory's folder,
+    or a user machine's), then each installed pack's
+    <library>/<pack>/presets/<mid> (docs/25 §Pack presets)."""
+    m = _load().get(mid)
+    if m is not None and m.path:
+        dirs = [os.path.join(os.path.dirname(os.path.join(ROOT, m.path)), "presets")]
+    else:
+        dirs = [os.path.join(MACHINES_DIR, mid, "presets")]
     lib = library_dir()
     if os.path.isdir(lib):
         for pack in sorted(os.listdir(lib)):

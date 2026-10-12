@@ -238,9 +238,27 @@ machine files themselves.
 
 ## Sharing machines
 
-Machines are just directories. Today they ship in the repo and load from
-the registry list. Loading user machines from a folder (e.g.
-`~/Library/Application Support/slab/machines/`) is planned. A future
-registry could index public machines and let users search/install
-from within the app, but the format doesn't need anything fancy — it's
-text files plus a few binary assets.
+Machines are just directories. The factory's ship in the repo and load
+from the registry list. **User machines** load from the home folder's
+`Machines/` (docs/25): each `<id>/<id>.fy`, after the builtins, sorted by
+id. The folder can be a symlink, so a machine can live in its own
+checkout and its edits show up at the next load. Its presets and assets
+sit beside it, as in the repo. An id a builtin already has is skipped,
+because projects name machines by id.
+
+A user machine includes its own files by relative path and the shipped
+library from the factory root: the host makes the factory root fy's
+include root, which is searched when an include isn't found next to the
+including file. So a user machine writes
+
+```forth
+include "kernel.fy"                          ( beside it )
+include "kernels/00-primitives/ctx.fy"       ( from the factory )
+include "machines/lib/manifest.fy"
+```
+
+`slab --describe`, headless renders and the app all load them, and
+slabkit finds their presets. A future registry could index public
+machines and let users search/install from within the app, but the
+format doesn't need anything fancy — it's text files plus a few binary
+assets.

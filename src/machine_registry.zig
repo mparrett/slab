@@ -10,6 +10,7 @@ const FyHost = fy_host_mod.FyHost;
 const fy_raw_machine_mod = @import("machines/fy_raw_machine.zig");
 const machine_desc = @import("machine_desc.zig");
 const rack_mod = @import("machines/rack.zig");
+const storage = @import("storage.zig");
 
 test {
     _ = fy_raw_machine_mod.FyRawMachine;
@@ -77,6 +78,123 @@ pub const builtin_machines = [_][]const u8{
 pub const MAX_MACHINES = 64;
 pub const MAX_NAME = 32;
 pub const MAX_PATH = 256;
+
+/// Builtins plus these stay under MAX_MACHINES.
+pub const MAX_USER_MACHINES = 32;
+
+// libc dir IO: the std.fs surface moved in zig 0.16 (see presets.zig).
+const DIR = opaque {};
+extern fn opendir(path: [*:0]const u8) ?*DIR;
+extern fn readdir(dir: *DIR) ?*Dirent;
+extern fn closedir(dir: *DIR) c_int;
+extern fn access(path: [*:0]const u8, mode: c_int) c_int;
+const Dirent = extern struct {
+    d_ino: u64,
+    d_seekoff: u64,
+    d_reclen: u16,
+    d_namlen: u16,
+    d_type: u8,
+    d_name: [1024]u8,
+};
+
+fn isBuiltin(id: []const u8) bool {
+    for (builtin_machines) |p| {
+        const bid = std.fs.path.basename(std.fs.path.dirname(p) orelse p);
+        if (std.mem.eql(u8, bid, id)) return true;
+    }
+    return false;
+}
+
+/// Machines in the home folder's Machines/ (docs/25 §The home folder):
+/// each `<id>/<id>.fy`, loaded after the builtins and sorted by id. The
+/// folder may be a symlink, so a machine can live in its own checkout. It
+/// includes the shipped kernels from the factory root (FyHost sets fy's
+/// include root). An id a builtin has is skipped: projects name machines
+/// by id, so a second one would be ambiguous.
+pub const UserMachines = struct {
+    paths: [MAX_USER_MACHINES][MAX_PATH]u8 = undefined,
+    lens: [MAX_USER_MACHINES]usize = @splat(0),
+    count: usize = 0,
+
+    pub fn path(self: *const UserMachines, i: usize) []const u8 {
+        return self.paths[i][0..self.lens[i]];
+    }
+
+    pub fn scan(self: *UserMachines) void {
+        var hb: [storage.MAX_PATH]u8 = undefined;
+        const home = storage.home(&hb);
+        if (home.len == 0) return;
+        var db: [storage.MAX_PATH:0]u8 = undefined;
+        const dir_path = std.fmt.bufPrintZ(&db, "{s}/Machines", .{home}) catch return;
+        self.scanDir(dir_path);
+    }
+
+    fn scanDir(self: *UserMachines, dir_path: [:0]const u8) void {
+        self.count = 0;
+        const dir = opendir(dir_path) orelse return;
+        defer _ = closedir(dir);
+        while (readdir(dir)) |e| {
+            const id = e.d_name[0..e.d_namlen];
+            if (id.len == 0 or id[0] == '.') continue;
+            var pb: [MAX_PATH:0]u8 = undefined;
+            const p = std.fmt.bufPrintZ(&pb, "{s}/{s}/{s}.fy", .{ dir_path, id, id }) catch continue;
+            if (access(p, 0) != 0) continue;
+            if (isBuiltin(id)) {
+                std.log.warn("user machine {s} skipped: a builtin machine has that id", .{p});
+                continue;
+            }
+            if (self.count == MAX_USER_MACHINES) {
+                std.log.warn("more than {d} user machines: {s} and later ones skipped", .{ MAX_USER_MACHINES, p });
+                break;
+            }
+            @memcpy(self.paths[self.count][0..p.len], p);
+            self.lens[self.count] = p.len;
+            self.count += 1;
+        }
+        // readdir order is the filesystem's: sort, so menus and load order are stable
+        var i: usize = 1;
+        while (i < self.count) : (i += 1) {
+            var j = i;
+            while (j > 0 and std.mem.lessThan(u8, self.path(j), self.path(j - 1))) : (j -= 1) {
+                std.mem.swap([MAX_PATH]u8, &self.paths[j], &self.paths[j - 1]);
+                std.mem.swap(usize, &self.lens[j], &self.lens[j - 1]);
+            }
+        }
+    }
+};
+
+test "user machines: <id>/<id>.fy folders, sorted, builtins and strays skipped" {
+    var tb: [MAX_PATH:0]u8 = undefined;
+    const root = std.fmt.bufPrintZ(&tb, "/tmp/slab-user-machines-test-{d}", .{std.c.getpid()}) catch unreachable;
+    const dirs = [_][]const u8{ "", "/zeta", "/alpha", "/juno2", "/stray" };
+    for (dirs) |d| {
+        var b: [MAX_PATH:0]u8 = undefined;
+        _ = std.c.mkdir(std.fmt.bufPrintZ(&b, "{s}{s}", .{ root, d }) catch unreachable, 0o755);
+    }
+    for ([_][]const u8{ "zeta", "alpha", "juno2" }) |id| {
+        var b: [MAX_PATH]u8 = undefined;
+        const f = std.fmt.bufPrint(&b, "{s}/{s}/{s}.fy", .{ root, id, id }) catch unreachable;
+        try @import("document.zig").writeFile(std.testing.allocator, f, "( test )\n");
+    }
+    // defers run last first: the files go, then the folders
+    defer for (0..dirs.len) |k| {
+        var b: [MAX_PATH:0]u8 = undefined;
+        _ = std.c.rmdir(std.fmt.bufPrintZ(&b, "{s}{s}", .{ root, dirs[dirs.len - 1 - k] }) catch unreachable);
+    };
+    defer for ([_][]const u8{ "zeta", "alpha", "juno2" }) |id| {
+        var b: [MAX_PATH:0]u8 = undefined;
+        _ = std.c.unlink(std.fmt.bufPrintZ(&b, "{s}/{s}/{s}.fy", .{ root, id, id }) catch unreachable);
+    };
+    // the juno2 folder's skip is expected: keep its warning out of the run
+    const saved_level = std.testing.log_level;
+    std.testing.log_level = .err;
+    defer std.testing.log_level = saved_level;
+    var um: UserMachines = .{};
+    um.scanDir(root);
+    try std.testing.expectEqual(@as(usize, 2), um.count);
+    try std.testing.expect(std.mem.endsWith(u8, um.path(0), "/alpha/alpha.fy"));
+    try std.testing.expect(std.mem.endsWith(u8, um.path(1), "/zeta/zeta.fy"));
+}
 
 /// Machines built in Zig rather than fy.
 pub const Native = enum(u8) { none, rack };
@@ -182,6 +300,17 @@ pub const Registry = struct {
     /// throwaway host, read the descriptor returned by `manifest`, and keep
     /// only the header (name, mode, sizes, ports). instantiate() re-reads
     /// the full descriptor on the instance's own host.
+    /// The home folder's user machines, after the builtins. One that doesn't
+    /// compile is logged and skipped, like a builtin at startup.
+    pub fn loadUserMachines(self: *Registry) void {
+        var user: UserMachines = .{};
+        user.scan();
+        for (0..user.count) |i| {
+            const path = user.path(i);
+            self.loadFyMachine(path) catch |err| std.log.err("user machine {s} failed to load: {s}", .{ path, @errorName(err) });
+        }
+    }
+
     pub fn loadFyMachine(self: *Registry, path: []const u8) !void {
         try self.ensureRoom();
 
