@@ -672,6 +672,23 @@ const Cli = struct {
     }
 };
 
+/// Open the window inside its monitor. 1400 x 860 points is wider than
+/// a 13-inch laptop's 1280 x 832, and raylib 6 no longer clamps the centred
+/// window to the monitor, so it could open almost entirely off-screen.
+fn fitWindowToMonitor() void {
+    const menu_bar = 38; // points macOS keeps at the top of the display
+    const m = c.rl.GetCurrentMonitor();
+    const mx: i32 = @intFromFloat(c.rl.GetMonitorPosition(m).x);
+    const my: i32 = @intFromFloat(c.rl.GetMonitorPosition(m).y);
+    const mw = c.rl.GetMonitorWidth(m);
+    const mh = c.rl.GetMonitorHeight(m);
+    if (mw <= 0 or mh <= menu_bar) return;
+    const w = @min(c.rl.GetScreenWidth(), mw);
+    const h = @min(c.rl.GetScreenHeight(), mh - menu_bar);
+    if (w != c.rl.GetScreenWidth() or h != c.rl.GetScreenHeight()) c.rl.SetWindowSize(w, h);
+    c.rl.SetWindowPosition(mx + @divTrunc(mw - w, 2), my + menu_bar + @divTrunc(mh - menu_bar - h, 2));
+}
+
 extern "c" fn _NSGetExecutablePath(buf: [*]u8, size: *u32) c_int;
 extern "c" fn chdir(path: [*:0]const u8) c_int;
 
@@ -802,6 +819,7 @@ pub fn main(init: std.process.Init) !void {
     c.rl.SetConfigFlags(c.rl.FLAG_WINDOW_RESIZABLE | c.rl.FLAG_VSYNC_HINT | c.rl.FLAG_WINDOW_HIGHDPI);
     c.rl.InitWindow(1400, 860, "SLAB");
     defer c.rl.CloseWindow();
+    fitWindowToMonitor();
     native_app.installMenus();
     var title_bar: native_app.TitleBar = .{};
     c.rl.SetTargetFPS(120);
