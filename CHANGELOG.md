@@ -6,6 +6,8 @@ GitHub are its section here (`tools/release.sh` copies them), so add to
 
 ## Unreleased
 
+## 0.0.13 — 2026-10-13
+
 - **Limiter changes keep parallel paths aligned.** Snapped lookahead changes
   update compensation before their first block, and the limiter uses its
   reported whole-sample delay consistently at ring boundaries. Machine
@@ -19,6 +21,18 @@ GitHub are its section here (`tools/release.sh` copies them), so add to
   compiler locks. Snapshot storage cannot be overwritten while audio uses
   it. Parallel workers sleep when idle, and live playback uses serial
   rendering when realtime worker admission is unavailable.
+
+- **Raw DSP avoids lazy interpreter thread-local initialization.** Audio
+  worker slots pass explicitly, and loop enable/bounds publish together.
+
+Known limits: large SMEAR windows can exceed small live-block budgets;
+continuously changing lookahead still uses chunk-granular compensation.
+Parallel playback still waits for admitted realtime workers. This release
+removes control-thread waits, without claiming a universal deadline guarantee.
+Insert chains support up to 128 effects. Limiter delay near whole-sample
+boundaries can differ by one sample from previous rounding. See
+[the realtime safety audit](https://github.com/nooga/slab/blob/v0.0.13/docs/37-realtime-safety.md)
+for details and tests.
 
 ## 0.0.12 — 2026-10-12
 
