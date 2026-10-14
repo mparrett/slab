@@ -166,6 +166,7 @@ pub const Rack = struct {
 
     fn adoptParts(self: *Rack) void {
         if (!self.versions.adopt()) return;
+        machine.codeBarrier();
         const v = self.versions.current();
         const previous = self.audio_parts;
         const n = self.audio_count;

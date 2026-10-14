@@ -59,6 +59,14 @@ pub const NoteEvent = extern struct {
     }
 };
 
+/// Audio, after adopting a version that may hold freshly JIT-compiled
+/// code: a context-synchronizing barrier, so this core fetches the new
+/// instructions (ARMv8 cross-modifying code). Render workers reach new code
+/// only after a semaphore wait, whose exception return already synchronizes.
+pub inline fn codeBarrier() void {
+    asm volatile ("isb" ::: .{ .memory = true });
+}
+
 // ── MachineCtx ───────────────────────────────────────────────────────
 //
 // Host fills this once per machine per block. Pointers are block-

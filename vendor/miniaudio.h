@@ -35060,6 +35060,11 @@ static AudioBufferList* ma_allocate_AudioBufferList__coreaudio(ma_uint32 sizeInF
     return pBufferList;
 }
 
+/* Slab: the capture callback reallocates its buffer when CoreAudio delivers
+more frames than it holds, which allocates on the realtime thread. Size it
+generously up front so that path stays a never-taken fallback. */
+#define MA_SLAB_CAPTURE_CAP(periodFrames) ((periodFrames) > 4096 ? (periodFrames) : 4096)
+
 static ma_result ma_device_realloc_AudioBufferList__coreaudio(ma_device* pDevice, ma_uint32 sizeInFrames, ma_format format, ma_uint32 channels, ma_stream_layout layout)
 {
     MA_ASSERT(pDevice != NULL);
@@ -36108,7 +36113,7 @@ static ma_result ma_device_init_internal__coreaudio(ma_context* pContext, ma_dev
         ma_bool32 isInterleaved = (bestFormat.mFormatFlags & kAudioFormatFlagIsNonInterleaved) == 0;
         AudioBufferList* pBufferList;
 
-        pBufferList = ma_allocate_AudioBufferList__coreaudio(pData->periodSizeInFramesOut, pData->formatOut, pData->channelsOut, (isInterleaved) ? ma_stream_layout_interleaved : ma_stream_layout_deinterleaved, &pContext->allocationCallbacks);
+        pBufferList = ma_allocate_AudioBufferList__coreaudio(MA_SLAB_CAPTURE_CAP(pData->periodSizeInFramesOut), pData->formatOut, pData->channelsOut, (isInterleaved) ? ma_stream_layout_interleaved : ma_stream_layout_deinterleaved, &pContext->allocationCallbacks);
         if (pBufferList == NULL) {
             ((ma_AudioComponentInstanceDispose_proc)pContext->coreaudio.AudioComponentInstanceDispose)(pData->audioUnit);
             return MA_OUT_OF_MEMORY;
@@ -36231,7 +36236,7 @@ static ma_result ma_device_reinit_internal__coreaudio(ma_device* pDevice, ma_dev
     #endif
         pDevice->coreaudio.audioUnitCapture          = (ma_ptr)data.audioUnit;
         pDevice->coreaudio.pAudioBufferList          = (ma_ptr)data.pAudioBufferList;
-        pDevice->coreaudio.audioBufferCapInFrames    = data.periodSizeInFramesOut;
+        pDevice->coreaudio.audioBufferCapInFrames    = MA_SLAB_CAPTURE_CAP(data.periodSizeInFramesOut);
 
         pDevice->capture.internalFormat              = data.formatOut;
         pDevice->capture.internalChannels            = data.channelsOut;
@@ -36306,7 +36311,7 @@ static ma_result ma_device_init__coreaudio(ma_device* pDevice, const ma_device_c
     #endif
         pDevice->coreaudio.audioUnitCapture                 = (ma_ptr)data.audioUnit;
         pDevice->coreaudio.pAudioBufferList                 = (ma_ptr)data.pAudioBufferList;
-        pDevice->coreaudio.audioBufferCapInFrames           = data.periodSizeInFramesOut;
+        pDevice->coreaudio.audioBufferCapInFrames           = MA_SLAB_CAPTURE_CAP(data.periodSizeInFramesOut);
         pDevice->coreaudio.originalPeriodSizeInFrames       = pDescriptorCapture->periodSizeInFrames;
         pDevice->coreaudio.originalPeriodSizeInMilliseconds = pDescriptorCapture->periodSizeInMilliseconds;
         pDevice->coreaudio.originalPeriods                  = pDescriptorCapture->periodCount;

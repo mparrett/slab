@@ -23,7 +23,7 @@ const storage = @import("storage.zig");
 
 /// Control-thread compiler serialization. Audio executes prepared callers
 /// and never acquires this mutex. Runtime assets use publication/retirement.
-pub var control_mutex: std.atomic.Mutex = .unlocked;
+pub var control_mutex: @import("fy").UnfairLock = .{};
 
 /// Compile a file with fy's instruction-cache flushes held, invalidating
 /// what it linked in one pass at the end instead of once per word
@@ -31,9 +31,7 @@ pub var control_mutex: std.atomic.Mutex = .unlocked;
 pub var batch_flush: bool = true;
 
 pub fn lockControl() void {
-    while (!control_mutex.tryLock()) {
-        std.Thread.yield() catch {};
-    }
+    control_mutex.lock();
 }
 
 pub fn unlockControl() void {

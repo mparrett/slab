@@ -924,17 +924,20 @@ pub fn main(init: std.process.Init) !void {
     // ── Audio device ─────────────────────────────────────────────────
     var audio: audio_mod.Audio = undefined;
     try audio.init();
+    live_audio = &audio;
+    defer live_audio = null;
     defer {
         audio.setRender(null, null);
         audio.deinit();
     }
     audio.setRender(&engine, engine_mod.Engine.renderCallback);
     var audio_gen = audio.device_gen;
+    var watchdog_seen: u32 = 0;
     if (engine.pool) |p| {
         audio.stop();
         const wg = audio.workgroup();
         if (cli.rt_workers) std.log.info("render workers: real-time, {s}", .{if (wg != null) "in the audio workgroup" else "no audio workgroup"});
-        p.setWorkgroup(wg);
+        _ = p.setWorkgroup(wg);
         try audio.start();
     }
 
@@ -1160,18 +1163,28 @@ pub fn main(init: std.process.Init) !void {
         c.rl.ClearBackground(@bitCast(ui_style.chassis));
 
         const rec_busy = recorder.isRecording() or rec_finishing;
+        // An offline render (export, bounce, freeze) owns the engine with
+        // the device stopped: nothing here may start it again.
+        const offline = bounce_job.active or render_job.active;
         // The mic opens only while it can be used: an armed track or a take
         // in flight. Idle, the device is playback-only (see Audio.want_capture).
-        audio.setWantCapture(rec_busy or firstArmedAudioTrack(tracks) != null) catch |err| {
+        if (!offline) audio.setWantCapture(rec_busy or firstArmedAudioTrack(tracks) != null) catch |err| {
             std.log.err("audio device switch failed: {s}", .{@errorName(err)});
             status.set("Audio device failed", .{});
         };
-        // A reopened device has a new I/O workgroup for the workers.
-        if (audio.device_gen != audio_gen) {
+        // A reopened or rerouted device has a new I/O workgroup for the
+        // workers; after an offline render they re-request real-time policy.
+        const rejoin = if (engine.pool) |p| p.rejoinRequested() else false;
+        if (!offline and (audio.device_gen != audio_gen or rejoin)) {
             audio_gen = audio.device_gen;
             if (engine.pool) |p| {
+                const trips = p.watchdog_trips.load(.monotonic);
+                if (trips != watchdog_seen) {
+                    watchdog_seen = trips;
+                    std.log.warn("render workers kept the audio thread waiting; rendering serially until they rejoin", .{});
+                }
                 audio.stop();
-                p.setWorkgroup(audio.workgroup());
+                _ = p.setWorkgroup(audio.workgroup());
                 audio.start() catch |err| {
                     std.log.err("audio restart failed: {s}", .{@errorName(err)});
                     status.set("Audio device failed", .{});
@@ -1457,11 +1470,10 @@ pub fn main(init: std.process.Init) !void {
             }, tracks, &transport, &selected_track, &selected_clip, &rename, &dirty);
         }
         if (ares.add_track or ares.add_bus) {
-            if (appendTrack(alloc, &history, &audio, &tracks_buf, &track_count, &transport, ares.add_bus)) |ti| {
+            if (appendTrack(alloc, &history, &audio, &engine, &tracks_buf, &track_count, &transport, ares.add_bus)) |ti| {
                 selected_track = ti;
                 selected_clip = null;
                 tracks = tracks_buf[0..track_count];
-                engine.tracks = tracks;
                 dirty = true;
                 status.set("Added {s}", .{tracks[ti].name()});
             } else |err| status.set("Can't add: {s}", .{@errorName(err)});
@@ -1573,11 +1585,10 @@ pub fn main(init: std.process.Init) !void {
                 }
             }
         } else {
-            applyRouteEdit(alloc, &history, &status, &audio, edit, &tracks_buf, &track_count, &transport) catch |err| {
+            applyRouteEdit(alloc, &history, &status, &audio, &engine, edit, &tracks_buf, &track_count, &transport) catch |err| {
                 status.set("Routing failed: {s}", .{@errorName(err)});
             };
             tracks = tracks_buf[0..track_count];
-            engine.tracks = tracks;
             dirty = true;
         };
         const selection_changed = !clipRefEq(selected_clip, prev_selected_clip);
@@ -2100,7 +2111,7 @@ pub fn main(init: std.process.Init) !void {
 
         // Finalize a worker render once it signals done (or after a cancel).
         if (render_job.active and render_job.done.load(.acquire)) {
-            finishRender(alloc, &audio, &render_job, &status, &render_dlg);
+            finishRender(alloc, &audio, engine.pool, &render_job, &status, &render_dlg);
             render_dlg.active = render_dlg.showing_card;
         }
 
@@ -4243,10 +4254,11 @@ fn renderProgress(job: *RenderJob) export_dialog.Progress {
 
 /// Join the worker, restart the device and report: the status line, and
 /// the sheet's report; Finder shows the files when the settings ask.
-fn finishRender(alloc: std.mem.Allocator, audio: *audio_mod.Audio, job: *RenderJob, status: *StatusMessage, dlg: *export_dialog.State) void {
+fn finishRender(alloc: std.mem.Allocator, audio: *audio_mod.Audio, engine_pool: ?*engine_mod.RenderPool, job: *RenderJob, status: *StatusMessage, dlg: *export_dialog.State) void {
     _ = alloc;
     if (job.thread) |t| t.join();
     job.thread = null;
+    if (engine_pool) |p| p.requestRejoin();
     audio.start() catch |err| std.log.err("audio restart failed: {s}", .{@errorName(err)});
     if (job.result) |*r| {
         var card = export_dialog.Card{
@@ -4474,6 +4486,8 @@ fn endBounce(audio: ?*audio_mod.Audio, engine: *engine_mod.Engine, pool: *audio_
         t.publishSnapshot(pool);
     }
     engine.publishRouting();
+    // Workers ran the bounce flat out and may have lost real-time policy.
+    if (engine.pool) |p| p.requestRejoin();
     if (audio) |a| a.start() catch |err| std.log.err("audio restart failed: {s}", .{@errorName(err)});
     job.* = .{};
 }
@@ -4986,9 +5000,16 @@ fn thawBounce(alloc: std.mem.Allocator, history: *history_mod.History, status: *
     status.set("Thawed", .{});
 }
 
+/// The app's running device, for edits that move tracks in `tracks_buf`
+/// (the callback renders them in place); null in headless tools.
+var live_audio: ?*audio_mod.Audio = null;
+
 /// Insert `t` at `pos`, the tracks from there moving up one; outputs,
-/// sends and keys follow. Audio stopped.
+/// sends and keys follow. Stops the device while the tracks move.
 fn insertTrackAt(engine: *engine_mod.Engine, tracks_buf: *[MAX_TRACKS]track_mod.Track, track_count: *usize, pos: u8, t: track_mod.Track) void {
+    const dev = if (live_audio) |a| (if (a.isRunning()) a else null) else null;
+    if (dev) |a| a.stop();
+    defer if (dev) |a| a.start() catch |err| std.log.err("audio restart failed: {s}", .{@errorName(err)});
     var i = track_count.*;
     while (i > pos) : (i -= 1) tracks_buf[i] = tracks_buf[i - 1];
     track_count.* += 1;
@@ -5528,6 +5549,7 @@ fn applyRouteEdit(
     history: *history_mod.History,
     status: anytype,
     audio: *audio_mod.Audio,
+    engine: *engine_mod.Engine,
     edit: arrangement.RouteEdit,
     tracks_buf: *[MAX_TRACKS]track_mod.Track,
     track_count: *usize,
@@ -5550,6 +5572,8 @@ fn applyRouteEdit(
             audio.stop();
             defer audio.start() catch |err| std.log.err("audio restart failed: {s}", .{@errorName(err)});
             target = @intCast(try newTrack(alloc, tracks_buf, track_count, true, if (edit.what == .output_new_bus) "Group" else "Return"));
+            // The callback reads this slice: swap it while stopped.
+            engine.tracks = tracks_buf[0..track_count.*];
         },
         .delete, .duplicate, .group, .freeze, .unfreeze, .flatten, .time => unreachable,
     }
@@ -5636,6 +5660,7 @@ fn appendTrack(
     alloc: std.mem.Allocator,
     history: *history_mod.History,
     audio: *audio_mod.Audio,
+    engine: *engine_mod.Engine,
     tracks_buf: *[MAX_TRACKS]track_mod.Track,
     track_count: *usize,
     transport: *const transport_mod.Transport,
@@ -5647,7 +5672,10 @@ fn appendTrack(
     const ti = blk: {
         audio.stop();
         defer audio.start() catch |err| std.log.err("audio restart failed: {s}", .{@errorName(err)});
-        break :blk try newTrack(alloc, tracks_buf, track_count, bus, if (bus) "Bus" else "Track");
+        const ti = try newTrack(alloc, tracks_buf, track_count, bus, if (bus) "Bus" else "Track");
+        // The callback reads this slice: swap it while stopped.
+        engine.tracks = tracks_buf[0..track_count.*];
+        break :blk ti;
     };
     try history.pushUndo(alloc, before);
     return ti;
