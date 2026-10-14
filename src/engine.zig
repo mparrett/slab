@@ -1092,8 +1092,13 @@ pub const Engine = struct {
             if (!self.renderReady(&scratch, 0)) {
                 // With no helpers every unfinished node has an input ready
                 // in this acyclic graph; a failure is a scheduler bug.
-                std.debug.assert(helped);
-                if (helped) self.pool.?.waitForChange(&self.nodes_done, done);
+                // Never spin on it: the block goes out silent.
+                if (!helped) {
+                    std.debug.assert(false);
+                    @memset(out[0 .. @as(usize, frames) * audio.CHANNELS], 0);
+                    return;
+                }
+                self.pool.?.waitForChange(&self.nodes_done, done);
             }
         }
         if (helped) self.pool.?.end();
@@ -4300,10 +4305,10 @@ test "parallel rendering: workers render a routed project bit-identical to one t
     // Real-time workers, moved between workgroups (none here: no device).
     eng.deinitPool(alloc);
     try eng.initPool(alloc, 4, .{ .period_ns = 256 * std.time.ns_per_s / 48_000 });
-    eng.pool.?.setWorkgroup(null);
+    _ = eng.pool.?.setWorkgroup(null);
     eng.renderOffline(parallel, frames, 0, null, null);
     try testing.expectEqualSlices(u32, @ptrCast(serial), @ptrCast(parallel));
-    eng.pool.?.setWorkgroup(null);
+    _ = eng.pool.?.setWorkgroup(null);
     var peak: f32 = 0;
     for (serial) |x| peak = @max(peak, @abs(x));
     try testing.expect(peak > 0.1);

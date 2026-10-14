@@ -21,10 +21,10 @@ const Entry = struct {
 };
 
 var entries: [MAX]Entry = [_]Entry{.{}} ** MAX;
-var lock: std.atomic.Mutex = .unlocked;
+var lock: @import("fy").UnfairLock = .{};
 
 fn take() void {
-    while (!lock.tryLock()) std.Thread.yield() catch {};
+    lock.lock();
 }
 
 fn key(samples: []const f64, frame_hint: usize, normalize: bool) u64 {

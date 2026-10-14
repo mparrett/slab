@@ -276,6 +276,10 @@ pub const Audio = struct {
         }
     }
 
+    pub fn isRunning(self: *Audio) bool {
+        return self.initialized and c.ma.ma_device_is_started(&self.device) == c.ma.MA_TRUE;
+    }
+
     pub fn stop(self: *Audio) void {
         if (!self.initialized) return;
         _ = c.ma.ma_device_stop(&self.device);

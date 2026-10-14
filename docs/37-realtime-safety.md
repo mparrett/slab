@@ -241,3 +241,74 @@ buffers; aggregate reset cost scales with the loaded machines. Parallel
 callbacks still join admitted workers. Kernel complexity, physical memory
 residency and OS/library behavior are outside the ownership proof. None of
 these should be described as a universal worst-case realtime guarantee.
+
+## Second callback audit (2026-10-14)
+
+A second pass traced the same entry points plus the render pool's
+admission lifecycle, the fy raw call ABI and miniaudio's CoreAudio
+callbacks. Fixed:
+
+- **Track insertion moved live tracks.** `insertTrackAt` shifts `Track`
+  values (including audio-owned handoff slots) within `tracks_buf`; five
+  callers (slice to sampler, extract, stems, audio to notes, bounce
+  placement) ran it with the device playing. It now stops the device
+  itself (`live_audio`, null headless) and restores its prior state.
+  Adding a track or bus also swaps `engine.tracks` inside its stopped
+  region instead of after restart.
+- **Stale workgroup after a reroute.** miniaudio reinitializes and
+  restarts a rerouted default device on its own thread before notifying.
+  The first live block after a workgroup move now records its thread;
+  a block on any other thread renders serially and requests a rejoin,
+  which the UI performs with the device stopped. `setWorkgroup` refuses
+  (and leaves the request pending) instead of asserting while a block is
+  open.
+- **Policy demotion after offline renders.** XNU demotes a
+  time-constraint thread that overruns its computation budget, which an
+  offline render does by design. Every workgroup move re-requests the
+  policy and recomputes `rt_ready`; ending a bounce/freeze or export
+  requests a move. Live blocks wake at most
+  `os_workgroup_max_parallel_threads - 1` helpers.
+- **Device restarts during offline renders.** The UI loop no longer
+  switches the capture device or rejoins workers while a bounce, freeze
+  or export owns the stopped engine.
+- **Unbounded serial loop.** A scheduler failure with no helpers emitted
+  `assert` in Debug and spun forever in release builds; it now outputs a
+  silent block.
+- **First-touch faults.** Stretcher banks' `undefined` FFT scratch
+  (~320 KB) was first written on audio; the UI now touches every page.
+  miniaudio's duplex capture callback reallocated its buffer when
+  CoreAudio delivered more frames than one period; the buffer is now
+  preallocated with 4096 frames of headroom (`MA_SLAB_CAPTURE_CAP`), so
+  that path is a fallback.
+- **Cross-modifying code.** Audio executes an `isb` after adopting a
+  track or rack version, so a core never runs stale instructions for a
+  freshly linked caller. Workers reach new code after a semaphore trap.
+- **Control-side spin locks.** fy's hot-patch lock, Slab's control lock
+  and the wavetable cache lock were `tryLock` + `yield` loops. None is
+  taken on audio, but they are now `os_unfair_lock` (`fy.UnfairLock`),
+  which sleeps and donates priority to the owner.
+
+Verified clean on the raw DSP path: `callRealtime` makes no syscalls,
+toggles no W^X state, flushes no caches, touches no TLS and allocates
+nothing; generated bodies contain no calls; frames stay under 4 KB.
+
+- **Wait watchdog.** XNU gives no notice when it demotes a worker
+  mid-session. The rendering thread times its completion waits in a live
+  block (`mach_absolute_time`, a commpage read). A block that waited more
+  than a quarter of the block period is a strike; `STRIKES` (2) in a row
+  clear workgroup admission, so live blocks render serially from the
+  next one, and request a move, which re-requests policy and re-admits
+  the workers. One fast block resets the count. A legitimately heavy node
+  on a worker can trip it too; the cost is serial blocks until the UI
+  moves the workers (one device stop/start). Trips are logged.
+
+Still open:
+
+- **Denormals.** No thread sets FPCR.FZ. Apple cores handle subnormals
+  in hardware with a small penalty, and several kernels flush manually.
+  Setting FZ on the callback, workers and offline threads together would
+  change output and need new bench goldens.
+- **Demotion during live playback** is bounded, not prevented: see the
+  watchdog below. The block that detects it has already waited.
+- The deadline limits listed above (SMEAR windows, reset cost, chunk-
+  granular PDC) are unchanged.

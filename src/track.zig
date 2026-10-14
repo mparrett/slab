@@ -385,6 +385,7 @@ pub const Track = struct {
     /// Audio only, before latency calculation or any render worker runs.
     pub fn adoptMachines(self: *Track) void {
         if (!self.chain.adopt()) return;
+        machine.codeBarrier();
         const v = self.chain.current();
         const previous_count = self.audio_effect_count;
         const previous = self.chain_state.previous_effects[0..previous_count];
@@ -731,6 +732,9 @@ pub const Track = struct {
     fn ensureBank(self: *Track, dst: *snap_mod.TrackSnapshot) void {
         if (self.stretch != null) return;
         if (std.heap.page_allocator.create(stretch_mod.Bank)) |b| {
+            // Touch every page here: the FFT scratch is `undefined`, and a
+            // fresh page first written on the audio thread is a zero-fill fault.
+            @memset(std.mem.asBytes(b), 0);
             b.* = .{};
             self.stretch = b;
             dst.stretch = b;

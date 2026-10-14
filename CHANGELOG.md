@@ -6,6 +6,22 @@ GitHub are its section here (`tools/release.sh` copies them), so add to
 
 ## Unreleased
 
+- **Adding tracks no longer races playback.** Slicing to a sampler,
+  extracting notes, chords or drums, placing stems and placing bounces
+  insert tracks with the device stopped, as adding and moving tracks
+  already did.
+
+- **Parallel rendering follows the output device.** When macOS switches
+  the default output (headphones, AirPods), playback renders serially
+  until the render workers have joined the new device's workgroup. After
+  a bounce, freeze or export they re-request realtime scheduling. Arming
+  a track during a freeze or export no longer restarts the device.
+  If workers keep the audio thread waiting for two blocks in a row,
+  playback renders serially until they have been re-admitted.
+
+- **Fewer first-use stalls.** Clip stretchers and the duplex capture
+  buffer are allocated and touched before audio uses them.
+
 ## 0.0.13 — 2026-10-13
 
 - **Limiter changes keep parallel paths aligned.** Snapped lookahead changes

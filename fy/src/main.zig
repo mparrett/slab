@@ -22,20 +22,32 @@ const Dsp2 = @import("dsp2.zig");
 
 extern fn __clear_cache(start: usize, end: usize) callconv(.c) void;
 
-/// Minimal mutex for hot-patch coordination. Zig 0.16 removed
-/// `std.Thread.Mutex` in favour of the async `std.Io.Mutex` which
-/// requires an Io instance. This wrapper provides the tiny blocking
-/// lock/unlock surface fy uses, built on `std.atomic.Mutex` + yield.
-const HotMutex = struct {
-    state: std.atomic.Mutex = .unlocked,
+/// Blocking lock for control-side coordination (hot-patch servers, caches).
+/// Zig 0.16 removed `std.Thread.Mutex` in favour of `std.Io.Mutex`, which
+/// needs an Io instance. On macOS this is `os_unfair_lock`: waiters sleep in
+/// the kernel and donate priority to the owner, unlike a yield loop. Must be
+/// unlocked by the thread that locked it. Never take it on the audio thread.
+pub const UnfairLock = if (darwin) struct {
+    state: u32 = 0,
 
-    pub fn lock(m: *HotMutex) void {
-        while (!m.state.tryLock()) {
-            std.Thread.yield() catch {};
-        }
+    extern "c" fn os_unfair_lock_lock(lock: *u32) void;
+    extern "c" fn os_unfair_lock_unlock(lock: *u32) void;
+
+    pub fn lock(m: *@This()) void {
+        os_unfair_lock_lock(&m.state);
     }
 
-    pub fn unlock(m: *HotMutex) void {
+    pub fn unlock(m: *@This()) void {
+        os_unfair_lock_unlock(&m.state);
+    }
+} else struct {
+    state: std.atomic.Mutex = .unlocked,
+
+    pub fn lock(m: *@This()) void {
+        while (!m.state.tryLock()) std.Thread.yield() catch {};
+    }
+
+    pub fn unlock(m: *@This()) void {
         m.state.unlock();
     }
 };
@@ -99,7 +111,7 @@ pub const Fy = struct {
     heap: Heap,
     struct_layouts: compat.ArrayList(StructLayout),
     untagged_struct_layouts: compat.ArrayList(StructLayout),
-    hot_mutex: HotMutex = .{},
+    hot_mutex: UnfairLock = .{},
     // Cache of compiled dsp2 raw-repeated callers, keyed by word name, so the
     // one-shot convenience calls (tests, kernel probe) don't rebuild + relink
     // the JIT wrapper on every call. Invalidated by dsp2_caller_gen, which is
