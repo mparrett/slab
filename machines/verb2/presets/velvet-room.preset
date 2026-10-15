@@ -1,0 +1,1 @@
+{"slab": "preset", "schema": 1, "machine": "verb2", "note": "Dense, flutter-free room for drums and guitars: velvet scattering, no input smear", "params": {"verb-predelay": 0.008, "verb-decay": 0.9, "verb-damp": 5500, "verb-tone": 9000, "verb-mix": 0.25, "verb-mod": 4, "verb-algo": 1, "verb-size": 0.85, "verb-diff": 0.2, "verb-dens": 1, "verb-early": 0.5}}

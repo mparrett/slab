@@ -20,6 +20,16 @@
   and damping; lines 1 and 6 modulated.  L out from the even lines, R
   from the odd.
 
+  DENSITY VELVET makes the feedback matrix a velvet feedback matrix
+  [Schlecht and Habets 2020, Scattering in Feedback Delay Networks]:
+  Hadamard, 8 short delays, Hadamard, 8 longer delays, Hadamard.  It is
+  lossless, so it only spreads each echo into 64 pulses per trip around
+  the loop and the tail turns dense several times sooner.  The scattering
+  delays add their mean to every loop, so each line gives that much up
+  and its gain counts it [the paper's group-delay attenuation]: the size
+  and DECAY stay where they were.  CLASSIC is the plain Hadamard,
+  unchanged bit for bit.
+
   DECAY is the time in seconds for the low-mid band to fall 60 dB.  Each
   loop's gain comes from its own length [10^(-3 len / (DECAY sr))], so a
   SIZE change keeps the time.  BASS multiplies the time below XOVER
@@ -62,7 +72,9 @@
                                    fap-l3   223835   1351
                                    fap-r0   225186    385
                                    fap-r3   225571   1441
-                                   total    227012  -> 2.37 s at 96 kHz )
+                                   vs1 i    227012 + 512 i   512
+                                   vs2 i    231108 + 3904 i  3904
+                                   total    262340  -> 2.74 s at 96 kHz )
 
 include "../00-primitives/ctx.fy"  ( kernel ABI: Ctx, Io )
 include "../00-primitives/math.fy"
@@ -93,6 +105,7 @@ ustruct: VerbState
   ( gate )
   f64 gate-t     ( samples since the last sample over the threshold )
   f64 gate-g     ( smoothed wet gain in GATED mode )
+  f64 vpos 16    ( velvet scattering rings: stage 1 lines 0..7, stage 2 8..15 )
 ;
 
 ustruct: VerbParams
@@ -117,6 +130,7 @@ ustruct: VerbParams
   f64 diff       ( input diffusion 0..1 )
   f64 early      ( early reflections level )
   f64 width
+  f64 dens       ( 0 CLASSIC, 1 VELVET: the FDN's feedback matrix )
   ( derived - filled by verb-block-prepare )
   f64 sr
   f64 scale      ( plate: sr / 29761 * size )
@@ -137,6 +151,7 @@ ustruct: VerbParams
   f64 mod-k      ( oscillator step, 2 pi f / sr )
   f64 mod-spl
   f64 ap-g1  f64 ap-g2  f64 fap-g   ( input diffusion gains )
+  f64 vlen 16    ( velvet scattering delays, samples [vpos order] )
   f64 er-tl 8    ( early reflection taps, samples )
   f64 er-tr 8
   f64 gate-thr   ( linear )
@@ -283,18 +298,58 @@ dsp: verb-block-prepare
   room 1061.0 3083.0 select fs f* 2.0 9249.0 fclamp floor | l5 |
   room 1193.0 3461.0 select fs f* 2.0 10383.0 fclamp floor | l6 |
   room 1319.0 3833.0 select fs f* 2.0 11499.0 fclamp floor | l7 |
-  l0 params.flen& 0.0 f!i  l1 params.flen& 1.0 f!i
-  l2 params.flen& 2.0 f!i  l3 params.flen& 3.0 f!i
-  l4 params.flen& 4.0 f!i  l5 params.flen& 5.0 f!i
-  l6 params.flen& 6.0 f!i  l7 params.flen& 7.0 f!i
-  l0 rt sr vb-loop-g params.fg& 0.0 f!i  l1 rt sr vb-loop-g params.fg& 1.0 f!i
-  l2 rt sr vb-loop-g params.fg& 2.0 f!i  l3 rt sr vb-loop-g params.fg& 3.0 f!i
-  l4 rt sr vb-loop-g params.fg& 4.0 f!i  l5 rt sr vb-loop-g params.fg& 5.0 f!i
-  l6 rt sr vb-loop-g params.fg& 6.0 f!i  l7 rt sr vb-loop-g params.fg& 7.0 f!i
-  l0 rtl sr vb-loop-g params.fg-lo& 0.0 f!i  l1 rtl sr vb-loop-g params.fg-lo& 1.0 f!i
-  l2 rtl sr vb-loop-g params.fg-lo& 2.0 f!i  l3 rtl sr vb-loop-g params.fg-lo& 3.0 f!i
-  l4 rtl sr vb-loop-g params.fg-lo& 4.0 f!i  l5 rtl sr vb-loop-g params.fg-lo& 5.0 f!i
-  l6 rtl sr vb-loop-g params.fg-lo& 6.0 f!i  l7 rtl sr vb-loop-g params.fg-lo& 7.0 f!i
+  ( VELVET: stage 1 delays u p1, stage 2 8u p2, spread over 1..8 with
+    the order scrambled so no two paths line up; u is the pulse spacing,
+    ~1/8 of a sample's worth per pulse in a room, ~1/21 in a hall )
+  params.dens 0.5 f> | vel |
+  room 7.0 19.0 select fs f* | u |
+  u 8.0 f* | u8 |
+  u 1.0 f* 1.0 511.0 fclamp floor params.vlen& 0.0 f!i
+  u 4.3 f* 1.0 511.0 fclamp floor params.vlen& 1.0 f!i
+  u 2.6 f* 1.0 511.0 fclamp floor params.vlen& 2.0 f!i
+  u 7.1 f* 1.0 511.0 fclamp floor params.vlen& 3.0 f!i
+  u 5.4 f* 1.0 511.0 fclamp floor params.vlen& 4.0 f!i
+  u 3.2 f* 1.0 511.0 fclamp floor params.vlen& 5.0 f!i
+  u 8.0 f* 1.0 511.0 fclamp floor params.vlen& 6.0 f!i
+  u 6.3 f* 1.0 511.0 fclamp floor params.vlen& 7.0 f!i
+  u8 3.1 f* 1.0 3903.0 fclamp floor params.vlen& 8.0 f!i
+  u8 6.6 f* 1.0 3903.0 fclamp floor params.vlen& 9.0 f!i
+  u8 1.2 f* 1.0 3903.0 fclamp floor params.vlen& 10.0 f!i
+  u8 4.9 f* 1.0 3903.0 fclamp floor params.vlen& 11.0 f!i
+  u8 7.8 f* 1.0 3903.0 fclamp floor params.vlen& 12.0 f!i
+  u8 2.4 f* 1.0 3903.0 fclamp floor params.vlen& 13.0 f!i
+  u8 5.7 f* 1.0 3903.0 fclamp floor params.vlen& 14.0 f!i
+  u8 8.3 f* 1.0 3903.0 fclamp floor params.vlen& 15.0 f!i
+  ( the mean path through the scattering: every input reaches every
+    output equally, so it is the two stages' mean delays )
+  params.vlen& 0.0 f@i params.vlen& 1.0 f@i f+ params.vlen& 2.0 f@i f+
+  params.vlen& 3.0 f@i f+ params.vlen& 4.0 f@i f+ params.vlen& 5.0 f@i f+
+  params.vlen& 6.0 f@i f+ params.vlen& 7.0 f@i f+
+  params.vlen& 8.0 f@i f+ params.vlen& 9.0 f@i f+ params.vlen& 10.0 f@i f+
+  params.vlen& 11.0 f@i f+ params.vlen& 12.0 f@i f+ params.vlen& 13.0 f@i f+
+  params.vlen& 14.0 f@i f+ params.vlen& 15.0 f@i f+ 0.125 f* | vmean |
+  vel vmean 0.0 select | tau |
+  tau floor | taul |
+  ( each line gives up the mean scattering delay; gains count the whole
+    loop.  CLASSIC: tau 0, the lengths and gains exactly as before )
+  l0 taul f- 2.0 fmax | m0 |  l1 taul f- 2.0 fmax | m1 |
+  l2 taul f- 2.0 fmax | m2 |  l3 taul f- 2.0 fmax | m3 |
+  l4 taul f- 2.0 fmax | m4 |  l5 taul f- 2.0 fmax | m5 |
+  l6 taul f- 2.0 fmax | m6 |  l7 taul f- 2.0 fmax | m7 |
+  m0 params.flen& 0.0 f!i  m1 params.flen& 1.0 f!i
+  m2 params.flen& 2.0 f!i  m3 params.flen& 3.0 f!i
+  m4 params.flen& 4.0 f!i  m5 params.flen& 5.0 f!i
+  m6 params.flen& 6.0 f!i  m7 params.flen& 7.0 f!i
+  m0 tau f+ | k0 |  m1 tau f+ | k1 |  m2 tau f+ | k2 |  m3 tau f+ | k3 |
+  m4 tau f+ | k4 |  m5 tau f+ | k5 |  m6 tau f+ | k6 |  m7 tau f+ | k7 |
+  k0 rt sr vb-loop-g params.fg& 0.0 f!i  k1 rt sr vb-loop-g params.fg& 1.0 f!i
+  k2 rt sr vb-loop-g params.fg& 2.0 f!i  k3 rt sr vb-loop-g params.fg& 3.0 f!i
+  k4 rt sr vb-loop-g params.fg& 4.0 f!i  k5 rt sr vb-loop-g params.fg& 5.0 f!i
+  k6 rt sr vb-loop-g params.fg& 6.0 f!i  k7 rt sr vb-loop-g params.fg& 7.0 f!i
+  k0 rtl sr vb-loop-g params.fg-lo& 0.0 f!i  k1 rtl sr vb-loop-g params.fg-lo& 1.0 f!i
+  k2 rtl sr vb-loop-g params.fg-lo& 2.0 f!i  k3 rtl sr vb-loop-g params.fg-lo& 3.0 f!i
+  k4 rtl sr vb-loop-g params.fg-lo& 4.0 f!i  k5 rtl sr vb-loop-g params.fg-lo& 5.0 f!i
+  k6 rtl sr vb-loop-g params.fg-lo& 6.0 f!i  k7 rtl sr vb-loop-g params.fg-lo& 7.0 f!i
   113.0 fs f* 2.0 339.0 fclamp floor params.fap-len& 0.0 f!i
   211.0 fs f* 2.0 633.0 fclamp floor params.fap-len& 1.0 f!i
   331.0 fs f* 2.0 993.0 fclamp floor params.fap-len& 2.0 f!i
@@ -469,6 +524,71 @@ dsp: fdn-wr | state:VerbState params:VerbParams buf off i x -- |
   p params.flen& i f@i vb-next state.fpos& i f!i
 ;
 
+( The last butterfly stage of the classic Hadamard [b0..b7 are the first
+  two stages' sums], scaled, plus the input: the line writes. )
+dsp: fdn-wr-classic | state:VerbState params:VerbParams buf jl jr b0 b1 b2 b3 b4 b5 b6 b7 -- |
+  state params buf 157214.0 0.0  b0 b4 f+ 0.35355339059327373 f* jl f+  fdn-wr
+  state params buf 161559.0 1.0  b1 b5 f+ 0.35355339059327373 f* jr f+  fdn-wr
+  state params buf 167066.0 2.0  b2 b6 f+ 0.35355339059327373 f* jl f+  fdn-wr
+  state params buf 173277.0 3.0  b3 b7 f+ 0.35355339059327373 f* jr f+  fdn-wr
+  state params buf 180478.0 4.0  b0 b4 f- 0.35355339059327373 f* jl f+  fdn-wr
+  state params buf 188729.0 5.0  b1 b5 f- 0.35355339059327373 f* jr f+  fdn-wr
+  state params buf 197982.0 6.0  b2 b6 f- 0.35355339059327373 f* jl f+  fdn-wr
+  state params buf 208529.0 7.0  b3 b7 f- 0.35355339059327373 f* jr f+  fdn-wr
+;
+
+( x0..x7 -- y0..y7 : an orthonormal 8-point Hadamard, three butterfly
+  stages and 1/sqrt 8. )
+dsp: vb-h8 | x0 x1 x2 x3 x4 x5 x6 x7 -- y0 y1 y2 y3 y4 y5 y6 y7 |
+  x0 x1 f+ | a0 |  x0 x1 f- | a1 |  x2 x3 f+ | a2 |  x2 x3 f- | a3 |
+  x4 x5 f+ | a4 |  x4 x5 f- | a5 |  x6 x7 f+ | a6 |  x6 x7 f- | a7 |
+  a0 a2 f+ | b0 |  a1 a3 f+ | b1 |  a0 a2 f- | b2 |  a1 a3 f- | b3 |
+  a4 a6 f+ | b4 |  a5 a7 f+ | b5 |  a4 a6 f- | b6 |  a5 a7 f- | b7 |
+  b0 b4 f+ 0.35355339059327373 f*  b1 b5 f+ 0.35355339059327373 f*
+  b2 b6 f+ 0.35355339059327373 f*  b3 b7 f+ 0.35355339059327373 f*
+  b0 b4 f- 0.35355339059327373 f*  b1 b5 f- 0.35355339059327373 f*
+  b2 b6 f- 0.35355339059327373 f*  b3 b7 f- 0.35355339059327373 f*
+;
+
+( state params buf off j x -- y : velvet scattering ring j, a plain delay
+  of vlen[j] samples. )
+dsp: vb-vs | state:VerbState params:VerbParams buf off j x -- y |
+  state.vpos& | vp |
+  vp j f@i | p |
+  off p f+ | idx |
+  buf idx f@i | v |
+  x buf idx f!i
+  p params.vlen& j f@i vb-next vp j f!i
+  v
+;
+
+( VELVET: the classic Hadamard's last stage, then delays, Hadamard,
+  delays, Hadamard - a velvet feedback matrix - plus the input. )
+dsp: fdn-wr-velvet | state:VerbState params:VerbParams buf jl jr b0 b1 b2 b3 b4 b5 b6 b7 -- |
+  b0 b4 f+ 0.35355339059327373 f* | c0 |  b1 b5 f+ 0.35355339059327373 f* | c1 |
+  b2 b6 f+ 0.35355339059327373 f* | c2 |  b3 b7 f+ 0.35355339059327373 f* | c3 |
+  b0 b4 f- 0.35355339059327373 f* | c4 |  b1 b5 f- 0.35355339059327373 f* | c5 |
+  b2 b6 f- 0.35355339059327373 f* | c6 |  b3 b7 f- 0.35355339059327373 f* | c7 |
+  state params buf 227012.0 0.0 c0 vb-vs  state params buf 227524.0 1.0 c1 vb-vs
+  state params buf 228036.0 2.0 c2 vb-vs  state params buf 228548.0 3.0 c3 vb-vs
+  state params buf 229060.0 4.0 c4 vb-vs  state params buf 229572.0 5.0 c5 vb-vs
+  state params buf 230084.0 6.0 c6 vb-vs  state params buf 230596.0 7.0 c7 vb-vs
+  vb-h8 | e0 e1 e2 e3 e4 e5 e6 e7 |
+  state params buf 231108.0 8.0 e0 vb-vs  state params buf 235012.0 9.0 e1 vb-vs
+  state params buf 238916.0 10.0 e2 vb-vs  state params buf 242820.0 11.0 e3 vb-vs
+  state params buf 246724.0 12.0 e4 vb-vs  state params buf 250628.0 13.0 e5 vb-vs
+  state params buf 254532.0 14.0 e6 vb-vs  state params buf 258436.0 15.0 e7 vb-vs
+  vb-h8 | f0 f1 f2 f3 f4 f5 f6 f7 |
+  state params buf 157214.0 0.0  f0 jl f+  fdn-wr
+  state params buf 161559.0 1.0  f1 jr f+  fdn-wr
+  state params buf 167066.0 2.0  f2 jl f+  fdn-wr
+  state params buf 173277.0 3.0  f3 jr f+  fdn-wr
+  state params buf 180478.0 4.0  f4 jl f+  fdn-wr
+  state params buf 188729.0 5.0  f5 jr f+  fdn-wr
+  state params buf 197982.0 6.0  f6 jl f+  fdn-wr
+  state params buf 208529.0 7.0  f7 jr f+  fdn-wr
+;
+
 ( state params buf xl xr ma mb -- wl wr : one FDN sample. )
 dsp: verb-fdn | state:VerbState params:VerbParams buf xl xr ma mb -- wl wr |
   ( input diffusion, per side )
@@ -499,14 +619,10 @@ dsp: verb-fdn | state:VerbState params:VerbParams buf xl xr ma mb -- wl wr |
   a4 a6 f+ | b4 |  a5 a7 f+ | b5 |  a4 a6 f- | b6 |  a5 a7 f- | b7 |
   il 0.5 f* | jl |
   ir 0.5 f* | jr |
-  state params buf 157214.0 0.0  b0 b4 f+ 0.35355339059327373 f* jl f+  fdn-wr
-  state params buf 161559.0 1.0  b1 b5 f+ 0.35355339059327373 f* jr f+  fdn-wr
-  state params buf 167066.0 2.0  b2 b6 f+ 0.35355339059327373 f* jl f+  fdn-wr
-  state params buf 173277.0 3.0  b3 b7 f+ 0.35355339059327373 f* jr f+  fdn-wr
-  state params buf 180478.0 4.0  b0 b4 f- 0.35355339059327373 f* jl f+  fdn-wr
-  state params buf 188729.0 5.0  b1 b5 f- 0.35355339059327373 f* jr f+  fdn-wr
-  state params buf 197982.0 6.0  b2 b6 f- 0.35355339059327373 f* jl f+  fdn-wr
-  state params buf 208529.0 7.0  b3 b7 f- 0.35355339059327373 f* jr f+  fdn-wr
+  params.dens 0.5 f<
+  [ state params buf jl jr b0 b1 b2 b3 b4 b5 b6 b7 fdn-wr-classic ]
+  [ state params buf jl jr b0 b1 b2 b3 b4 b5 b6 b7 fdn-wr-velvet ]
+  ifte
   wl wr
 ;
 

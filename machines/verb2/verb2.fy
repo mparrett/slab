@@ -3,7 +3,8 @@
 
   The DSP lives in the kernels rig [kernels/07-effects/reverb.fy]; this
   file declares the machine.  One true-stereo pass on one packed buffer:
-  ALGO picks the tank, DECAY is in seconds, BASS/XOVER set the low decay,
+  ALGO picks the tank, DENSITY VELVET scatters the FDN's echoes, DECAY
+  is in seconds, BASS/XOVER set the low decay,
   EARLY adds reflections, GATE is the 80s non-linear program. )
 
 include "../../kernels/07-effects/reverb.fy"
@@ -21,14 +22,17 @@ include "../lib/manifest.fy"
   sidechain
 
   ( one packed buffer, region table in reverb.fy )
-  "tank" VerbState.buf VerbState.buf-len 2.37 buffer
+  "tank" VerbState.buf VerbState.buf-len 2.74 buffer
 
   "SPACE" "ALGO" "verb-algo" VerbParams.algo 0.0 switch
     "PLATE" 0.0 opt  "ROOM" 1.0 opt  "HALL" 2.0 opt  as-vradio
   "SPACE" "SIZE"  "verb-size"  VerbParams.space  0.5  1.5  1.0  curve-lin knob
   "SPACE" "DECAY" "verb-decay" VerbParams.decay  0.2  40.0 3.0  curve-exp knob
   "SPACE" "DIFF"  "verb-diff"  VerbParams.diff   0.0  1.0  1.0  curve-lin knob
-  "SPACE" 4 strip
+  ( the FDN's feedback matrix: VELVET scatters every echo, reverb.fy )
+  "SPACE" "DENSITY" "verb-dens" VerbParams.dens 0.0 switch
+    "CLASSIC" 0.0 opt  "VELVET" 1.0 opt  as-button
+  "SPACE" 5 strip
 
   "INPUT" "PREDLY" "verb-predelay" VerbParams.predelay-s 0.001 0.25 0.02 curve-exp knob
   "INPUT" "SYNC" "verb-pre-sync" VerbParams.pre-sync 0.0 switch
