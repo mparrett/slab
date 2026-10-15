@@ -1714,6 +1714,7 @@ Presets:
 | `verb-size` | SPACE | SIZE | 0.5 … 1.5 | 1 | linear |
 | `verb-decay` | SPACE | DECAY | 0.2 … 40 | 3 | exp |
 | `verb-diff` | SPACE | DIFF | 0 … 1 | 1 | linear |
+| `verb-dens` | SPACE | DENSITY | 0 CLASSIC / 1 VELVET | 0 | switch |
 | `verb-predelay` | INPUT | PREDLY | 0.001 … 0.25 | 0.02 | exp |
 | `verb-pre-sync` | INPUT | SYNC | 0 FREE / 1 1/64 / 2 1/32 / 3 1/16 / 4 1/8 | 0 | switch |
 | `verb-lowcut` | INPUT | LO CUT | 20 … 1000 | 20 | exp |
@@ -1751,5 +1752,7 @@ Presets:
 - `short-plate-room` — Lido: short beach-club room
 - `small-room` — Tight, natural small room
 - `ugly-tiny-room` — Autogrill bathroom — ugly/funny small verb
+- `velvet-hall` — Smooth, dense hall with a clean front: velvet scattering in the loop, light input diffusion
+- `velvet-room` — Dense, flutter-free room for drums and guitars: velvet scattering, no input smear
 - `vocal-hall` — Smooth hall for a lead vocal: a sixteenth of predelay, the bottom cut
 - `vocal-plate` — Aperitivo: vocal / lead plate

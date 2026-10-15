@@ -12,6 +12,26 @@ GitHub are its section here (`tools/release.sh` copies them), so add to
   Two envelopes with key follow and an inverting ENV-1, and one LFO
   shared by every voice, with delay. It ships with all 64 of Roland's
   factory patches, read off the original patch sheets. See docs/39.
+
+- **C-Beam 80 ships every CS-80 factory preset.** All 22 of Yamaha's
+  presets as their Channel I + II pairings (STRING 3/4, CLAVICHORD, ORGAN,
+  GUITAR and FUNKY 1-4 are new), and the Owner's Manual's ten programming
+  examples, clarinet to timpani, under `manual/`. The presets it shipped
+  with read the charts about 13 % low; they now match them.
+
+- **Verb's rooms and halls can turn dense right away.** A new DENSITY
+  switch sets VELVET, which scatters every echo inside the reverb's loop
+  [a velvet feedback matrix, Schlecht and Habets 2020]. A hall with no
+  input diffusion becomes a smooth wash about three times sooner (64 ms
+  instead of 190), with no flutter and DECAY still accurate. New presets
+  `velvet-hall` and `velvet-room`. CLASSIC, the default, sounds exactly
+  as before.
+
+## 0.0.14 — 2026-10-15
+
+Thanks to Lost Robot, the author of septabee, for pointing out the
+audio-thread inefficiencies that this release fixes.
+
 - **C-Beam 80, a Yamaha CS-80.** Eight notes of two complete voices each.
   Each voice has a linear-in-Hz VCO, an HPF and an LPF that don't
   self-oscillate, and the IL/AL filter envelope behind CS-80 brass. Velocity
@@ -19,9 +39,8 @@ GitHub are its section here (`tools/release.sh` copies them), so add to
   raises the level and brings in vibrato on the pressed notes only. The
   sub oscillator, ring modulator, BBD chorus/tremolo, keyboard scaling,
   constant-rate portamento and sustain are global, as on the original.
-  It ships with all 22 of Yamaha's factory presets as their Channel I + II
-  pairings, the Owner's Manual's ten programming examples (clarinet to
-  timpani), and four sounds of ours. See docs/38.
+  It ships with Yamaha's factory pairings from the Owner's Manual charts
+  and four sounds of ours. See docs/38.
 
 - **Choose the audio buffer size.** The audio menu next to record lists
   64 to 1024 frames with their latency; 64 is 1.3 ms. The choice is
