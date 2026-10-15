@@ -7,6 +7,7 @@
 const main = @import("main.zig");
 
 pub const Fy = main.Fy;
+pub const UnfairLock = main.UnfairLock;
 
 test {
     _ = @import("tests.zig");

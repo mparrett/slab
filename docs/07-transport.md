@@ -140,8 +140,8 @@ indexing the pool. `Track.publishSnapshot` freezes each audio clip's raw
 `data` pointer + length + native rate into the `TrackSnapshot`; the audio
 thread mixes them (`engine.mixAudioClips`) on top of the instrument output
 into the same planar L/R, so the track's insert chain processes the sum.
-The source plays from its top at native rate (linear-interp resample to the
-engine rate) and stops when either the timeline window or the source data
+The source plays from its top at native rate (a windowed-sinc resample to the
+engine rate, `warp.read`) and stops when either the timeline window or the source data
 runs out — speed/warp and a trim window are Phase D. Sources are pool-indexed
 and never freed mid-session, so the snapshot pointer stays valid without a
 fence. The pool survives undo/redo; the document persists audio clips by
@@ -165,24 +165,21 @@ Order:
 
 Each step within a track runs its inserts in order.
 
-## Graph swap
+## Graph and machine publication (implemented)
 
-When the user adds/removes a machine or reorders inserts, the host
-rebuilds the graph on the main thread and atomically swaps the
-pointer the audio callback reads. Double-buffering again:
+UI builds a routing version in its owned handoff slot; the rendering thread
+adopts it for the next chunk, holding it until all workers finish. Track
+instrument/insert chains and rack part lists use the same ownership protocol.
+Instances are compiled and initialized off audio before publication.
+Replaced instances are destroyed on UI after an audio acknowledgement,
+not after an assumed amount of time. Bypass changes publish with the chain;
+unchanged effects retain their audio-owned idle history on reorder.
 
-```zig
-struct Graph {
-    current: *GraphState,    // atomic<*GraphState>
-    pending: *GraphState,
-    ...
-}
-```
-
-Main thread prepares `pending`, stages new machine arenas,
-atomically swaps `current <- pending`. Old graph's machines are
-retired on the main thread after a block passes (so the audio
-thread has definitely moved on).
+Adding/replacing/removing machines and reordering inserts no longer stop the
+audio device. Document/track-list replacement, device reconfiguration and
+explicit offline bounce still use the existing device-stopped paths.
+Publication does not make mutable track-array storage safe to resize live.
+See [37-realtime-safety.md](37-realtime-safety.md) for limits and validation.
 
 ## Plugin Delay Compensation (PDC)
 
@@ -196,7 +193,8 @@ Each block, before rendering (`Engine.computeLatencies`):
 
 1. In render order, a track's latency at its taps is its input's (0 for
    a track, the latest of its feeds for a bus) plus its chain's: the
-   instrument's (not a bus's) and every insert that isn't bypassed.
+   instrument's (not a bus's) and every insert that isn't bypassed, or
+   that was bypassed while playing (see Declicking: it keeps its latency).
 2. Each bus's input latency is the max over everything summed into it,
    outputs and sends alike (muted ones too, so muting doesn't move the
    others); the master's likewise.
@@ -226,20 +224,24 @@ in the sums, and its track's history is written every block as usual.
 The UI shows `master_latency` in the transport bar while it isn't 0, and
 each latent device's share on hover over its name.
 
-Not compensated yet: a change of latency mid-play jumps the delays (a
-click, like any insert added while playing).
+A change of latency mid-play crossfades: each compensated path (a track's
+output, each send, a keyed chain input) remembers last chunk's delay, and
+when it moves the old and new history reads crossfade over the chunk
+instead of skipping or repeating audio.
 
 ## Sample accuracy
 
 All machines see the same `block_start` within a block. Note event
 offsets are block-local (`sample_offset` in the event). Transport
-state is homogeneous within a block — if transport stops mid-block,
-the host splits the block. Same for tempo ramps crossing a block
-boundary.
+state is homogeneous within a block: play and stop are read when a
+callback starts. Blocks are split at loop ends and tempo points.
 
 This means:
-- Offline render at any block size produces bit-identical output to
-  realtime at any block size (within float determinism caveats).
+- Note timing does not depend on the block size. Ramps that run once
+  per chunk (fader and send gains, declick fades, the 32-sample
+  automation and expression grids) do, so renders at different block
+  sizes can differ in the last bits; renders at one block size are
+  deterministic at any thread count.
 - Unit tests can drive ctx directly without running the audio
   thread.
 
@@ -277,10 +279,13 @@ the master, plus the master chain, which runs after the sums.
 **Threads.** `--threads N` sets the total, the audio thread included;
 the default is one per performance core. Workers sleep on a Mach
 semaphore between blocks, are woken at a block's start (at most one per
-node beyond the first), spin while it is open and help render.
-A worker that wakes late finds the block closed. The audio thread
-renders anything no worker took, so a descheduled worker costs time,
-never output.
+node beyond the first), and help render. A worker returns to sleep when
+it has no ready node. The rendering thread renders available work itself;
+when unfinished nodes are already claimed it waits for completion signals,
+and likewise waits for admitted workers to leave before reusing block data.
+A worker that wakes late can only enter an open block. No idle loop spins.
+This is still synchronous parallel rendering: a descheduled worker that has
+claimed a node can delay the block.
 
 **Real-time workers.** Each worker takes Mach's time-constraint policy
 (period one block, up to half of it computing) and joins the output
@@ -288,9 +293,10 @@ device's I/O workgroup (`kAudioDevicePropertyIOThreadOSWorkgroup`), so
 it is scheduled like CoreAudio's own I/O thread. When the device is
 reopened (the mic armed, another input chosen) the workers move to the
 new workgroup as they next wake. `--no-rt-workers` leaves them at
-user-interactive QoS, which the scheduler may preempt or move to
-efficiency cores under load. Headless renders never use real-time
-workers.
+user-interactive QoS for offline work. Live callbacks use serial rendering
+unless every worker obtained realtime scheduling and joined the current I/O
+workgroup; failed policy/join requests and missing workgroups take that same
+fallback. Headless renders do not require realtime admission.
 
 **Thread lamps.** The transport bar's stats display shows a lamp per
 render thread (the audio thread first) beside CPU, lit by how much of the
@@ -300,11 +306,12 @@ audio budget that thread spent rendering and mixing nodes, and red from
 (`takeThreadLoad`) and smooths them. CPU itself stays the callback's
 wall time against the budget.
 
-**fy.** Each machine owns its fy instance and JIT image; raw kernel
-calls touch only that instance and their own slots. `Builtins.fyPtr` is
-thread-local in fy. The callback lock that keeps hot-patch and runtime
-asset swaps out of renders is taken once per block by the engine (the
-audio callback and each offline chunk), not per machine.
+**fy.** Initial document loads may share cached compiled hosts; private
+prepared replacements have independent compilers/images. Each instance owns
+its DSP state and caller slots. `Builtins.fyPtr` is thread-local. Audio does
+not acquire the control/compiler mutex. Runtime bindings are published;
+active word definitions remain sealed. Live diagnostic printing is disabled:
+`SLAB_*_PROBE`/trace output remains available for offline rendering.
 
 **Measured** (offline bounce, M-series, 8 performance cores):
 sweat_geometry 66.7 s → 21.4 s, broken_glass 4.5 s → 1.0 s, the others
@@ -360,6 +367,46 @@ carries on, so scrubbing through a pad doesn't retrigger it. Effects
 keep their tails. Play start and the start of an offline render chase
 too. A seek landing mid-block survives, since the block end is written
 with a compare-exchange.
+
+**Stop** works like a jump with no landing: the sounding notes are
+released and the whole graph keeps rendering from the stop point, with
+no new notes or clips, until the output has stayed under −100 dBFS for
+2 s (a ring that never decays fades out over one block after 30 s).
+Reverb and delay tails ring out, nothing is reset, and play during the
+ring-out picks the tails up. Machines' own beat keeps running from the
+stop so tempo-synced LFOs move; automation holds at the stop. An
+offline render's stop rings out the same way. Panic still resets every
+machine.
+
+**Declicking.** Nothing that is heard switches in one sample:
+
+- *Mute, solo, track enable:* a track's contributions (output and sends)
+  ramp over a chunk; a track fading out renders that chunk, then parks.
+  The ramp is applied where contributions are mixed, so a muted track
+  still keys a sidechain. A track that comes back (unmuted, un-soloed,
+  re-enabled) resets its machines and chases, since it missed note-offs.
+  Instrument enable fades the instrument over a chunk.
+- *Insert bypass:* crossfades wet and dry over a chunk. An effect with
+  latency keeps rendering while bypassed, its dry path delayed by its
+  latency through one of four per-track dry lines, so bypass neither
+  re-times the project nor brings back stale buffers; an effect without
+  latency is reset when it comes back. With all four lines in use, a
+  further bypass drops its latency as before.
+- *Instrument or insert changes while playing* (add, remove, reorder,
+  replace, presets that swap machines): the old chain renders one more
+  chunk fading out, the new one fades in over the next, and a new
+  instrument chases the held notes. The old machines are acknowledged
+  only after the switch.
+- *Audio clips:* an edge that cuts into its source fades over 64
+  samples on top of the clip's own fades; a file's own first and last
+  samples and a split that another clip continues seamlessly are left
+  alone. After a jump, clips already playing fade in over 64 samples,
+  and clips that play past a loop end fade out into the wrap.
+- *Latency changes:* see Plugin Delay Compensation.
+- *Faders:* track and master gains ramp from the previous chunk's.
+
+Offline renders start with every gate and ramp at its value (no fade
+at the start of a bounce).
 
 ## Tempo map
 

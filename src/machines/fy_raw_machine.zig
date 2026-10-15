@@ -8,6 +8,7 @@
 //! adapter is generic: adding a machine never requires a Zig wrapper.
 
 const std = @import("std");
+const handoff = @import("../handoff.zig");
 const builtin = @import("builtin");
 const Fy = @import("fy").Fy;
 const c = @import("../c.zig");
@@ -305,6 +306,50 @@ const IDLE_FLOOR: f64 = 1e-6;
 const Control = machine_desc.Control;
 const Display = machine_desc.Display;
 
+const ControlVersion = struct { targets: [MAX_CONTROLS]u32 = @splat(0), snaps: [MAX_CONTROLS]u64 = @splat(0) };
+const AssetBinding = struct { ptr: usize = 0, len: usize = 0, sr: f64 = 0 };
+const AssetVersion = struct {
+    bindings: [machine_desc.MAX_ASSETS]AssetBinding = @splat(.{}),
+    generation: u64 = 0,
+    reset_generation: u64 = 0,
+    edits: keymap.ZoneEdits = .{},
+};
+const RetiredAsset = struct {
+    sample: wav.Sample = .{ .data = &.{}, .sample_rate = 0 },
+    table: wavetable.Table = .{},
+    map: keymap.Keymap = .{},
+    aa: []f64 = &.{},
+};
+
+// Audio -> UI telemetry. UI never dereferences mutable DSP state/rings.
+// Storage is allocated on the first panel request; audio copies only when
+// requested, and the UI-owned slot cannot be reused while drawing.
+const GraphicSamples = [2][GRAPHIC_FFT]f64;
+const DisplaySnapshot = struct {
+    state: [2][MAX_STATE]u8 align(8) = @splat(@splat(0)),
+    selected_state: [MAX_STATE]u8 align(8) = @splat(0),
+    voice: ?usize = null,
+    pitch: f64 = 48,
+    sr: f64 = 48_000,
+    tempo: f64 = 120,
+    regions: usize = 1,
+    failed: bool = false,
+    scope: [SCOPE_LEN]f32 = @splat(0),
+    scope_head: usize = 0,
+    graphics: [machine_desc.MAX_DISPLAYS]?[2][]const f64 = @splat(null),
+};
+const GraphicProbe = struct { display: usize, buffer: usize, wpos: usize };
+const DisplayTelemetry = struct {
+    versions: handoff.Latest(DisplaySnapshot) = .init(.{}),
+    requested: std.atomic.Value(bool) = .init(false),
+    probes: [machine_desc.MAX_DISPLAYS]GraphicProbe = undefined,
+    count: usize = 0,
+    // One set of graphic windows per owned slot; their lifetime follows
+    // that slot, even when UI holds its view through many publications.
+    graphic_storage: []GraphicSamples = &.{},
+};
+const empty_display = DisplaySnapshot{};
+
 pub const FyRawMachine = struct {
     host: *FyHost,
     /// The contents of every file its host compiled, hashed at creation
@@ -352,14 +397,19 @@ pub const FyRawMachine = struct {
     // Optional per-block dsp2 word (params sample-rate --): coefficient fills
     // that must not run per sample, e.g. the MS-20 svf profile region.
     block_prepare_caller: ?RawCaller = null,
+    control_versions: handoff.Latest(ControlVersion) = .init(.{}),
+    control_snaps: [MAX_CONTROLS]u64 = @splat(0), // UI-owned
+    audio_snaps: [MAX_CONTROLS]u64 = @splat(0),
+    audio_control_bits: [MAX_CONTROLS]u32 = @splat(0),
+    control_edit_depth: usize = 0, // UI-only transaction nesting
     raw_control_bits: [MAX_CONTROLS]std.atomic.Value(u32) = undefined,
-    // Audio-thread smoothed knob positions (direct_f64 controls only) and
-    // UI-thread snap requests: preset/project/param sets jump, drags glide.
+    // Audio-owned smoothing and snap requests adopted with control targets:
+    // preset/project/param sets jump, drags glide.
     smooth_norm: [MAX_CONTROLS]f32 = [_]f32{0} ** MAX_CONTROLS,
     // Set by a control edit (UI thread), taken by the engine's idle skip:
     // a sleeping machine renders again so the edit reaches its params.
     wake_req: std.atomic.Value(bool) = .init(false),
-    snap_req: [MAX_CONTROLS]std.atomic.Value(bool) = [_]std.atomic.Value(bool){std.atomic.Value(bool).init(true)} ** MAX_CONTROLS,
+    snap_req: [MAX_CONTROLS]bool = @splat(true), // audio-owned
     // Automation (docs/22). Audio thread: this chunk's lane value per
     // control, and whether a gliding control has caught up with its curve
     // (then it follows exactly instead of lagging the 20 ms smoother).
@@ -377,7 +427,8 @@ pub const FyRawMachine = struct {
     touch: ?machine.Touch = null,
     ctx_control: usize = 0,
     panel_w: f32 = 128,
-    failed: bool = false,
+    failed: bool = false, // audio-owned; UI reads published telemetry
+    display_telemetry: std.atomic.Value(?*DisplayTelemetry) = .init(null),
     // Active panel tab for paged machines (index into desc.pages). Per
     // instance, UI-thread only.
     ui_tab: usize = 0,
@@ -395,7 +446,7 @@ pub const FyRawMachine = struct {
     mod_hot_next: usize = 0,
     mod_hot: usize = 0,
     // A scope-display's ring: the audio thread appends each block's
-    // output, mono, and moves the head; the panel reads behind it.
+    // output, mono, and moves the head. UI reads an owned telemetry copy.
     has_scope: bool = false,
     scope_buf: [SCOPE_LEN]f32 = [_]f32{0} ** SCOPE_LEN,
     scope_head: std.atomic.Value(usize) = .init(0),
@@ -422,6 +473,11 @@ pub const FyRawMachine = struct {
     buffer_mem: [machine_desc.MAX_BUFFERS][MAX_REGIONS][]f64 = [_][MAX_REGIONS][]f64{[_][]f64{&.{}} ** MAX_REGIONS} ** machine_desc.MAX_BUFFERS,
     // Read-only audio assets loaded from disk at create (manifest `asset`),
     // shared across voices via params.
+    asset_versions: handoff.Latest(AssetVersion) = .init(.{}),
+    asset_retired: handoff.Retirement(RetiredAsset, 64) = .{},
+    asset_generation: u64 = 0, // UI-owned
+    asset_reset_generation: u64 = 0, // UI-owned
+    audio_reset_generation: u64 = 0,
     asset_mem: [machine_desc.MAX_ASSETS]wav.Sample = [_]wav.Sample{.{ .data = &.{}, .sample_rate = 0 }} ** machine_desc.MAX_ASSETS,
     // Wavetable assets (manifest `wavetable`): the mipmapped frames built
     // from asset_mem, which stays loaded for the waveform display.
@@ -447,7 +503,11 @@ pub const FyRawMachine = struct {
     // voice reads through a params pointer, the zone the panel has
     // selected, the piano roll's key names for a kit, and the zone list's
     // hit lights (the voice writes zone_edits.hit / .last).
-    zone_edits: keymap.ZoneEdits = .{},
+    zone_edits: keymap.ZoneEdits = .{}, // UI settings only
+    published_zone_edits: keymap.ZoneEdits = .{},
+    audio_zone_edits: keymap.ZoneEdits = .{},
+    zone_hits: [keymap.MAX_ZONES]std.atomic.Value(u64) = @splat(.init(0)),
+    zone_last: std.atomic.Value(u64) = .init(@bitCast(@as(f64, -1))),
     /// Reversed sounds and sounds copied onto keys, applied on every load.
     zone_derive: keymap.Derive = .{},
     zone_sel: usize = 0,
@@ -516,6 +576,8 @@ pub const FyRawMachine = struct {
     mono_held_n: usize = 0,
     // The rate and tempo params were last derived at: a reset re-derives
     // at them, so what the host reads from params (latency) stays valid.
+    controls_dirty: bool = false, // audio-owned, cleared by parameter preparation
+    reported_latency: std.atomic.Value(u32) = .init(0),
     synced_sr: f64 = 48_000,
     synced_tempo: f64 = 120,
     // The note id each voice plays (-1: a source without ids). Note-offs
@@ -555,9 +617,18 @@ pub const FyRawMachine = struct {
     graphic_ui: GraphicUi = .{},
 
     pub fn create(alloc: std.mem.Allocator, path: []const u8) !*FyRawMachine {
+        return createWithSource(alloc, path, if (builtin.is_test) .tests else if (share_hosts) .cache else .own);
+    }
+
+    /// A replacement prepared while another instance renders. Its compiler
+    /// and executable image are private; no active host is mutated.
+    pub fn createIsolated(alloc: std.mem.Allocator, path: []const u8) !*FyRawMachine {
+        return createWithSource(alloc, path, .own);
+    }
+
+    fn createWithSource(alloc: std.mem.Allocator, path: []const u8, source: HostSource) !*FyRawMachine {
         const self = try alloc.create(FyRawMachine);
         errdefer alloc.destroy(self);
-        const source: HostSource = if (builtin.is_test) .tests else if (share_hosts) .cache else .own;
         const host = switch (source) {
             .tests => try test_hosts.get(path, dsp_versioning),
             .cache => try host_cache.acquire(path, dsp_versioning),
@@ -609,6 +680,7 @@ pub const FyRawMachine = struct {
         errdefer self.freeAssets(alloc);
         try self.compileCallers();
         self.initRawControls(); // runs block-prepare, which reads asset SR
+        self.host.sealDefinitions();
         return self;
     }
 
@@ -634,6 +706,8 @@ pub const FyRawMachine = struct {
             }
             self.setAssetSource(ai, full);
         }
+        self.publishAssets(false);
+        self.adoptAssets();
         self.injectAssets();
     }
 
@@ -660,6 +734,7 @@ pub const FyRawMachine = struct {
     }
 
     fn freeAssets(self: *FyRawMachine, alloc: std.mem.Allocator) void {
+        self.asset_retired.drain(self, disposeAsset);
         for (self.asset_mem[0..self.desc.asset_count], 0..) |*s, ai| {
             if (s.data.len > 0) alloc.free(s.data);
             s.* = .{ .data = &.{}, .sample_rate = 0 };
@@ -696,7 +771,7 @@ pub const FyRawMachine = struct {
     }
 
     /// Rebuild every anti-aliased pool whose control moved since it was
-    /// built. UI thread; the swap is fenced, and the pool keeps its layout,
+    /// built. UI prepares and publishes it; the pool keeps its layout,
     /// so sounding voices carry on.
     fn refreshAntialias(self: *FyRawMachine) void {
         for (self.desc.assets[0..self.desc.asset_count], 0..) |*req, ai| {
@@ -704,19 +779,19 @@ pub const FyRawMachine = struct {
             const rate = controlValueById(self, req.aaControl()) orelse continue;
             if (rate == self.aa_built[ai] and self.aa_pool[ai].len == self.asset_keymap[ai].pool.len) continue;
             const pool = self.buildAntialias(ai, &self.asset_keymap[ai]) orelse continue;
-            fy_host_mod.lockCallbacks();
-            const old = self.aa_pool[ai];
+            if (!self.reserveAssetRetirement()) {
+                self.alloc.free(pool);
+                continue;
+            }
+            self.asset_retired.append(self.asset_generation + 1, .{ .aa = self.aa_pool[ai] });
             self.aa_pool[ai] = pool;
-            self.injectAssets();
-            fy_host_mod.unlockCallbacks();
-            if (old.len > 0) self.alloc.free(old);
+            self.publishAssets(false);
         }
     }
 
-    // Swap an asset's audio at runtime (UI thread). lockCallbacks fences the
-    // render path so the audio thread can't be mid-read of the old buffer
-    // while we free it and repoint params. The peak cache is UI-only and
-    // needs no fence. On failure the old sample is kept.
+    // Prepare an asset on UI, publish its bindings and retain old storage
+    // until audio acknowledges adoption. UI-only peaks update immediately.
+    // Failed preparation or retirement backpressure keeps the old version.
     pub fn loadAssetRuntime(self: *FyRawMachine, ai: usize, path: []const u8) bool {
         if (ai >= self.desc.asset_count) return false;
         if (self.desc.assets[ai].keymap) return self.loadKeymapRuntime(ai, path);
@@ -739,17 +814,16 @@ pub const FyRawMachine = struct {
             return false;
         };
 
-        fy_host_mod.lockCallbacks();
-        const old = self.asset_mem[ai];
-        var old_wt = self.asset_wt[ai];
+        if (!self.reserveAssetRetirement()) {
+            loaded.deinit(self.alloc);
+            wt_cache.release(self.alloc, &new_wt);
+            new_cache.deinit(self.alloc);
+            return false;
+        }
+        self.asset_retired.append(self.asset_generation + 1, .{ .sample = self.asset_mem[ai], .table = self.asset_wt[ai] });
         self.asset_mem[ai] = loaded;
         self.asset_wt[ai] = new_wt;
-        self.injectAssets();
-        self.silenceVoices();
-        fy_host_mod.unlockCallbacks();
-
-        if (old.data.len > 0) self.alloc.free(old.data);
-        wt_cache.release(self.alloc, &old_wt);
+        self.publishAssets(true);
         self.asset_cache[ai].deinit(self.alloc);
         self.asset_cache[ai] = new_cache;
         self.setAssetSource(ai, src);
@@ -759,8 +833,7 @@ pub const FyRawMachine = struct {
     }
 
     /// The keymap flavour of loadAssetRuntime: load and map off the audio
-    /// thread, swap the pool and zone pointers inside the fence, free the
-    /// old map after.
+    /// thread, publish coherent pool/zone/edit bindings, retire after ack.
     fn loadKeymapRuntime(self: *FyRawMachine, ai: usize, path: []const u8) bool {
         var rb: [storage.MAX_PATH]u8 = undefined;
         const src = storage.resolve(&rb, path);
@@ -771,18 +844,16 @@ pub const FyRawMachine = struct {
         const edits = remapEdits(&self.zone_edits, &self.asset_keymap[ai], &loaded);
         const aa: []f64 = self.buildAntialias(ai, &loaded) orelse &.{};
 
-        fy_host_mod.lockCallbacks();
-        var old = self.asset_keymap[ai];
-        const old_aa = self.aa_pool[ai];
+        if (!self.reserveAssetRetirement()) {
+            loaded.deinit(self.alloc);
+            if (aa.len > 0) self.alloc.free(aa);
+            return false;
+        }
+        self.asset_retired.append(self.asset_generation + 1, .{ .map = self.asset_keymap[ai], .aa = self.aa_pool[ai] });
         self.asset_keymap[ai] = loaded;
         self.aa_pool[ai] = aa;
         self.zone_edits = edits;
-        self.injectAssets();
-        self.silenceVoices();
-        fy_host_mod.unlockCallbacks();
-
-        old.deinit(self.alloc);
-        if (old_aa.len > 0) self.alloc.free(old_aa);
+        self.publishAssets(true);
         self.setAssetSource(ai, src);
         self.asset_loaded[ai] = true;
         self.keymapChanged(ai);
@@ -819,6 +890,36 @@ pub const FyRawMachine = struct {
         @memset(self.voice_idle[0..], true);
         @memset(self.voice_gate[0..], false);
         self.mono_held_n = 0;
+    }
+
+    fn publishZoneEdits(self: *FyRawMachine) void {
+        const a = &self.zone_edits;
+        const b = &self.published_zone_edits;
+        if (std.mem.eql(f64, &a.level, &b.level) and std.mem.eql(f64, &a.tune, &b.tune) and
+            std.mem.eql(f64, &a.decay, &b.decay) and std.mem.eql(f64, &a.tone, &b.tone) and
+            std.mem.eql(f64, &a.cut, &b.cut)) return;
+        self.publishAssets(false);
+    }
+
+    fn adoptZoneEdits(self: *FyRawMachine) void {
+        if (self.keymapAsset() == null) return;
+        const e = &self.asset_versions.current().edits;
+        self.audio_zone_edits.level = e.level;
+        self.audio_zone_edits.tune = e.tune;
+        self.audio_zone_edits.decay = e.decay;
+        self.audio_zone_edits.tone = e.tone;
+        self.audio_zone_edits.cut = e.cut;
+    }
+
+    fn publishZoneMeters(self: *FyRawMachine) void {
+        if (self.keymapAsset() == null) return;
+        for (&self.zone_hits, self.audio_zone_edits.hit) |*h, v| h.store(@bitCast(v), .monotonic);
+        self.zone_last.store(@bitCast(self.audio_zone_edits.last), .release);
+    }
+
+    fn readZoneMeters(self: *FyRawMachine) void {
+        for (&self.zone_edits.hit, &self.zone_hits) |*h, *v| h.* = @bitCast(v.load(.monotonic));
+        self.zone_edits.last = @bitCast(self.zone_last.load(.acquire));
     }
 
     /// After a keymap load: select the first zone, drop the waveform cache,
@@ -888,33 +989,80 @@ pub const FyRawMachine = struct {
         return null;
     }
 
-    // Asset pointer/length/native-SR live in params (shared, read-only).
+    // Adopted asset pointers/length/native-SR live in audio-owned params;
+    // the resources they reference are immutable until audio releases them.
     // syncRawParams never touches these offsets, so they persist across
     // blocks; only reset (which memsets params) needs a re-inject.
-    fn injectAssets(self: *FyRawMachine) void {
+    fn disposeAsset(self: *FyRawMachine, value: RetiredAsset) void {
+        var old = value;
+        old.sample.deinit(self.alloc);
+        wt_cache.release(self.alloc, &old.table);
+        old.map.deinit(self.alloc);
+        if (old.aa.len > 0) self.alloc.free(old.aa);
+    }
+
+    fn reserveAssetRetirement(self: *FyRawMachine) bool {
+        self.asset_retired.collect(self, disposeAsset);
+        return self.asset_retired.available();
+    }
+
+    /// UI only. Whole binding set is coherent, including related zone pointers.
+    fn publishAssets(self: *FyRawMachine, reset_voices: bool) void {
+        self.asset_generation += 1;
+        if (reset_voices) self.asset_reset_generation = self.asset_generation;
+        const v = self.asset_versions.write();
+        v.* = .{ .generation = self.asset_generation, .reset_generation = self.asset_reset_generation, .edits = self.zone_edits };
         for (self.desc.assets[0..self.desc.asset_count], 0..) |*req, ai| {
             if (req.keymap) {
                 const km = &self.asset_keymap[ai];
-                const has = km.count > 0;
                 const pool = if (self.aa_pool[ai].len == km.pool.len and km.pool.len > 0) self.aa_pool[ai] else km.pool;
-                self.writeParamUsize(req.ptr_offset, if (has) @intFromPtr(pool.ptr) else @intFromPtr(&self.asset_silence[0]));
-                self.writeParamUsize(req.len_offset, if (has) @intFromPtr(km.zones.ptr) else @intFromPtr(&self.empty_zones[0]));
-                self.writeParamF64(req.sr_offset, @floatFromInt(km.count));
-                self.writeParamUsize(req.edits_offset, @intFromPtr(&self.zone_edits));
-                continue;
-            }
-            if (req.wavetable) {
+                v.bindings[ai] = .{
+                    .ptr = if (km.count > 0) @intFromPtr(pool.ptr) else @intFromPtr(&self.asset_silence),
+                    .len = if (km.count > 0) @intFromPtr(km.zones.ptr) else @intFromPtr(&self.empty_zones),
+                    .sr = @floatFromInt(km.count),
+                };
+            } else if (req.wavetable) {
                 const t = self.asset_wt[ai];
-                const ptr: usize = if (t.frames > 0) @intFromPtr(t.data.ptr) else @intFromPtr(&wavetable.silent_frame[0]);
-                self.writeParamUsize(req.ptr_offset, ptr);
-                self.writeParamF64(req.len_offset, @floatFromInt(t.frames));
-                continue;
+                v.bindings[ai] = .{ .ptr = if (t.frames > 0) @intFromPtr(t.data.ptr) else @intFromPtr(&wavetable.silent_frame), .len = t.frames };
+            } else {
+                const sample = self.asset_mem[ai];
+                v.bindings[ai] = .{ .ptr = if (sample.data.len > 0) @intFromPtr(sample.data.ptr) else @intFromPtr(&self.asset_silence), .len = sample.data.len, .sr = if (sample.sample_rate > 0) sample.sample_rate else 48_000 };
             }
-            const s = self.asset_mem[ai];
-            const ptr: usize = if (s.data.len > 0) @intFromPtr(s.data.ptr) else @intFromPtr(&self.asset_silence[0]);
-            self.writeParamUsize(req.ptr_offset, ptr);
-            self.writeParamF64(req.len_offset, @floatFromInt(s.data.len));
-            self.writeParamF64(req.sr_offset, if (s.sample_rate > 0) s.sample_rate else 48_000);
+        }
+        self.published_zone_edits = self.zone_edits;
+        self.asset_versions.publish();
+        self.wake_req.store(true, .release);
+    }
+
+    /// Audio only, before any voice runs. Replacements preserve the existing
+    /// sample-load policy: old sounding voices stop before their pool retires.
+    fn adoptAssets(self: *FyRawMachine) void {
+        if (!self.asset_versions.adopt()) return;
+        const v = self.asset_versions.current();
+        if (v.reset_generation != self.audio_reset_generation) {
+            self.silenceVoices();
+            self.audio_reset_generation = v.reset_generation;
+        }
+        self.injectAssets();
+        self.adoptZoneEdits();
+        self.asset_retired.acknowledge(v.generation);
+    }
+
+    fn injectAssets(self: *FyRawMachine) void {
+        const v = self.asset_versions.current();
+        for (self.desc.assets[0..self.desc.asset_count], 0..) |*req, ai| {
+            const binding = v.bindings[ai];
+            self.writeParamUsize(req.ptr_offset, binding.ptr);
+            if (req.keymap) {
+                self.writeParamUsize(req.len_offset, binding.len);
+                self.writeParamF64(req.sr_offset, binding.sr);
+                self.writeParamUsize(req.edits_offset, @intFromPtr(&self.audio_zone_edits));
+            } else if (req.wavetable) {
+                self.writeParamF64(req.len_offset, @floatFromInt(binding.len));
+            } else {
+                self.writeParamF64(req.len_offset, @floatFromInt(binding.len));
+                self.writeParamF64(req.sr_offset, binding.sr);
+            }
         }
     }
 
@@ -993,6 +1141,7 @@ pub const FyRawMachine = struct {
             .render = renderImpl,
             .draw_panel = drawPanelImpl,
             .reset = resetImpl,
+            .adopt_updates = adoptImpl,
             .deinit = deinitImpl,
             .code_hash = codeHashImpl,
             .panel_w = self.panel_w,
@@ -1131,18 +1280,128 @@ pub const FyRawMachine = struct {
             self.raw_control_bits[i] = std.atomic.Value(u32).init(@bitCast(value));
             self.smooth_norm[i] = value;
         }
+        self.publishControls();
+        self.adoptControls();
         self.syncRawParams(48_000.0, 120.0); // no transport yet at init; sane default
+    }
+
+    fn requestDisplay(self: *FyRawMachine) void {
+        const t = self.display_telemetry.load(.acquire) orelse blk: {
+            const fresh = self.alloc.create(DisplayTelemetry) catch return;
+            fresh.* = .{};
+            for (self.desc.displays[0..self.desc.display_count], 0..) |*disp, di| {
+                if (disp.kind != .graphic) continue;
+                var parts = std.mem.splitScalar(u8, disp.sourceSlice(), ',');
+                _ = parts.next();
+                const name = std.mem.trim(u8, parts.next() orelse "", " ");
+                for (self.desc.buffers[0..self.desc.buffer_count], 0..) |*b, bi| {
+                    if (!std.mem.eql(u8, b.nameSlice(), name)) continue;
+                    fresh.probes[fresh.count] = .{ .display = di, .buffer = bi, .wpos = disp.offsets[0] };
+                    fresh.count += 1;
+                    break;
+                }
+            }
+            fresh.graphic_storage = self.alloc.alloc(GraphicSamples, fresh.count * 3) catch {
+                self.alloc.destroy(fresh);
+                return;
+            };
+            @memset(std.mem.sliceAsBytes(fresh.graphic_storage), 0);
+            self.display_telemetry.store(fresh, .release);
+            break :blk fresh;
+        };
+        _ = t.versions.adopt();
+        t.requested.store(true, .release);
+    }
+
+    fn display(self: *const FyRawMachine) *const DisplaySnapshot {
+        const t = self.display_telemetry.load(.acquire) orelse return &empty_display;
+        return t.versions.current(); // UI only; audio never reads its slot
+    }
+
+    fn uiStateF64(self: *const FyRawMachine, region: usize, off: usize) f64 {
+        if (region >= 2 or off + @sizeOf(f64) > self.desc.state_size) return 0;
+        const p: *align(1) const f64 = @ptrCast(&self.display().state[region][off]);
+        return p.*;
+    }
+
+    fn publishDisplay(self: *FyRawMachine) void {
+        const t = self.display_telemetry.load(.acquire) orelse return;
+        if (!t.requested.swap(false, .acq_rel)) return;
+        const v = t.versions.write();
+        v.regions = @min(2, self.regionCount());
+        v.sr = self.synced_sr;
+        v.tempo = self.synced_tempo;
+        v.failed = self.failed;
+        v.voice = newestAudioVoice(self);
+        v.pitch = if (v.voice) |vi| self.voice_pitch[vi] else 48;
+        for (&v.state) |*state| @memset(state, 0);
+        for (0..v.regions) |reg| @memcpy(v.state[reg][0..self.desc.state_size], self.state_buf[reg * MAX_STATE ..][0..self.desc.state_size]);
+        @memset(&v.selected_state, 0);
+        if (v.voice) |vi| @memcpy(v.selected_state[0..self.desc.state_size], self.state_buf[vi * MAX_STATE ..][0..self.desc.state_size]);
+        v.scope_head = self.scope_head.load(.monotonic);
+        if (self.has_scope) @memcpy(&v.scope, &self.scope_buf);
+        v.graphics = @splat(null);
+        for (t.probes[0..t.count], 0..) |probe, pi| {
+            const samples = &t.graphic_storage[t.versions.ownership.writer * t.count + pi];
+            var channels: [2][]const f64 = .{ &.{}, &.{} };
+            for (0..v.regions) |ch| {
+                const ring = self.buffer_mem[probe.buffer][ch];
+                if (ring.len < GRAPHIC_FFT) continue;
+                const pos = self.readStateF64(ch, probe.wpos);
+                const w: usize = if (std.math.isFinite(pos)) @intFromFloat(std.math.clamp(pos, 0, @as(f64, @floatFromInt(ring.len - 1)))) else 0;
+                const start = (w + ring.len - GRAPHIC_FFT) % ring.len;
+                for (0..GRAPHIC_FFT) |i| samples[ch][i] = ring[(start + i) % ring.len];
+                channels[ch] = &samples[ch];
+            }
+            v.graphics[probe.display] = channels;
+        }
+        t.versions.publish();
     }
 
     fn controlNorm(self: *const FyRawMachine, idx: usize) f32 {
         return @bitCast(self.raw_control_bits[idx].load(.monotonic));
     }
 
+    fn publishControls(self: *FyRawMachine) void {
+        if (self.control_edit_depth != 0) return;
+        const v = self.control_versions.write();
+        for (0..self.desc.control_count) |i| {
+            v.targets[i] = self.raw_control_bits[i].load(.monotonic);
+            v.snaps[i] = self.control_snaps[i];
+        }
+        self.control_versions.publish();
+    }
+
+    fn adoptControls(self: *FyRawMachine) void {
+        if (!self.control_versions.adopt()) return;
+        const v = self.control_versions.current();
+        self.audio_control_bits = v.targets;
+        self.controls_dirty = true;
+        for (0..self.desc.control_count) |i| if (self.audio_snaps[i] != v.snaps[i]) {
+            self.snap_req[i] = true;
+            self.audio_snaps[i] = v.snaps[i];
+        };
+    }
+
+    fn audioNorm(self: *const FyRawMachine, idx: usize) f32 {
+        return @bitCast(self.audio_control_bits[idx]);
+    }
+
+    fn beginControlEdit(self: *FyRawMachine) void {
+        self.control_edit_depth += 1;
+    }
+    fn endControlEdit(self: *FyRawMachine) void {
+        self.control_edit_depth -= 1;
+        self.publishControls();
+    }
+
     /// Set a knob and jump straight there (no glide): presets, project load,
     /// host param sets.
     pub fn setControlNormSnap(self: *FyRawMachine, idx: usize, value: f32) void {
+        self.beginControlEdit();
         self.setControlNorm(idx, value);
-        self.snap_req[idx].store(true, .release);
+        self.control_snaps[idx] += 1;
+        self.endControlEdit();
     }
 
     /// Advance smoothed knobs by `n` samples (audio thread). Returns true
@@ -1150,11 +1409,14 @@ pub const FyRawMachine = struct {
     fn advanceSmoothing(self: *FyRawMachine, n: usize) bool {
         const a: f32 = @floatCast(1.0 - @exp(-@as(f64, @floatFromInt(n)) / (SMOOTH_TAU_S * self.kctx.sr)));
         var moving = false;
-        for (self.desc.controls[0..self.desc.control_count], 0..) |ctl, i| {
+        for (self.desc.controls[0..self.desc.control_count], 0..) |*ctl, i| {
             if (ctl.kind != .direct_f64) continue;
             const auto = self.automated(i);
-            const target = if (auto) self.auto_val[i] else self.controlNorm(i);
-            if (self.snap_req[i].swap(false, .acq_rel)) self.smooth_norm[i] = target;
+            const target = if (auto) self.auto_val[i] else self.audioNorm(i);
+            if (self.snap_req[i]) {
+                self.smooth_norm[i] = target;
+                self.snap_req[i] = false;
+            }
             var cur = self.smooth_norm[i];
             if (!auto) {
                 self.auto_locked[i] = false;
@@ -1193,11 +1455,11 @@ pub const FyRawMachine = struct {
 
     /// True if any knob's smoothed position differs from its target.
     fn anyGliding(self: *FyRawMachine) bool {
-        for (self.desc.controls[0..self.desc.control_count], 0..) |ctl, i| {
+        for (self.desc.controls[0..self.desc.control_count], 0..) |*ctl, i| {
             if (ctl.kind != .direct_f64) continue;
-            if (self.snap_req[i].load(.acquire)) continue;
+            if (self.snap_req[i]) continue;
             if (self.auto_on[i]) continue; // chunked anyway while automated
-            if (self.smooth_norm[i] != self.controlNorm(i)) return true;
+            if (self.smooth_norm[i] != self.audioNorm(i)) return true;
         }
         return false;
     }
@@ -1210,11 +1472,12 @@ pub const FyRawMachine = struct {
 
     /// Audio thread: the raw value a stepped control plays this chunk.
     fn effRaw(self: *const FyRawMachine, i: usize) f32 {
-        return if (self.automated(i)) self.auto_val[i] else self.controlNorm(i);
+        return if (self.automated(i)) self.auto_val[i] else self.audioNorm(i);
     }
 
     /// Audio thread: evaluate every lane on this machine at `beat`.
-    fn evalAutomation(self: *FyRawMachine, view: *const snapshot.AutoView, beat: f64) void {
+    fn evalAutomation(self: *FyRawMachine, view: *const snapshot.AutoView, machine_beat: f64) void {
+        const beat = view.hold_beat orelse machine_beat;
         @memset(self.auto_on[0..], false);
         const snap = view.snap;
         // Track lanes first, clip lanes by clip start: the last lane that
@@ -1236,12 +1499,14 @@ pub const FyRawMachine = struct {
 
     pub fn setControlNorm(self: *FyRawMachine, idx: usize, value: f32) void {
         self.raw_control_bits[idx].store(@bitCast(std.math.clamp(value, 0.0, 1.0)), .monotonic);
+        self.publishControls();
         self.wake_req.store(true, .release);
     }
 
     // Unclamped store — switches keep the selected index here, not a 0..1 norm.
     fn setControlRaw(self: *FyRawMachine, idx: usize, value: f32) void {
         self.raw_control_bits[idx].store(@bitCast(value), .monotonic);
+        self.publishControls();
         self.wake_req.store(true, .release);
     }
 
@@ -1249,11 +1514,13 @@ pub const FyRawMachine = struct {
         self.synced_sr = sample_rate;
         self.synced_tempo = tempo_bpm;
         const controls = self.desc.controls[0..self.desc.control_count];
-        for (controls, 0..) |control, i| {
+        // By pointer: a Control is ~1 KB, and a by-value capture copies it
+        // per control per block.
+        for (controls, 0..) |*control, i| {
             switch (control.kind) {
-                .direct_f64 => self.writeParamF64(control.offset, normToValue(control, self.smooth_norm[i])),
-                .switch_sel => self.writeParamF64(control.offset, control.option_values[switchIndex(control, self.effRaw(i))]),
-                .int_range => self.writeParamF64(control.offset, intRangeValue(control, self.effRaw(i))),
+                .direct_f64 => self.writeParamF64(control.offset, normToValue(control.*, self.smooth_norm[i])),
+                .switch_sel => self.writeParamF64(control.offset, control.option_values[switchIndex(control.*, self.effRaw(i))]),
+                .int_range => self.writeParamF64(control.offset, intRangeValue(control.*, self.effRaw(i))),
             }
         }
 
@@ -1272,11 +1539,17 @@ pub const FyRawMachine = struct {
         self.kctx.tempo = tempo_bpm;
         self.kctx.chan = 0;
         self.kctx.data = self.desc.derive_data;
-        if (self.derive_caller) |*dv| _ = dv.call(1, &self.entryArgs(0)) catch {};
+        if (self.derive_caller) |*dv| _ = dv.callRealtime(1, &self.entryArgs(0)) catch {};
 
         // Per-block coefficient fill in fy. Runs after controls/consts land
         // so the word reads fresh raw values.
-        if (self.block_prepare_caller) |*bp| _ = bp.call(1, &self.entryArgs(0)) catch {};
+        if (self.block_prepare_caller) |*bp| _ = bp.callRealtime(1, &self.entryArgs(0)) catch {};
+        self.controls_dirty = false;
+        if (self.desc.latency_sel > 0) {
+            const value = self.readParamF64(self.desc.latency_sel - 1);
+            const latency: u32 = if (value > 0) @intFromFloat(@min(@ceil(value), 1e6)) else 0;
+            self.reported_latency.store(latency, .release);
+        }
     }
 
     /// ( ctx state params ) for region `reg`, with ctx.chan = reg.
@@ -1313,9 +1586,6 @@ fn presetNameImpl(state: *anyopaque, index: machine.PresetIndex) [*:0]const u8 {
     return self.presets.names[index].z();
 }
 
-// Apply = parse `id|value` lines and store each matching control's value
-// (clamped via valueToNorm; switches store the option index raw). Runs on
-// the UI thread; the audio thread sees the atomics next block.
 fn currentPresetImpl(state: *anyopaque) i32 {
     const self: *FyRawMachine = @ptrCast(@alignCast(state));
     return self.current_preset_idx;
@@ -1330,6 +1600,8 @@ fn markPresetImpl(state: *anyopaque, index: i32) void {
 /// A switch moved on the panel: store the option, then whatever that
 /// option `sets` (a MODEL switch moving the knobs it models).
 fn pickOption(self: *FyRawMachine, gi: usize, idx: usize) void {
+    self.beginControlEdit();
+    defer self.endControlEdit();
     self.setControlRaw(gi, @floatFromInt(idx));
     for (self.desc.opt_sets[0..self.desc.opt_set_count]) |*os| {
         if (os.ctl == gi and os.opt == idx) applyControlValue(self, os.idSlice(), os.value);
@@ -1430,8 +1702,13 @@ fn remapEdits(edits: *const keymap.ZoneEdits, old: *const keymap.Keymap, new: *c
     return out;
 }
 
+// UI thread: parse/load a preset and publish grouped control targets with
+// their snap generations when the edit ends. Asset bindings use their own
+// owned handoff; audio never parses the preset or loads the referenced files.
 fn applyPresetImpl(state: *anyopaque, index: machine.PresetIndex) void {
     const self: *FyRawMachine = @ptrCast(@alignCast(state));
+    self.beginControlEdit();
+    defer self.endControlEdit();
     if (index >= self.presets.count) return;
     self.current_preset_idx = index;
     var fbuf: [presets_mod.MAX_FILE]u8 = undefined;
@@ -1602,6 +1879,7 @@ fn applyZonesJsonImpl(state: *anyopaque, zones: std.json.Value) void {
     self.zone_edits.decay = e.decay;
     self.zone_edits.tone = e.tone;
     self.zone_edits.cut = e.cut;
+    self.publishZoneEdits();
 }
 
 /// Order copies so each comes after the copy it was made from (JSON
@@ -1639,6 +1917,7 @@ fn resetZoneEdits(self: *FyRawMachine) void {
     self.zone_edits.decay = flat.decay;
     self.zone_edits.tone = flat.tone;
     self.zone_edits.cut = flat.cut;
+    self.publishZoneEdits();
 }
 
 fn loadAssetImpl(state: *anyopaque, name: []const u8, path: []const u8) bool {
@@ -1715,31 +1994,34 @@ fn setAssetLabel(self: *FyRawMachine, ai: usize, label: []const u8) void {
 }
 
 /// Rebuild what the doc changed into the table the voices play. The
-/// levels are built off the audio thread; only the swap or the copy
-/// happens inside the fence.
+/// levels are built off audio and published as a new immutable table.
 fn syncTableDoc(self: *FyRawMachine, ai: usize) void {
     const doc = self.wt_docs[ai] orelse return;
     const d = doc.takeDirty() orelse return;
     self.wt_unsaved[ai] = true;
     self.wt_lib_len = 0; // the library's copy is the table before this edit
     self.wt_edited = true;
-    // A shared table is rebuilt as this instance's own before any edit lands.
-    if (d.resized or self.asset_wt[ai].frames != doc.count or wt_cache.isShared(self.asset_wt[ai])) {
-        var t = doc.build(self.alloc) catch return;
-        fy_host_mod.lockCallbacks();
-        std.mem.swap(wavetable.Table, &self.asset_wt[ai], &t);
-        self.injectAssets();
-        fy_host_mod.unlockCallbacks();
-        wt_cache.release(self.alloc, &t);
+    if (!self.reserveAssetRetirement()) {
+        doc.resized = true; // retain dirty work for the next UI frame
         return;
     }
-    const cells = (d.hi - d.lo + 1) * wavetable.STRIDE;
-    const tmp = self.alloc.alloc(f64, cells) catch return;
-    defer self.alloc.free(tmp);
-    doc.writeFrames(tmp, d.lo, d.hi);
-    fy_host_mod.lockCallbacks();
-    @memcpy(self.asset_wt[ai].data[d.lo * wavetable.STRIDE ..][0..cells], tmp);
-    fy_host_mod.unlockCallbacks();
+    var t: wavetable.Table = undefined;
+    if (d.resized or self.asset_wt[ai].frames != doc.count or wt_cache.isShared(self.asset_wt[ai])) {
+        t = doc.build(self.alloc) catch {
+            doc.resized = true;
+            return;
+        };
+    } else {
+        t = self.asset_wt[ai];
+        t.data = self.alloc.dupe(f64, t.data) catch {
+            doc.resized = true;
+            return;
+        };
+        doc.writeFrames(t.data[d.lo * wavetable.STRIDE ..], d.lo, d.hi);
+    }
+    self.asset_retired.append(self.asset_generation + 1, .{ .table = self.asset_wt[ai] });
+    self.asset_wt[ai] = t;
+    self.publishAssets(false);
 }
 
 /// The editor in place of the panel's pages, until DONE.
@@ -1844,13 +2126,12 @@ fn saveFilesImpl(state: *anyopaque, project_path: []const u8, track_name: []cons
 
 // ── Automation hooks (docs/22) ───────────────────────────────────────
 
-/// The params f64 the machine keeps its latency in, whole samples.
+/// UI and audio queries read the last audio-prepared latency, never the
+/// concurrently written parameter buffer. Snapped/discrete target changes
+/// are prepared by adoptImpl before the engine computes path compensation.
 fn latencyImpl(state: *anyopaque) u32 {
     const self: *FyRawMachine = @ptrCast(@alignCast(state));
-    const off = self.desc.latency_sel - 1;
-    const v: *align(1) const f64 = @ptrCast(&self.params_buf[off]);
-    if (!(v.* > 0)) return 0;
-    return @intFromFloat(@min(@ceil(v.*), 1e6));
+    return self.reported_latency.load(.acquire);
 }
 
 /// Idle skipping (docs/04): the longest host buffer (a delay's ring can
@@ -2252,14 +2533,29 @@ fn intRangeValue(control: Control, raw: f32) f64 {
     return std.math.clamp(@round(@as(f64, raw)), control.min, control.max);
 }
 
+fn adoptImpl(state: *anyopaque) void {
+    const self: *FyRawMachine = @ptrCast(@alignCast(state));
+    self.adoptAssets();
+    self.adoptControls();
+    if (self.desc.latency_sel > 0 and self.controls_dirty) {
+        // Apply snaps/discrete choices before PDC observes the new version.
+        // Zero samples advances no glide; only audio owns these parameters.
+        _ = self.advanceSmoothing(0);
+        self.syncRawParams(self.synced_sr, self.synced_tempo);
+    }
+    self.publishDisplay(); // requests are served even when muted/idle
+}
+
 fn renderImpl(state: *anyopaque, ctx: *const machine.MachineCtx, l: []f32, r: []f32) void {
     const self: *FyRawMachine = @ptrCast(@alignCast(state));
     const frames = @min(@as(usize, @intCast(ctx.block_size)), @min(l.len, @min(r.len, MAX_BLOCK)));
     if (frames == 0) return;
 
-    // The caller holds the fy callback lock for the block (the engine, once
-    // for every machine it renders, on any of its threads).
-    Fy.Builtins.fyPtr = @intFromPtr(&self.host.fy);
+    self.adoptAssets();
+    self.adoptControls();
+    defer self.publishZoneMeters();
+    defer self.publishDisplay();
+    // Audio owns state/params; compiled callers are stable while they run.
 
     self.kctx.beat = ctx.ppq_position;
     self.kctx.frames = @floatFromInt(frames);
@@ -2356,7 +2652,7 @@ fn callPrepare(self: *FyRawMachine, sample_rate: f64) !void {
     // Prepare runs once per state region: per channel for effects, per
     // voice for polyphonic machines.
     _ = sample_rate; // already in kctx.sr (syncRawParams)
-    for (0..self.regionCount()) |reg| _ = try caller.call(1, &self.entryArgs(reg));
+    for (0..self.regionCount()) |reg| _ = try caller.callRealtime(1, &self.entryArgs(reg));
 }
 
 fn renderVoiceSample(self: *FyRawMachine, ctx: *const machine.MachineCtx, l: []f32, r: []f32) !void {
@@ -2507,7 +2803,7 @@ fn renderPairPass(self: *FyRawMachine, lanes: *RawCaller, a: usize, b: usize, io
         var n = len - at;
         if (self.control_caller) |*ctl| {
             for ([2]usize{ a, b }) |v| if (self.voice_ctl_left[v] == 0) {
-                _ = try ctl.call(1, &self.entryArgs(v));
+                _ = try ctl.callRealtime(1, &self.entryArgs(v));
                 self.voice_ctl_left[v] = self.desc.control_period;
             };
             n = @min(n, @min(self.voice_ctl_left[a], self.voice_ctl_left[b]));
@@ -2521,7 +2817,7 @@ fn renderPairPass(self: *FyRawMachine, lanes: *RawCaller, a: usize, b: usize, io
             .{ .ptr = self.statePtrCh(a) },      .{ .ptr = self.statePtrCh(b) },
             .{ .ptr = self.paramsPtr() },
         };
-        _ = try lanes.call(@intCast(n), &args);
+        _ = try lanes.callRealtime(@intCast(n), &args);
         if (self.control_caller != null) {
             self.voice_ctl_left[a] -= n;
             self.voice_ctl_left[b] -= n;
@@ -2539,18 +2835,18 @@ fn renderVoice(self: *FyRawMachine, caller: *RawCaller, voice: usize, io: []IoFr
         var at: usize = 0;
         while (at < io.len) {
             if (self.voice_ctl_left[voice] == 0) {
-                _ = try ctl.call(1, &e);
+                _ = try ctl.callRealtime(1, &e);
                 self.voice_ctl_left[voice] = self.desc.control_period;
             }
             const n = @min(io.len - at, self.voice_ctl_left[voice]);
             const args = [_]Fy.Dsp2RawArg{ .{ .ptr = @intFromPtr(&io[at]) }, e[0], e[1], e[2] };
-            _ = try caller.call(@intCast(n), &args);
+            _ = try caller.callRealtime(@intCast(n), &args);
             self.voice_ctl_left[voice] -= n;
             at += n;
         }
     } else {
         const args = [_]Fy.Dsp2RawArg{ .{ .ptr = @intFromPtr(&io[0]) }, e[0], e[1], e[2] };
-        _ = try caller.call(@intCast(io.len), &args);
+        _ = try caller.callRealtime(@intCast(io.len), &args);
     }
     var pk = self.voice_peak[voice];
     for (snap, io) |b, f| pk = @max(pk, @abs(f.out_l - b));
@@ -2713,7 +3009,7 @@ fn syncUnison(self: *FyRawMachine) !void {
             self.kctx.pressure = e[1];
             self.kctx.slide = e[2];
             self.kctx.gain = e[3];
-            _ = try caller.call(1, &self.entryArgs(v));
+            _ = try caller.callRealtime(1, &self.entryArgs(v));
         };
     }
     var grouped = self.uni_count > 1;
@@ -2884,7 +3180,7 @@ fn noteExprEvent(self: *FyRawMachine, ev: machine.NoteEvent) !void {
         self.kctx.slide = ev.slide;
         self.kctx.gain = std.math.pow(f64, 10, @as(f64, ev.value) / 20);
         self.voice_expr[v] = .{ ev.pitch, self.kctx.pressure, self.kctx.slide, self.kctx.gain };
-        _ = try caller.call(1, &self.entryArgs(v));
+        _ = try caller.callRealtime(1, &self.entryArgs(v));
     }
 }
 
@@ -2892,12 +3188,12 @@ fn callNoteOn(self: *FyRawMachine, voice: usize, hz: f64, velocity: f64) !void {
     const caller = if (self.note_on_caller) |*c_| c_ else return;
     self.kctx.hz = hz;
     self.kctx.vel = velocity;
-    _ = try caller.call(1, &self.entryArgs(voice));
+    _ = try caller.callRealtime(1, &self.entryArgs(voice));
 }
 
 fn callNoteOff(self: *FyRawMachine, voice: usize) !void {
     const caller = if (self.note_off_caller) |*c_| c_ else return;
-    _ = try caller.call(1, &self.entryArgs(voice));
+    _ = try caller.callRealtime(1, &self.entryArgs(voice));
 }
 
 /// The render word for this block (effects and voices): the lite one when the machine declares
@@ -2938,7 +3234,7 @@ fn renderEffectBlock(self: *FyRawMachine, ctx: *const machine.MachineCtx, l: []f
         // True stereo: one pass sees both inputs and writes both outputs.
         const e = self.entryArgs(0);
         const args = [_]Fy.Dsp2RawArg{ .{ .ptr = @intFromPtr(&io[0]) }, e[0], e[1], e[2] };
-        _ = try caller.call(l.len, &args);
+        _ = try caller.callRealtime(l.len, &args);
         for (l, r, io) |*dl, *dr, f| {
             dl.* = @floatCast(f.out_l);
             dr.* = @floatCast(f.out_r);
@@ -2962,7 +3258,7 @@ fn renderEffectBlock(self: *FyRawMachine, ctx: *const machine.MachineCtx, l: []f
             .{ .ptr = self.statePtrCh(0) },      .{ .ptr = self.statePtrCh(1) },
             .{ .ptr = self.paramsPtr() },
         };
-        _ = try lanes.call(l.len, &args);
+        _ = try lanes.callRealtime(l.len, &args);
         for (l, io) |*d, f| d.* = @floatCast(f.out_l);
         for (r, io_r) |*d, f| d.* = @floatCast(f.out_l);
         return;
@@ -2974,7 +3270,7 @@ fn renderEffectBlock(self: *FyRawMachine, ctx: *const machine.MachineCtx, l: []f
         if (ch == 1) for (io) |*f| std.mem.swap(f64, &f.in_l, &f.in_r);
         const e = self.entryArgs(ch);
         const args = [_]Fy.Dsp2RawArg{ .{ .ptr = @intFromPtr(&io[0]) }, e[0], e[1], e[2] };
-        _ = try caller.call(l.len, &args);
+        _ = try caller.callRealtime(l.len, &args);
         for (dst, io) |*d, f| d.* = @floatCast(f.out_l); // no clamp (D5)
     }
 }
@@ -2994,6 +3290,10 @@ fn inputChannels(ctx: *const machine.MachineCtx) struct { ?[*]const f32, ?[*]con
 
 fn resetImpl(state: *anyopaque) void {
     const self: *FyRawMachine = @ptrCast(@alignCast(state));
+    defer self.publishDisplay();
+    self.adoptAssets();
+    self.adoptZoneEdits();
+    self.adoptControls();
     for (0..self.regionCount()) |reg| {
         @memset(self.state_buf[reg * MAX_STATE ..][0..self.desc.state_size], 0);
     }
@@ -3014,6 +3314,10 @@ fn resetImpl(state: *anyopaque) void {
 
 fn deinitImpl(state: *anyopaque, alloc: std.mem.Allocator) void {
     const self: *FyRawMachine = @ptrCast(@alignCast(state));
+    if (self.display_telemetry.load(.monotonic)) |t| {
+        alloc.free(t.graphic_storage);
+        alloc.destroy(t);
+    }
     self.freeBuffersUpTo(alloc, self.desc.buffer_count);
     self.freeAssets(alloc);
     // derive-data is libc-malloc'd by fy's `alloc`; fy doesn't track it.
@@ -3028,6 +3332,10 @@ fn deinitImpl(state: *anyopaque, alloc: std.mem.Allocator) void {
 // uses one knob size tier: the largest at which every strip fits.
 fn drawPanelImpl(state: *anyopaque, ui: *Ui, rect: Rect) void {
     const self: *FyRawMachine = @ptrCast(@alignCast(state));
+    self.requestDisplay();
+    self.asset_retired.collect(self, FyRawMachine.disposeAsset);
+    self.readZoneMeters();
+    defer self.publishZoneEdits();
     if (rect.empty()) return;
     ui.pushId(self);
     defer ui.popId();
@@ -3069,7 +3377,7 @@ fn drawFixtureInfo(self: *FyRawMachine, ui: *Ui, r: Rect) void {
     else
         "dsp fixture";
     _ = ui.text(&ui.fonts.body, body.x, body.cutTop(18).y, detail, ui_style.text);
-    ui_ctl.display(ui, body.cutTop(ui_ctl.displayHeight(false)).takeLeft(@min(body.w, 160)), if (self.failed) "FAILED" else "LIVE", .{ .color = if (self.failed) ui_style.rec else ui_style.vfd });
+    ui_ctl.display(ui, body.cutTop(ui_ctl.displayHeight(false)).takeLeft(@min(body.w, 160)), if (self.display().failed) "FAILED" else "LIVE", .{ .color = if (self.display().failed) ui_style.rec else ui_style.vfd });
 }
 
 const StripView = struct {
@@ -3698,9 +4006,9 @@ const NO_SLOT = std.math.maxInt(usize);
 /// A place a dragged source can land: a destination knob, or a slot.
 const ModTarget = struct { r: Rect, dst: usize = 0, slot: usize = NO_SLOT };
 
-/// The voice the displays follow: the newest one still sounding (a
-/// unison group's first).
-fn newestVoice(self: *const FyRawMachine) ?usize {
+/// Audio only: select the newest sounding voice for telemetry (a unison
+/// group's first). UI reads the published selection through newestVoice.
+fn newestAudioVoice(self: *const FyRawMachine) ?usize {
     if (self.desc.mode != .voice_sample) return null;
     var best: ?usize = null;
     var age: u64 = 0;
@@ -3714,10 +4022,17 @@ fn newestVoice(self: *const FyRawMachine) ?usize {
     return best;
 }
 
+// UI view: selected voice and state are from the same completed render.
+fn newestVoice(self: *const FyRawMachine) ?usize {
+    return self.display().voice;
+}
+
 /// The newest voice's state f64 at `off`, null when nothing sounds.
 fn liveF64(self: *const FyRawMachine, off: usize) ?f64 {
-    const v = newestVoice(self) orelse return null;
-    return self.readStateF64(v, off);
+    const view = self.display();
+    if (view.voice == null or off + @sizeOf(f64) > self.desc.state_size) return null;
+    const p: *align(1) const f64 = @ptrCast(&view.selected_state[off]);
+    return p.*;
 }
 
 fn prefixedCtl(self: *const FyRawMachine, prefix: []const u8, suffix: []const u8) ?usize {
@@ -3973,7 +4288,7 @@ fn drawDockDisplay(self: *FyRawMachine, ui: *Ui, r: Rect) void {
     var buf: [32]u8 = undefined;
     const s = if (newestVoice(self)) |v| blk: {
         ui.animate();
-        const k: u8 = @intFromFloat(std.math.clamp(@round(self.voice_pitch[v]), 0, 127));
+        const k: u8 = @intFromFloat(std.math.clamp(@round(self.display().pitch), 0, 127));
         const names = [_][]const u8{ "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B" };
         break :blk std.fmt.bufPrint(&buf, "VOICE {d} {s}{d}", .{ v + 1, names[k % 12], @as(i32, k / 12) - 1 }) catch "";
     } else "";
@@ -4138,13 +4453,13 @@ fn drawScopeDisplay(self: *FyRawMachine, ui: *Ui, r: Rect) void {
     ui.rect(Rect.xywh(inner.x, mid, inner.w, 1), ui_style.vfd.alpha(30));
     const v = newestVoice(self);
     if (v != null) ui.animate();
-    const pitch: f64 = if (v) |vi| self.voice_pitch[vi] else 48;
+    const pitch = self.display().pitch;
     const hz = 440.0 * std.math.pow(f64, 2, (pitch - 69) / 12);
-    const cycle: usize = @intFromFloat(std.math.clamp(self.kctx.sr / hz, 16, SCOPE_LEN / 6));
+    const cycle: usize = @intFromFloat(std.math.clamp(self.display().sr / hz, 16, SCOPE_LEN / 6));
     const span = 2 * cycle;
-    const head = self.scope_head.load(.acquire);
+    const head = self.display().scope_head;
     if (head < span + cycle) return;
-    const buf = &self.scope_buf;
+    const buf = &self.display().scope;
     // The newest rising zero crossing that leaves a whole span after it.
     var start = head - span;
     var back: usize = 0;
@@ -4502,9 +4817,9 @@ fn drawDynamicsDisplay(self: *FyRawMachine, ui: *Ui, r: Rect, disp: *const Displ
     const ratio = prefixedValue(self, pre, "-ratio", 4);
     // A mode-dependent knee comes from state (char2); bus2 fixes it at 4.
     const knee_off = disp.dynOffset(.knee);
-    const knee = if (knee_off != 0) self.readStateF64(0, knee_off) else prefixedValue(self, pre, "-knee", 4);
-    const gr = @max(0, self.readStateF64(0, disp.dynOffset(.gr)));
-    const lvl = self.readStateF64(0, disp.dynOffset(.lvl));
+    const knee = if (knee_off != 0) self.uiStateF64(0, knee_off) else prefixedValue(self, pre, "-knee", 4);
+    const gr = @max(0, self.uiStateF64(0, disp.dynOffset(.gr)));
+    const lvl = self.uiStateF64(0, disp.dynOffset(.lvl));
     ui.animate();
 
     var area = field.inset(2);
@@ -4572,7 +4887,7 @@ fn drawTapsDisplay(self: *FyRawMachine, ui: *Ui, r: Rect, disp: *const Display) 
     // From the controls, as the kernel's block-prepare derives them, so it
     // shows the settings while the transport is stopped too.
     const pre = disp.sourceSlice();
-    const tempo = std.math.clamp(self.synced_tempo, 20, 999);
+    const tempo = std.math.clamp(self.display().tempo, 20, 999);
     const beat = 60 / tempo;
     const tl = if (prefixedValue(self, pre, "-sync", 0) >= 0.5)
         std.math.clamp(beat * prefixedValue(self, pre, "-div", 0.5), 0.02, 1.5)
@@ -4686,8 +5001,8 @@ fn drawDecayDisplay(self: *FyRawMachine, ui: *Ui, r: Rect, disp: *const Display)
     if (field.w < 24 or field.h < 16) return;
     // From the controls (see drawTapsDisplay), with reverb.fy's lengths.
     const pre_id = disp.sourceSlice();
-    const sr = self.synced_sr;
-    const tempo = std.math.clamp(self.synced_tempo, 20, 999);
+    const sr = self.display().sr;
+    const tempo = std.math.clamp(self.display().tempo, 20, 999);
     const sync = prefixedValue(self, pre_id, "-pre-sync", 0);
     const pre = std.math.clamp(if (sync > 0) 60 / tempo * sync else prefixedValue(self, pre_id, "-predelay", 0.02), 0, 0.25);
     const rt = @max(prefixedValue(self, pre_id, "-decay", 3), 0.05);
@@ -4947,19 +5262,16 @@ fn rbjNotch(fc: f64, q: f64, sr: f64) Biquad {
 /// Sum both channels' Hann-windowed power spectra of the newest samples
 /// in the ring into `g.pow` (per bin, scaled so a 0 dBFS sine reads 1).
 /// False when there is no ring to read.
-fn graphicSpectrum(self: *FyRawMachine, g: *GraphicUi, bi: usize, wpos_off: usize) bool {
+fn graphicSpectrum(self: *FyRawMachine, g: *GraphicUi, di: usize) bool {
     const n = GRAPHIC_FFT;
-    if (self.buffer_mem[bi][0].len < n) return false;
+    const channels = self.display().graphics[di] orelse return false;
     @memset(g.pow[0..], 0);
     var chans: f64 = 0;
-    for (0..2) |ch| {
-        const ring = self.buffer_mem[bi][ch];
-        if (ring.len < n) continue;
-        const w: usize = @intFromFloat(std.math.clamp(self.readStateF64(ch, wpos_off), 0, @as(f64, @floatFromInt(ring.len - 1))));
-        const start = (w + ring.len - n) % ring.len;
+    for (channels) |samples| {
+        if (samples.len < n) continue;
         for (0..n) |i| {
             const hann = 0.5 - 0.5 * @cos(2.0 * std.math.pi * @as(f64, @floatFromInt(i)) / @as(f64, @floatFromInt(n)));
-            g.re[i] = ring[(start + i) % ring.len] * hann;
+            g.re[i] = samples[i] * hann;
             g.im[i] = 0;
         }
         analysis.fft(g.re[0..], g.im[0..]);
@@ -5009,7 +5321,7 @@ fn drawGraphicDisplay(self: *FyRawMachine, ui: *Ui, r: Rect, disp: *const Displa
     const field = ui.well(r, ui_style.well);
     if (field.w < 16 or field.h < 16) return;
     const g = &self.graphic_ui;
-    const sr = self.synced_sr;
+    const sr = self.display().sr;
     const dt = ui.in.dt;
     ui.animate();
 
@@ -5024,10 +5336,11 @@ fn drawGraphicDisplay(self: *FyRawMachine, ui: *Ui, r: Rect, disp: *const Displa
     const wpos_off = disp.offsets[0];
 
     // The analyser falls to silence once the machine stops rendering.
-    const wpos = self.readStateF64(0, wpos_off);
+    const wpos = self.uiStateF64(0, wpos_off);
     if (wpos == g.last_wpos) g.still += dt else g.still = 0;
     g.last_wpos = wpos;
-    const live = g.still < SPEC_STILL_S and bi != null and graphicSpectrum(self, g, bi.?, wpos_off);
+    const di = (@intFromPtr(disp) - @intFromPtr(&self.desc.displays[0])) / @sizeOf(Display);
+    const live = g.still < SPEC_STILL_S and bi != null and graphicSpectrum(self, g, di);
 
     // The band response, from the controls (as geq-block-prepare would).
     const Band = struct { on: bool, t: GeqType, hz: f64, gain: f64 };
@@ -5217,18 +5530,18 @@ fn dbToY(db: f32, top: f32, bottom: f32) f32 {
 /// Compressor/limiter display: IN pair | GR band | OUT pair (pro meters,
 /// graduated on the output), then GR / output-peak / LUFS readouts.
 fn drawMeterDisplay(self: *FyRawMachine, ui: *Ui, r: Rect, disp: *const Display) void {
-    const regions = self.regionCount();
+    const regions = self.display().regions;
     const r1: usize = if (regions > 1) 1 else 0;
 
     // Live linear cells (region 0 = L, region 1 = R).
-    const gmin = @min(self.readStateF64(0, disp.meterOffset(.gmin)), self.readStateF64(r1, disp.meterOffset(.gmin)));
+    const gmin = @min(self.uiStateF64(0, disp.meterOffset(.gmin)), self.uiStateF64(r1, disp.meterOffset(.gmin)));
     const gr_now: f32 = -lin2db(@max(gmin, 1e-7));
-    const in_lin = [2]f32{ @floatCast(self.readStateF64(0, disp.meterOffset(.ipk))), @floatCast(self.readStateF64(r1, disp.meterOffset(.ipk))) };
-    const out_lin = [2]f32{ @floatCast(self.readStateF64(0, disp.meterOffset(.opk))), @floatCast(self.readStateF64(r1, disp.meterOffset(.opk))) };
-    const msm = self.readStateF64(0, disp.meterOffset(.msm)) + self.readStateF64(r1, disp.meterOffset(.msm));
-    const mss = self.readStateF64(0, disp.meterOffset(.mss)) + self.readStateF64(r1, disp.meterOffset(.mss));
-    const msum = self.readStateF64(0, disp.meterOffset(.msum)) + self.readStateF64(r1, disp.meterOffset(.msum));
-    const mn = @max(self.readStateF64(0, disp.meterOffset(.mn)), 1.0);
+    const in_lin = [2]f32{ @floatCast(self.uiStateF64(0, disp.meterOffset(.ipk))), @floatCast(self.uiStateF64(r1, disp.meterOffset(.ipk))) };
+    const out_lin = [2]f32{ @floatCast(self.uiStateF64(0, disp.meterOffset(.opk))), @floatCast(self.uiStateF64(r1, disp.meterOffset(.opk))) };
+    const msm = self.uiStateF64(0, disp.meterOffset(.msm)) + self.uiStateF64(r1, disp.meterOffset(.msm));
+    const mss = self.uiStateF64(0, disp.meterOffset(.mss)) + self.uiStateF64(r1, disp.meterOffset(.mss));
+    const msum = self.uiStateF64(0, disp.meterOffset(.msum)) + self.uiStateF64(r1, disp.meterOffset(.msum));
+    const mn = @max(self.uiStateF64(0, disp.meterOffset(.mn)), 1.0);
 
     // GR ballistics + output-peak latch (the level bars use the Ui
     // meters' own ballistics).
@@ -5732,7 +6045,8 @@ fn keyName(buf: []u8, key: f64) []const u8 {
 }
 
 /// Draggable marker bound to control `id`: dragging writes its normalized
-/// value live (the audio thread reads it atomically) and the knob follows.
+/// target on UI and publishes a control version; audio adopts and smooths it.
+/// The panel knob follows the same UI target.
 fn drawMarker(self: *FyRawMachine, ui: *Ui, area: Rect, id: []const u8, col: ui_style.Color) void {
     const idx = for (self.desc.controls[0..self.desc.control_count], 0..) |*ctl, i| {
         if (std.mem.eql(u8, ctl.idSlice(), id)) break i;
@@ -7436,7 +7750,12 @@ test "raw DSP2 sampler machine: asset loads and polyphonic notes sound" {
     const new_ptr = @intFromPtr(inst.asset_keymap[0].pool.ptr);
     try testing.expect(new_ptr != old_ptr); // a fresh allocation
     const pbits: *align(8) const usize = @ptrCast(@alignCast(&inst.params_buf[off]));
+    try testing.expectEqual(old_ptr, pbits.*); // published, not yet adopted
+    try testing.expect(inst.asset_retired.len > 0); // old pool still alive
+    testRender(mach, &ctx, &l, &r);
     try testing.expectEqual(new_ptr, pbits.*);
+    inst.asset_retired.collect(inst, FyRawMachine.disposeAsset);
+    try testing.expectEqual(@as(usize, 0), inst.asset_retired.len);
     try testing.expectEqual(@as(usize, 1), inst.asset_keymap[0].count);
 }
 
@@ -7526,6 +7845,8 @@ const keymap_test = struct {
 
     /// Play `events` into the first block, render `blocks`, return L.
     fn play(inst: *FyRawMachine, events: []machine.NoteEvent, blocks: usize, out: []f32) void {
+        inst.publishZoneEdits();
+        defer inst.readZoneMeters();
         const mach = inst.machineInterface();
         var ctx = std.mem.zeroes(machine.MachineCtx);
         ctx.sample_rate = 48_000;
@@ -9555,4 +9876,184 @@ test "phaser2: no-op automation keeps the synchronized sweep aligned at a nonzer
     }
     const beat_off = try fyFieldOffset(b, "PhaserState.beat");
     try testing.expectApproxEqAbs(ctx.ppq_position + @as(f64, block) * 143 / (60.0 * 48000), b.readStateF64(0, beat_off), 1e-10);
+}
+
+test "realtime: asset publication coalesces safely and render never uses its allocator" {
+    const a = testing.allocator;
+    const inst = try FyRawMachine.create(a, "machines/sampler/sampler.fy");
+    const m = inst.machineInterface();
+    defer m.deinit.?(m.state, a);
+    const old = inst.asset_versions.current().bindings[0].ptr;
+    for (0..4) |_| try testing.expect(inst.loadAssetRuntime(0, "machines/sampler/assets/default.wav"));
+    try testing.expectEqual(old, inst.asset_versions.current().bindings[0].ptr);
+    try testing.expectEqual(@as(usize, 4), inst.asset_retired.len);
+    const generation = inst.asset_generation;
+    var failing = testing.FailingAllocator.init(a, .{ .fail_index = 0 });
+    inst.alloc = failing.allocator();
+    defer inst.alloc = a;
+    var l: [128]f32 = undefined;
+    var rr: [128]f32 = undefined;
+    const event = [_]machine.NoteEvent{.{ .sample_offset = 0, .kind = .note_on, .channel = 0, .note_id = 1, .pitch = 57, .velocity = 1 }};
+    const ctx = machine.MachineCtx{ .sample_rate = 48_000, .block_size = 128, .block_start = 0, .tempo_bpm = 120, .ppq_position = 0, .transport_state = .playing, .note_in = &event, .note_in_count = 1 };
+    testRender(m, &ctx, &l, &rr);
+    try testing.expectEqual(@as(usize, 0), failing.allocations);
+    try testing.expectEqual(generation, inst.asset_retired.ack.load(.acquire));
+    for (l) |v| try testing.expect(std.math.isFinite(v));
+    inst.alloc = a;
+    inst.asset_retired.collect(inst, FyRawMachine.disposeAsset);
+    try testing.expectEqual(@as(usize, 0), inst.asset_retired.len);
+}
+
+test "realtime: grouped controls are adopted together and code definitions stay sealed" {
+    const inst = try FyRawMachine.create(testing.allocator, "machines/juno2/juno2.fy");
+    const m = inst.machineInterface();
+    defer m.deinit.?(m.state, testing.allocator);
+    const before = inst.audio_control_bits;
+    inst.beginControlEdit();
+    inst.setControlNorm(0, 0.25);
+    inst.adoptControls(); // control thread suspended mid-transaction
+    try testing.expectEqualSlices(u32, &before, &inst.audio_control_bits);
+    inst.setControlNorm(1, 0.75);
+    inst.endControlEdit();
+    inst.adoptControls();
+    try testing.expectEqual(@as(f32, 0.25), inst.audioNorm(0));
+    try testing.expectEqual(@as(f32, 0.75), inst.audioNorm(1));
+    try testing.expectError(error.PublishedCode, inst.host.compile("dsp: changed 1.0 ;"));
+    try testing.expectError(error.PublishedCode, inst.host.startHotPatchServer());
+    try testing.expectError(error.PublishedCode, inst.host.createAudioCallback(inst.desc.renderWord()));
+}
+
+test "realtime: rendering survives concurrent asset replacement and private compilation" {
+    const a = testing.allocator;
+    const inst = try FyRawMachine.createIsolated(a, "machines/sampler/sampler.fy");
+    const m = inst.machineInterface();
+    defer m.deinit.?(m.state, a);
+    const Runner = struct {
+        started: std.atomic.Value(bool) = .init(false),
+        stop: std.atomic.Value(bool) = .init(false),
+        blocks: std.atomic.Value(u64) = .init(0),
+        valid: bool = true,
+        fn run(self: *@This(), mach: machine.Machine) void {
+            var l: [128]f32 = undefined;
+            var rr: [128]f32 = undefined;
+            const notes = [_]machine.NoteEvent{.{ .sample_offset = 0, .kind = .note_on, .channel = 0, .note_id = 1, .pitch = 57, .velocity = 1 }};
+            var ctx = machine.MachineCtx{ .sample_rate = 48_000, .block_size = 128, .block_start = 0, .tempo_bpm = 120, .ppq_position = 0, .transport_state = .playing, .note_in = &notes, .note_in_count = 1 };
+            while (!self.stop.load(.acquire)) {
+                mach.render(mach.state, &ctx, &l, &rr);
+                for (l, rr) |x, y| if (!std.math.isFinite(x) or !std.math.isFinite(y)) {
+                    self.valid = false;
+                };
+                ctx.note_in_count = 0;
+                ctx.block_start += 128;
+                _ = self.blocks.fetchAdd(1, .monotonic);
+                self.started.store(true, .release);
+            }
+        }
+    };
+    const Sleep = struct {
+        extern "c" fn usleep(us: c_uint) c_int;
+    };
+    var runner = Runner{};
+    const thread = try std.Thread.spawn(.{}, Runner.run, .{ &runner, m });
+    var joined = false;
+    defer if (!joined) {
+        runner.stop.store(true, .release);
+        thread.join();
+    };
+    while (!runner.started.load(.acquire)) _ = Sleep.usleep(1000);
+    for (0..40) |_| try testing.expect(inst.loadAssetRuntime(0, "machines/sampler/assets/default.wav"));
+    const before_compile = runner.blocks.load(.monotonic);
+    const prepared = try FyRawMachine.createIsolated(a, "machines/raw_fixtures/oscillator.fy");
+    defer deinitImpl(prepared, a);
+    try testing.expect(inst.host != prepared.host);
+    const after_compile = runner.blocks.load(.monotonic);
+    runner.stop.store(true, .release);
+    thread.join();
+    joined = true;
+    try testing.expect(runner.valid);
+    try testing.expect(after_compile > before_compile);
+    inst.asset_retired.collect(inst, FyRawMachine.disposeAsset);
+}
+
+test "realtime: UI display holds an owned voice and scope version across renders" {
+    const a = testing.allocator;
+    const inst = try FyRawMachine.create(a, "machines/concoction/concoction.fy");
+    defer deinitImpl(inst, a);
+    inst.requestDisplay(); // UI prepares telemetry storage before rendering
+    const note = [_]machine.NoteEvent{.{ .sample_offset = 0, .channel = 0, .note_id = 1, .kind = .note_on, .pitch = 60, .velocity = 0.8 }};
+    var ctx = machine.MachineCtx{ .sample_rate = 48000, .block_size = 128, .block_start = 0, .tempo_bpm = 120, .ppq_position = 0, .transport_state = .playing, .note_in = &note, .note_in_count = 1 };
+    var l: [128]f32 = undefined;
+    var r: [128]f32 = undefined;
+    renderImpl(inst, &ctx, &l, &r);
+    inst.requestDisplay(); // adopt the completed block and hold it
+    const held = inst.display();
+    try testing.expect(held.voice != null);
+    try testing.expectEqual(@as(f64, 60), held.pitch);
+    const state_hash = std.hash.Wyhash.hash(0, &held.selected_state);
+    const scope_hash = std.hash.Wyhash.hash(0, std.mem.sliceAsBytes(&held.scope));
+    const old_head = held.scope_head;
+    ctx.note_in_count = 0;
+    // Poison the instance allocator: all subsequent display publications
+    // are bounded copies into UI-prepared storage, even if UI is suspended.
+    var poison = std.testing.FailingAllocator.init(a, .{ .fail_index = 0 });
+    inst.alloc = poison.allocator();
+    defer inst.alloc = a;
+    const t = inst.display_telemetry.load(.acquire).?;
+    for (0..100) |_| {
+        t.requested.store(true, .release);
+        renderImpl(inst, &ctx, &l, &r);
+        try testing.expectEqual(state_hash, std.hash.Wyhash.hash(0, &held.selected_state));
+        try testing.expectEqual(scope_hash, std.hash.Wyhash.hash(0, std.mem.sliceAsBytes(&held.scope)));
+        try testing.expectEqual(old_head, held.scope_head);
+    }
+    try testing.expectEqual(@as(usize, 0), poison.allocations);
+    inst.requestDisplay();
+    try testing.expect(inst.display().scope_head > old_head);
+}
+
+test "realtime: spectrum windows are copied from DSP into owned UI storage" {
+    const a = testing.allocator;
+    const inst = try FyRawMachine.create(a, "machines/geq8/geq8.fy");
+    defer deinitImpl(inst, a);
+    inst.requestDisplay();
+    var il = [_]f32{0.25} ** 256;
+    var ir = [_]f32{-0.25} ** 256;
+    var l: [256]f32 = undefined;
+    var r: [256]f32 = undefined;
+    const ports = [2][*]const f32{ &il, &ir };
+    const ctx = machine.MachineCtx{ .sample_rate = 48000, .block_size = 256, .block_start = 0, .tempo_bpm = 120, .ppq_position = 0, .transport_state = .playing, .audio_in = &ports, .audio_in_count = 2 };
+    renderImpl(inst, &ctx, &l, &r);
+    inst.requestDisplay();
+    const t = inst.display_telemetry.load(.acquire).?;
+    try testing.expectEqual(@as(usize, 1), t.count);
+    const di = t.probes[0].display;
+    const held = inst.display().graphics[di].?;
+    try testing.expectEqual(@as(usize, GRAPHIC_FFT), held[0].len);
+    const hash = std.hash.Wyhash.hash(0, std.mem.sliceAsBytes(held[0]));
+    @memset(&il, 0.75);
+    @memset(&ir, -0.75);
+    for (0..40) |_| {
+        t.requested.store(true, .release);
+        renderImpl(inst, &ctx, &l, &r);
+        try testing.expectEqual(hash, std.hash.Wyhash.hash(0, std.mem.sliceAsBytes(held[0])));
+    }
+    inst.requestDisplay();
+    try testing.expect(hash != std.hash.Wyhash.hash(0, std.mem.sliceAsBytes(inst.display().graphics[di].?[0])));
+}
+
+test "realtime: raw render and adoption leave interpreter TLS untouched" {
+    const a = testing.allocator;
+    const inst = try FyRawMachine.create(a, "machines/juno2/juno2.fy");
+    defer deinitImpl(inst, a);
+    const saved = Fy.Builtins.fyPtr;
+    defer Fy.Builtins.fyPtr = saved;
+    Fy.Builtins.fyPtr = 0;
+    const note = [_]machine.NoteEvent{.{ .sample_offset = 0, .channel = 0, .note_id = 1, .kind = .note_on, .pitch = 60, .velocity = 0.8 }};
+    const ctx = machine.MachineCtx{ .sample_rate = 48000, .block_size = 128, .block_start = 0, .tempo_bpm = 120, .ppq_position = 0, .transport_state = .playing, .note_in = &note, .note_in_count = 1 };
+    var l: [128]f32 = undefined;
+    var r: [128]f32 = undefined;
+    adoptImpl(inst);
+    renderImpl(inst, &ctx, &l, &r);
+    try testing.expectEqual(@as(usize, 0), Fy.Builtins.fyPtr);
+    for (l, r) |x, y| try testing.expect(std.math.isFinite(x) and std.math.isFinite(y));
 }

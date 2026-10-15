@@ -1,6 +1,7 @@
 //! Slab's fy runtime host.
 //!
-//! Owns a single `Fy` instance shared across all machines.
+//! Owns a `Fy` instance. Initial loads may share a host; replacements use
+//! private hosts so preparation cannot rewrite executing code.
 //! Host builtins (slab:sr, slab:block-size, etc.) are registered once via
 //! `registerSlabBuiltins()` using fy's `bind:` injection pattern: we pass
 //! Zig function pointers as integer literals so fy can call them via the
@@ -8,9 +9,10 @@
 //! Integer returns come from Zig already tagged (`Fy.makeInt(n)`) so
 //! `bind: :i` pushes the correct fy value without an extra tag step.
 //!
-//! Thread-local ctx: `setCtx` / `clearCtx` set a per-thread pointer that
-//! the host builtins read.  Set it before calling any audio word, clear
-//! after.  Audio-thread safe: no heap allocation, no locks.
+//! The standalone boxed ABI uses thread-local context for host builtins.
+//! TLS setup on macOS can allocate on first access. Slab's raw DSP path
+//! passes explicit kernel pointers through callRealtime and never uses
+//! these TLS setters or legacy interpreter callbacks while rendering.
 
 const std = @import("std");
 const Fy = @import("fy").Fy;
@@ -19,24 +21,21 @@ const MachineCtx = machine_mod.MachineCtx;
 const c = @import("c.zig");
 const storage = @import("storage.zig");
 
-/// fy currently exposes callback/runtime state through global variables
-/// (`Fy.Builtins.fyPtr` among them). Until that state is made thread-local
-/// in fy, only one Slab fy callback may execute at a time.
-pub var callback_mutex: std.atomic.Mutex = .unlocked;
+/// Control-thread compiler serialization. Audio executes prepared callers
+/// and never acquires this mutex. Runtime assets use publication/retirement.
+pub var control_mutex: @import("fy").UnfairLock = .{};
 
 /// Compile a file with fy's instruction-cache flushes held, invalidating
 /// what it linked in one pass at the end instead of once per word
 /// (docs/25 §Load time). `--flush-each` turns it off.
 pub var batch_flush: bool = true;
 
-pub fn lockCallbacks() void {
-    while (!callback_mutex.tryLock()) {
-        std.Thread.yield() catch {};
-    }
+pub fn lockControl() void {
+    control_mutex.lock();
 }
 
-pub fn unlockCallbacks() void {
-    callback_mutex.unlock();
+pub fn unlockControl() void {
+    control_mutex.unlock();
 }
 
 // ── Minimal TCP server using libc directly ────────────────────────────
@@ -327,10 +326,18 @@ fn slab_debug_mode() callconv(.c) i64 {
 pub const FyHost = struct {
     fy: Fy,
     alloc: std.mem.Allocator,
-    /// Incremented atomically after each successful hot-patch recompile.
-    /// Callers poll this to know when to refresh their callbacks.
+    /// Standalone, unsealed hosts only: incremented after TCP recompilation.
+    /// Active Slab raw-DSP instances reject this path; replacements prepare
+    /// their own host/image before publication.
     hot_reload_count: std.atomic.Value(u32) = std.atomic.Value(u32).init(0),
     hot_server_fd: c_int = -1,
+    sealed: std.atomic.Value(bool) = .init(false),
+
+    /// Prepared DSP callers embed bodies/addresses; their word definitions
+    /// must remain stable. New source is compiled into a separate host.
+    pub fn sealDefinitions(self: *FyHost) void {
+        self.sealed.store(true, .release);
+    }
 
     pub fn init(alloc: std.mem.Allocator) FyHost {
         return .{ .fy = Fy.init(alloc), .alloc = alloc };
@@ -344,12 +351,14 @@ pub const FyHost = struct {
     /// Compile a fy source string; definitions persist in the runtime.
     /// Stack top after the snippet runs is discarded.
     pub fn compile(self: *FyHost, src: []const u8) !void {
+        if (self.sealed.load(.acquire)) return error.PublishedCode;
         _ = try self.fy.run(src);
     }
 
     /// Compile a fy file; definitions persist. Imports resolve relative
     /// to the file's directory (uses the now-public runWithBaseDir).
     pub fn compileFile(self: *FyHost, path: []const u8) !void {
+        if (self.sealed.load(.acquire)) return error.PublishedCode;
         if (batch_flush) self.fy.holdFlush();
         defer if (batch_flush) self.fy.releaseFlush();
         const src = try readFilePosix(self.alloc, path);
@@ -476,11 +485,14 @@ pub const FyHost = struct {
     }
 
     /// Create a C-callable trampoline for the named fy word.
-    /// The trampoline has its own private malloc'd data stack — safe to call
-    /// from any thread, including the audio callback thread.
-    /// Returns a bare function pointer; the caller owns no cleanup (the
-    /// trampoline's stack is freed when the Fy instance is deinit'd).
+    /// Creation allocates a private data stack on control. Calls must not
+    /// overlap on the same trampoline, and the host must outlive every call.
+    /// This standalone boxed ABI can use interpreter TLS. Slab audio uses
+    /// prepared raw DSP callers; a private stack alone does not establish
+    /// callback safety.
+    /// The host frees the stack at teardown after callers have stopped.
     pub fn createAudioCallback(self: *FyHost, word_name: []const u8) !*const fn () callconv(.c) void {
+        if (self.sealed.load(.acquire)) return error.PublishedCode;
         const src = try std.fmt.allocPrint(self.alloc, "callback: :v {s}", .{word_name});
         defer self.alloc.free(src);
         const cb_val = try self.fy.run(src);
@@ -489,11 +501,13 @@ pub const FyHost = struct {
         return @ptrFromInt(tramp_ptr);
     }
 
-    /// Start the hot-patch TCP server.  Returns the bound port.
-    /// Writes `.fy-port` so the VSCode fy extension auto-connects.
-    /// After each successful recompile `hot_reload_count` is incremented;
-    /// callers should poll it and call `createAudioCallback` to refresh.
+    /// Standalone control/test host only; sealed DSP hosts return PublishedCode.
+    /// Returns the port and writes `.fy-port` for the fy editor. A recompile
+    /// increments `hot_reload_count`; callback refresh/execution requires
+    /// caller-managed exclusion from compilation. Slab playback instead
+    /// publishes prepared replacement instances.
     pub fn startHotPatchServer(self: *FyHost) !u16 {
+        if (self.sealed.load(.acquire)) return error.PublishedCode;
         const fd = socket(AF_INET, SOCK_STREAM, 0);
         if (fd < 0) return error.SocketFailed;
         const one: c_int = 1;
@@ -558,15 +572,20 @@ fn hotPatchHandleConn(host: *FyHost, fd: c_int) void {
         return;
     }
 
-    // Compile and execute while no audio callback is inside fy. The audio
-    // thread uses callback_mutex around JIT entry; hot-patch mutates the same
-    // image/trampolines and user-word table, so it must join that exclusion.
-    lockCallbacks();
-    defer unlockCallbacks();
+    // This standalone server serializes control execution. Active Slab DSP
+    // versions are not patched through this server; prepare a replacement
+    // host/caller version before handing code to a machine.
+    lockControl();
+    defer unlockControl();
+
+    if (host.sealed.load(.acquire)) {
+        fdWrite(fd, "error: published code requires a prepared replacement\n");
+        return;
+    }
 
     // Compile and execute under the hot-patch mutex.
-    // runWithBaseDir re-runs top-level statements (e.g. phase reset) which
-    // is desirable on hot-patch.
+    // runWithBaseDir also re-runs top-level statements (e.g. phase reset).
+    // This standalone path does not preserve a playing machine's DSP state.
     host.fy.hot_mutex.lock();
     defer host.fy.hot_mutex.unlock();
 

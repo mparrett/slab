@@ -59,6 +59,14 @@ pub const NoteEvent = extern struct {
     }
 };
 
+/// Audio, after adopting a version that may hold freshly JIT-compiled
+/// code: a context-synchronizing barrier, so this core fetches the new
+/// instructions (ARMv8 cross-modifying code). Render workers reach new code
+/// only after a semaphore wait, whose exception return already synchronizes.
+pub inline fn codeBarrier() void {
+    asm volatile ("isb" ::: .{ .memory = true });
+}
+
 // ── MachineCtx ───────────────────────────────────────────────────────
 //
 // Host fills this once per machine per block. Pointers are block-
@@ -159,6 +167,8 @@ pub const DrawPanelFn = *const fn (
 /// Called when the transport stops or the host otherwise wants the
 /// machine to drop any sustained voices and reset to silence.
 pub const ResetFn = *const fn (state: *anyopaque) void;
+/// Bounded block-boundary adoption; never allocate, wait, compile or free.
+pub const AdoptFn = *const fn (state: *anyopaque) void;
 pub const DeinitFn = *const fn (state: *anyopaque, alloc: std.mem.Allocator) void;
 /// A fingerprint of the code the machine runs (docs/27 §Provenance).
 pub const CodeHashFn = *const fn (state: *anyopaque) u64;
@@ -304,8 +314,8 @@ pub const NoteLabel = struct {
 /// the side voices at BLEND under the centre and the group's power held
 /// at one voice's. A poly machine shares its pool (notes = pool / count);
 /// a mono one gets `count` clones of its voice. The UI thread writes, the
-/// audio thread reads each block; a torn read across fields only lasts a
-/// block.
+/// audio thread reads independent atomic targets. A block may observe fields
+/// from different UI edits; these settings do not form a grouped transaction.
 pub const Unison = struct {
     pub const MAX_COUNT: u8 = 8;
     pub const MAX_POOL: u8 = 16;
@@ -374,7 +384,13 @@ pub const Unison = struct {
         return u.voices() == 1 and (u.mono() or u.pool.load(.monotonic) == u.native);
     }
     pub fn reset(u: *Unison) void {
-        u.* = init(u.native);
+        // UI reset may overlap audio reads; retain atomic stores for each
+        // independent target rather than overwriting the atomic storage.
+        u.count.store(1, .monotonic);
+        u.pool.store(u.native, .monotonic);
+        u.detune_bits.store(@bitCast(DEF_DETUNE), .monotonic);
+        u.spread_bits.store(@bitCast(DEF_SPREAD), .monotonic);
+        u.blend_bits.store(@bitCast(DEF_BLEND), .monotonic);
     }
 
     /// `{"count":4,"detune":20,"spread":0.7,"blend":0.75,"voices":8}`
@@ -419,6 +435,7 @@ pub const Machine = struct {
     render: RenderFn,
     draw_panel: DrawPanelFn,
     reset: ResetFn,
+    adopt_updates: ?AdoptFn = null,
     deinit: ?DeinitFn = null,
     /// Its code's fingerprint; null for machines whose code is the host's.
     code_hash: ?CodeHashFn = null,

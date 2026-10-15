@@ -1,13 +1,11 @@
 //! Frozen clip/note data published by the UI thread and consumed
 //! read-only by the audio thread.
 //!
-//! Double-buffer invariant: the UI writes to the *non-published* slot,
-//! then flips the atomic index with Release ordering. The audio thread
-//! reads the *published* slot with Acquire ordering and holds the pointer
-//! for the duration of one renderChunk call — never across a UI publish
-//! cycle. Two buffers (not three) is sufficient because miniaudio's
-//! callback fires at ~1.3ms intervals while the UI publishes at ~60Hz,
-//! giving the audio thread well over one block of headroom.
+//! Slots have explicit producer/consumer ownership (handoff.zig). UI
+//! publications cannot recycle the consumer's slot until it adopts again.
+//! No callback/UI frequency assumption is needed. The rendering thread
+//! adopts before dispatch; workers share that version for the chunk. All
+//! workers must finish before the rendering thread adopts another version.
 
 const automation = @import("automation.zig");
 const warp = @import("warp.zig");
@@ -139,6 +137,9 @@ pub const AutoView = struct {
     cursors: *[MAX_LANES_PER_TRACK]u32,
     kind: automation.TargetKind,
     fx_uid: u16 = 0,
+    /// Lanes read here instead of at the machine's beat: the playhead is
+    /// held (stopped, tails ringing) while synced LFOs keep running.
+    hold_beat: ?f64 = null,
 
     /// Whether any lane targets this machine (the machine then renders in
     /// sub-blocks so each chunk gets fresh values).
