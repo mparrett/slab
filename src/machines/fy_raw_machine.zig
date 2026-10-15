@@ -7421,12 +7421,72 @@ test "verb: sweeping SIZE and DECAY while it rings stays finite and bounded" {
         mach.set_param.?(mach.state, "verb-size", 1.0 + 0.5 * @sin(t * 0.05));
         mach.set_param.?(mach.state, "verb-decay", 20 + 19 * @sin(t * 0.031));
         mach.set_param.?(mach.state, "verb-predelay", 0.12 + 0.12 * @sin(t * 0.07));
+        mach.set_param.?(mach.state, "verb-dens", @floor(@mod(t / 37, 2)));
         testRender(mach, &ctx, &l, &r);
         for (l, r) |sl, sr| {
             try testing.expect(std.math.isFinite(sl) and std.math.isFinite(sr));
             try testing.expect(@abs(sl) < 20 and @abs(sr) < 20);
         }
     }
+}
+
+/// Normalized echo density [Abel and Huang 2006] of a window: the share
+/// of samples over its standard deviation, over a Gaussian's share
+/// (0.3173). Sparse echoes read near 0, a diffuse tail about 1.
+fn echoDensity(xs: []const f32) f64 {
+    var ss: f64 = 0;
+    for (xs) |x| ss += @as(f64, x) * x;
+    const sd = @sqrt(ss / @as(f64, @floatFromInt(xs.len)));
+    var over: f64 = 0;
+    for (xs) |x| {
+        if (@abs(x) > sd) over += 1;
+    }
+    return over / @as(f64, @floatFromInt(xs.len)) / 0.31731050786291415;
+}
+
+/// Seconds for the Schroeder energy decay of `xs` to fall from -5 to -25
+/// dB, times 3: a T60 estimate.
+fn schroederT60(xs: []const f32, sr: f64) f64 {
+    var total: f64 = 0;
+    for (xs) |x| total += @as(f64, x) * x;
+    var rest = total;
+    var t5: ?usize = null;
+    for (xs, 0..) |x, i| {
+        rest -= @as(f64, x) * x;
+        const db = 10 * std.math.log10(@max(rest, 1e-300) / total);
+        if (t5 == null and db < -5) t5 = i;
+        if (db < -25) return 3 * @as(f64, @floatFromInt(i - (t5 orelse i))) / sr;
+    }
+    return 0;
+}
+
+test "verb: VELVET scatters the hall's echoes and keeps its decay" {
+    const n = 48_000 * 3;
+    var densities: [2]f64 = undefined;
+    var t60s: [2]f64 = undefined;
+    for (0..2) |d| {
+        // No input diffusion: the tank's own density is what shows.
+        const sets = [_]ParamSet{
+            .{ "verb-algo", 2 },   .{ "verb-diff", 0 },     .{ "verb-mix", 1 },
+            .{ "verb-decay", 2 },  .{ "verb-predelay", 0.001 }, .{ "verb-mod", 0 },
+            .{ "verb-dens", @floatFromInt(d) },
+        };
+        const out = try renderEffectImpulse("machines/verb2/verb2.fy", &sets, 1, 1, n);
+        defer testing.allocator.free(out[0]);
+        defer testing.allocator.free(out[1]);
+        for (out[0]) |x| try testing.expect(std.math.isFinite(x));
+        // 20 ms windows from 80 to 180 ms
+        var acc: f64 = 0;
+        for (0..5) |w| acc += echoDensity(out[0][48 * (80 + 20 * w) ..][0 .. 48 * 20]);
+        densities[d] = acc / 5;
+        t60s[d] = schroederT60(out[0], 48_000);
+    }
+    // Measured: CLASSIC 0.24 there (separate echoes), VELVET 0.92.
+    try testing.expect(densities[0] < 0.5);
+    try testing.expect(densities[1] > 0.8);
+    // The scattering delays are counted in the loop gains: the decay
+    // moves 3.5% [the paper's modal spread], under the 5% JND.
+    try testing.expect(@abs(t60s[1] / t60s[0] - 1) < 0.1);
 }
 
 test "raw DSP2 reverb machine: wide decorrelated tail" {

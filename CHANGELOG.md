@@ -6,6 +6,14 @@ GitHub are its section here (`tools/release.sh` copies them), so add to
 
 ## Unreleased
 
+- **Verb's rooms and halls can turn dense right away.** A new DENSITY
+  switch sets VELVET, which scatters every echo inside the reverb's loop
+  [a velvet feedback matrix, Schlecht and Habets 2020]. A hall with no
+  input diffusion becomes a smooth wash about three times sooner (64 ms
+  instead of 190), with no flutter and DECAY still accurate. New presets
+  `velvet-hall` and `velvet-room`. CLASSIC, the default, sounds exactly
+  as before.
+
 ## 0.0.14 — 2026-10-15
 
 Thanks to Lost Robot, the author of septabee, for pointing out the
