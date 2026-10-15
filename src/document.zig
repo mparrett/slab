@@ -995,11 +995,10 @@ pub fn apply(
         if (objGet(mo, "volume")) |x| m.setVolume(@floatCast(asF64(x)));
         if (objGet(mo, "pan")) |x| m.setPan(@floatCast(asF64(x)));
         m.subsonic.store(if (objGet(mo, "subsonic")) |x| asBool(x) else false, .monotonic);
-        for (m.effects.items) |*fx| {
-            if (fx.mach.deinit) |d| d(fx.mach.state, alloc);
-            if (fx.shared_io) |io| alloc.destroy(io);
-        }
-        m.effects.clearRetainingCapacity();
+        // The master outlives the load and the audio thread may still be
+        // rendering its old chain (a fading switch plays one more chunk):
+        // retire the effects, freed once audio adopts the new chain.
+        while (m.effects.items.len > 0) try m.removeEffect(alloc, m.effects.items.len - 1);
         if (objGet(mo, "effects")) |ev| try applyEffects(alloc, reg, m, ev);
         m.publishMachines();
     };
@@ -2212,4 +2211,56 @@ test "grooves round-trip: the project's own, the song's, a section's and a track
     try std.testing.expectEqual(groove_mod.PICK_NONE, loaded_buf[0].groove.pick);
     try std.testing.expectEqual(@as(f32, 0.5), loaded_buf[0].groove.amount);
     try std.testing.expectEqual(@as(f32, -8), loaded_buf[0].groove.shift_ms);
+}
+
+test "realtime: a project load retires the master's effects until audio adopts the new chain" {
+    // New Project while the old master chain rang crashed the audio
+    // thread: the load freed the master's effects in place, and a fading
+    // adoption keeps rendering the old chain for one more chunk.
+    const M = struct {
+        freed: usize = 0,
+        fn destroy(st: *anyopaque, _: std.mem.Allocator) void {
+            const x: *@This() = @ptrCast(@alignCast(st));
+            x.freed += 1;
+        }
+    };
+    const alloc = std.testing.allocator;
+    var reg = registry_mod.Registry.init(alloc);
+    defer reg.deinit();
+    var master = try track_mod.Track.init(alloc, "Master", .{ .r = 0, .g = 0, .b = 0, .a = 255 }, test_machine);
+    master.kind = .master;
+    defer master.deinit(alloc);
+    setMaster(&master);
+    defer active_master = null;
+    var transport: transport_mod.Transport = .{};
+    transport.sample_rate = 48_000;
+    const blank = try serialize(alloc, &.{}, &transport);
+    defer alloc.free(blank);
+
+    var fx = M{};
+    var fx_mach = test_machine;
+    fx_mach.state = &fx;
+    fx_mach.deinit = M.destroy;
+    try master.addEffect(alloc, fx_mach, 0);
+    master.adoptMachines(false);
+    try std.testing.expectEqual(@as(usize, 1), master.audioEffects().len);
+
+    var loaded_buf: [1]track_mod.Track = undefined;
+    var loaded_count: usize = 0;
+    try apply(alloc, blank, &reg, loaded_buf[0..], &loaded_count, &transport, test_machine);
+    try std.testing.expectEqual(@as(usize, 0), master.effects.items.len);
+    // The audio side still holds the old effect: it must be alive.
+    master.collectMachines(alloc);
+    try std.testing.expectEqual(@as(usize, 0), fx.freed);
+    // Still ringing: the old chain renders its last chunk, then switches.
+    master.adoptMachines(true);
+    try std.testing.expectEqual(@as(usize, 1), master.audioEffects().len);
+    try std.testing.expect(@intFromPtr(master.audioEffects()[0].mach.state) == @intFromPtr(&fx));
+    master.collectMachines(alloc);
+    try std.testing.expectEqual(@as(usize, 0), fx.freed);
+    master.swap = .out_done;
+    master.adoptMachines(true);
+    try std.testing.expectEqual(@as(usize, 0), master.audioEffects().len);
+    master.collectMachines(alloc);
+    try std.testing.expectEqual(@as(usize, 1), fx.freed);
 }

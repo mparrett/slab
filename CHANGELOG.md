@@ -6,6 +6,10 @@ GitHub are its section here (`tools/release.sh` copies them), so add to
 
 ## Unreleased
 
+- **New Project no longer crashes while a reverb rings.** Starting a new
+  project, or opening one, while the old project's master effects were
+  still sounding could crash Slab.
+
 - **Juniper-8, a Roland Jupiter-8.** Eight voices of two VCOs with
   exponential cross mod, VCO-2 synced to VCO-1, and PWM on both pulses. A
   6 dB HPF feeds the IR3109 filter, with 24 dB and its thinner 12 dB tap.

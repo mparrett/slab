@@ -2092,6 +2092,9 @@ pub fn main(init: std.process.Init) !void {
         }
 
         for (tracks) |*t| t.publishSnapshot(&audio_pool);
+        // The master's retired effects (a load or an edit) free once audio
+        // has moved past them.
+        master.collectMachines(alloc);
         // Bounces go stale as their sources change (docs/27 §Provenance).
         if (c.rl.GetTime() >= next_recipe_check and !bounce_job.active) {
             next_recipe_check = c.rl.GetTime() + 0.5;
