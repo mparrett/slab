@@ -141,12 +141,18 @@ pub fn Pool(comptime Ctx: type, comptime Scratch: type, comptime work: fn (*Ctx,
         wait_limit: u64 = std.math.maxInt(u64),
         strikes: u8 = 0,
         watchdog_trips: std.atomic.Value(u32) = .init(0),
+        /// The device's block period, ns: the workers' time-constraint
+        /// period, read when they (re)join. Rt's until the device says.
+        period_ns: std.atomic.Value(u64) = .init(0),
 
         pub fn create(alloc: std.mem.Allocator, ctx: *Ctx, workers: usize, rt: ?Rt) !*Self {
             const self = try alloc.create(Self);
             errdefer alloc.destroy(self);
             self.* = .{ .ctx = ctx, .rt = rt };
-            if (rt) |r| self.wait_limit = nsToTicks(r.period_ns / 4);
+            if (rt) |r| {
+                self.period_ns.store(r.period_ns, .seq_cst);
+                self.wait_limit = nsToTicks(r.period_ns / 4);
+            }
             if (semaphore_create(mach_task_self_, &self.sem, SYNC_POLICY_FIFO, 0) != 0) return error.SemaphoreCreate;
             errdefer _ = semaphore_destroy(mach_task_self_, self.sem);
             if (semaphore_create(mach_task_self_, &self.completion, SYNC_POLICY_FIFO, 0) != 0) return error.SemaphoreCreate;
@@ -173,6 +179,15 @@ pub fn Pool(comptime Ctx: type, comptime Scratch: type, comptime work: fn (*Ctx,
         /// old one, then releases it. Without real-time workers, `wg` is
         /// released at once. Refused (false, `wg` released, rejoin left
         /// pending) while a block is open: a render is still running.
+        /// Device stopped, UI thread: the period the device actually runs.
+        /// Workers take it on their next setWorkgroup move; the watchdog
+        /// budget at once.
+        pub fn setPeriod(self: *Self, ns: u64) void {
+            if (self.rt == null or ns == 0) return;
+            self.period_ns.store(ns, .seq_cst);
+            self.wait_limit = nsToTicks(ns / 4);
+        }
+
         pub fn setWorkgroup(self: *Self, wg: ?*anyopaque) bool {
             if (self.active.load(.seq_cst)) {
                 if (wg) |w| os_release(w);
@@ -304,8 +319,8 @@ pub fn Pool(comptime Ctx: type, comptime Scratch: type, comptime work: fn (*Ctx,
 
         fn run(self: *Self, my_slot: usize) void {
             _ = pthread_set_qos_class_self_np(QOS_CLASS_USER_INTERACTIVE, 0);
-            if (self.rt) |rt| {
-                if (setTimeConstraint(rt.period_ns)) {
+            if (self.rt != null) {
+                if (setTimeConstraint(self.period_ns.load(.seq_cst))) {
                     _ = self.rt_ready.fetchOr(@as(u32, 1) << @intCast(my_slot - 1), .seq_cst);
                 } else std.log.warn("render worker {}: real-time scheduling refused; live callbacks use serial rendering", .{my_slot});
             }
@@ -325,8 +340,8 @@ pub fn Pool(comptime Ctx: type, comptime Scratch: type, comptime work: fn (*Ctx,
                     // XNU demotes a time-constraint thread that overruns
                     // its budget (an offline render runs workers flat
                     // out); every move re-requests the policy.
-                    if (self.rt) |rt| {
-                        if (setTimeConstraint(rt.period_ns))
+                    if (self.rt != null) {
+                        if (setTimeConstraint(self.period_ns.load(.seq_cst)))
                             _ = self.rt_ready.fetchOr(@as(u32, 1) << @intCast(my_slot - 1), .seq_cst);
                     }
                     if (joined) |w| os_workgroup_leave(w, &token);
@@ -385,6 +400,24 @@ test "realtime: a live block on another I/O thread renders serially and asks for
     // Moving the workers clears the request.
     try std.testing.expect(p.setWorkgroup(null));
     try std.testing.expect(!p.rejoinRequested());
+}
+
+test "realtime: the device's actual period moves the watchdog's budget and the workers' policy" {
+    const Ctx = struct {};
+    const Scratch = struct {};
+    const P = Pool(Ctx, Scratch, struct {
+        fn work(_: *Ctx, _: *Scratch, _: usize) bool {
+            return false;
+        }
+    }.work);
+    var ctx: Ctx = .{};
+    const p = try P.create(std.testing.allocator, &ctx, 0, .{ .period_ns = 256 * std.time.ns_per_s / 48_000 });
+    defer p.destroy(std.testing.allocator);
+    const asked = p.wait_limit;
+    // A Bluetooth output that runs 1024 frames whatever was asked.
+    p.setPeriod(1024 * std.time.ns_per_s / 48_000);
+    try std.testing.expectEqual(@as(u64, 1024 * std.time.ns_per_s / 48_000), p.period_ns.load(.seq_cst));
+    try std.testing.expect(p.wait_limit > 3 * asked);
 }
 
 test "realtime: watchdog drops slow live blocks to serial and asks for a rejoin" {

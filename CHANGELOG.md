@@ -6,6 +6,13 @@ GitHub are its section here (`tools/release.sh` copies them), so add to
 
 ## Unreleased
 
+- **Choose the audio buffer size.** The audio menu next to record lists
+  64 to 1024 frames with their latency; 64 is 1.3 ms. The choice is
+  remembered.
+
+- **Notes played at idle sound at once.** A key pressed after the app
+  had been quiet could wait up to 50 ms before reaching the engine.
+
 - **Recorded takes land in time.** Placement now uses the latency the
   audio device reports each way, plus how long the input actually
   waited, instead of a two-buffer guess. With AirPods as the output,

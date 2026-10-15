@@ -48,9 +48,13 @@ fn fourcc(comptime s: *const [4]u8) u32 {
 
 const REOPEN_FRAMES = 60;
 
-/// The length of one callback block, for real-time scheduling.
-pub fn blockPeriodNs() u64 {
-    return @as(u64, requestedBlockFrames()) * std.time.ns_per_s / SAMPLE_RATE;
+/// The buffer sizes offered, frames at 48 kHz.
+pub const BLOCK_CHOICES = [_]u32{ 64, 128, 256, 512, 1024 };
+
+/// The length of a `frames` block at the engine's rate, before a device
+/// says what it really runs (Audio.periodNs).
+pub fn blockPeriodNs(frames: u32) u64 {
+    return @as(u64, frames) * std.time.ns_per_s / SAMPLE_RATE;
 }
 
 const Callbacks = struct {
@@ -80,6 +84,9 @@ pub const Audio = struct {
     device_gen: u32 = 0,
     /// UI frames until a failed open is tried again.
     reopen_wait: u32 = 0,
+    /// The buffer asked of the device (settings.json buffer_frames, or
+    /// $SLAB_AUDIO_BLOCK_FRAMES over it).
+    block_frames: u32 = BLOCK_FRAMES,
     /// Hardware latency each way at the engine's rate (device + safety
     /// offset + stream + buffer), read from the HAL at open. UI thread.
     in_latency: u32 = 0,
@@ -114,8 +121,8 @@ pub const Audio = struct {
         };
     }
 
-    pub fn init(self: *Audio) !void {
-        self.* = .{ .device = undefined };
+    pub fn init(self: *Audio, block_frames: u32) !void {
+        self.* = .{ .device = undefined, .block_frames = requestedBlockFrames(block_frames) };
         _ = std.c.mach_timebase_info(&self.timebase);
         // A persistent context backs both device init and enumeration.
         if (c.ma.ma_context_init(null, 0, null, &self.context) != c.ma.MA_SUCCESS)
@@ -141,7 +148,7 @@ pub const Audio = struct {
         duplex.capture.channels = 0;
         if (self.has_capture_id) duplex.capture.pDeviceID = &self.capture_id;
         duplex.sampleRate = SAMPLE_RATE;
-        duplex.periodSizeInFrames = requestedBlockFrames();
+        duplex.periodSizeInFrames = self.block_frames;
         duplex.coreaudio.allowNominalSampleRateChange = c.ma.MA_TRUE;
         // Variable-size callbacks: the engine chunks any count itself. The
         // fixed-size mode renders into an intermediary buffer a block ahead,
@@ -172,6 +179,30 @@ pub const Audio = struct {
         self.warnIfResampling();
     }
 
+    /// The period the device actually runs, ns: its buffer at its own
+    /// rate, which may not be what was asked (a device's minimum, a
+    /// Bluetooth output's fixed size). The render workers' real-time
+    /// period and the watchdog's budget come from it.
+    pub fn periodNs(self: *const Audio) u64 {
+        if (!self.initialized) return blockPeriodNs(self.block_frames);
+        const frames: u64 = self.device.playback.internalPeriodSizeInFrames;
+        const rate: u64 = @max(self.device.playback.internalSampleRate, 1);
+        if (frames == 0) return blockPeriodNs(self.block_frames);
+        return frames * std.time.ns_per_s / rate;
+    }
+
+    /// The buffer the device runs, frames at the engine's rate.
+    pub fn periodFrames(self: *const Audio) u32 {
+        return @intCast(self.periodNs() * SAMPLE_RATE / std.time.ns_per_s);
+    }
+
+    /// UI thread: ask for a `frames` buffer and reopen the device with it.
+    pub fn setBlockFrames(self: *Audio, frames: u32) !void {
+        if (frames == self.block_frames) return;
+        self.block_frames = frames;
+        if (self.initialized) try self.reopen();
+    }
+
     /// Input channels the open device delivers (0 without capture).
     pub fn inputChannels(self: *const Audio) u32 {
         if (!self.initialized or !self.capture_available) return 0;
@@ -194,7 +225,7 @@ pub const Audio = struct {
         play.playback.format = c.ma.ma_format_f32;
         play.playback.channels = CHANNELS;
         play.sampleRate = SAMPLE_RATE;
-        play.periodSizeInFrames = requestedBlockFrames();
+        play.periodSizeInFrames = self.block_frames;
         play.coreaudio.allowNominalSampleRateChange = c.ma.MA_TRUE;
         // Variable-size callbacks: the engine chunks any count itself. The
         // fixed-size mode renders into an intermediary buffer a block ahead,
@@ -512,6 +543,14 @@ fn scaleFrames(frames: u64, rate: f64) u32 {
     return @intFromFloat(@round(@as(f64, @floatFromInt(frames)) * SAMPLE_RATE / rate));
 }
 
+test "buffer size: the setting, unless the environment names another choice" {
+    if (std.c.getenv("SLAB_AUDIO_BLOCK_FRAMES") != null) return error.SkipZigTest;
+    try std.testing.expectEqual(@as(u32, 128), requestedBlockFrames(128));
+    try std.testing.expectEqual(@as(u32, 1024), requestedBlockFrames(1024));
+    try std.testing.expectEqual(BLOCK_FRAMES, requestedBlockFrames(100));
+    try std.testing.expectEqual(@as(u64, 2_666_666), blockPeriodNs(128));
+}
+
 test "HAL frames scale to the engine's rate" {
     try std.testing.expectEqual(@as(u32, 480), scaleFrames(441, 44_100));
     try std.testing.expectEqual(@as(u32, 256), scaleFrames(256, 48_000));
@@ -519,14 +558,15 @@ test "HAL frames scale to the engine's rate" {
     try std.testing.expectEqual(@as(u32, 300), scaleFrames(300, 0));
 }
 
-fn requestedBlockFrames() u32 {
-    const raw = std.c.getenv("SLAB_AUDIO_BLOCK_FRAMES") orelse return BLOCK_FRAMES;
-    const s = std.mem.span(raw);
-    const parsed = std.fmt.parseInt(u32, s, 10) catch return BLOCK_FRAMES;
-    return switch (parsed) {
-        64, 128, 256, 512, 1024 => parsed,
-        else => BLOCK_FRAMES,
-    };
+/// `pref` (settings.json), unless $SLAB_AUDIO_BLOCK_FRAMES names another
+/// of BLOCK_CHOICES; anything else is BLOCK_FRAMES.
+fn requestedBlockFrames(pref: u32) u32 {
+    const want = if (std.c.getenv("SLAB_AUDIO_BLOCK_FRAMES")) |raw|
+        std.fmt.parseInt(u32, std.mem.span(raw), 10) catch pref
+    else
+        pref;
+    for (BLOCK_CHOICES) |b| if (b == want) return b;
+    return BLOCK_FRAMES;
 }
 
 fn noteLoadImpl(self: *Audio, ticks: u64, frames: u32) void {
@@ -586,7 +626,7 @@ test "realtime device: output workgroup remains valid across stop and restart" {
         extern "c" fn os_release(obj: *anyopaque) void;
     };
     var audio: Audio = undefined;
-    try audio.init(); // default dispatch emits silence
+    try audio.init(BLOCK_FRAMES); // default dispatch emits silence
     defer audio.deinit();
     const running = audio.workgroup() orelse return error.WorkgroupUnavailable;
     defer Release.os_release(running);
@@ -603,7 +643,7 @@ test "realtime device: output workgroup remains valid across stop and restart" {
 test "realtime device: the HAL reports an output latency of at least a buffer" {
     if (std.c.getenv("SLAB_AUDIO_DEVICE_TEST") == null) return;
     var audio: Audio = undefined;
-    try audio.init();
+    try audio.init(BLOCK_FRAMES);
     defer audio.deinit();
     try std.testing.expect(audio.out_latency >= audio.device.playback.internalPeriodSizeInFrames * SAMPLE_RATE / audio.device.playback.internalSampleRate);
 }
