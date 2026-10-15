@@ -271,6 +271,11 @@ pub const KernelCtx = extern struct {
     // from 0. Both 0 for a voice playing alone.
     uni: f64 = 0,
     phase: f64 = 0,
+    // The machine's sample clock: where the block (or smoothing sub-block)
+    // starts in block-prepare, derive and prepare; the event's own sample
+    // in note hooks. Voices that share one modulator (a global LFO, a
+    // shared noise source) agree on its phase through it.
+    clock: f64 = 0,
 };
 
 /// One sample's audio lanes, mirrored by `Io` in ctx.fy. Render words get a
@@ -1538,6 +1543,7 @@ pub const FyRawMachine = struct {
         self.kctx.sr = sample_rate;
         self.kctx.inv_sr = 1.0 / sample_rate;
         self.kctx.tempo = tempo_bpm;
+        self.kctx.clock = @floatFromInt(self.clock);
         self.kctx.chan = 0;
         self.kctx.data = self.desc.derive_data;
         if (self.derive_caller) |*dv| _ = dv.callRealtime(1, &self.entryArgs(0)) catch {};
@@ -2855,6 +2861,7 @@ fn renderVoice(self: *FyRawMachine, caller: *RawCaller, voice: usize, io: []IoFr
 }
 
 fn applyNoteEvent(self: *FyRawMachine, ev: machine.NoteEvent) !void {
+    self.kctx.clock = @floatFromInt(self.event_clock);
     switch (ev.kind) {
         .note_on => {
             if (ev.velocity <= 0) {
@@ -7101,6 +7108,7 @@ test "kernel ABI: KernelCtx and IoFrame match ctx.fy's Ctx and Io" {
         .{ .name = "Ctx.gain", .off = @offsetOf(KernelCtx, "gain") },
         .{ .name = "Ctx.uni", .off = @offsetOf(KernelCtx, "uni") },
         .{ .name = "Ctx.phase", .off = @offsetOf(KernelCtx, "phase") },
+        .{ .name = "Ctx.clock", .off = @offsetOf(KernelCtx, "clock") },
         .{ .name = "Io.size", .off = @sizeOf(IoFrame) },
         .{ .name = "Io.out-l", .off = @offsetOf(IoFrame, "out_l") },
         .{ .name = "Io.out-r", .off = @offsetOf(IoFrame, "out_r") },

@@ -25,6 +25,8 @@ ustruct: Ctx
   f64 gain     ( note-expr: per-note gain, linear )
   f64 uni      ( note-on: unison place in the note's group, -1..1; 0 alone )
   f64 phase    ( note-on: unison start phase 0..1 for free-running oscillators; 0 alone )
+  f64 clock    ( the sample clock: the block start in prepare / block-prepare /
+                 derive, the event's sample in note hooks )
 ;
 
 ustruct: Io
