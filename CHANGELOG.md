@@ -6,6 +6,16 @@ GitHub are its section here (`tools/release.sh` copies them), so add to
 
 ## Unreleased
 
+- **C-Beam 80, a Yamaha CS-80.** Eight notes of two complete voices each.
+  Each voice has a linear-in-Hz VCO, an HPF and an LPF that don't
+  self-oscillate, and the IL/AL filter envelope behind CS-80 brass. Velocity
+  is a fading initial-touch accent. Per-note pressure opens the filter,
+  raises the level and brings in vibrato on the pressed notes only. The
+  sub oscillator, ring modulator, BBD chorus/tremolo, keyboard scaling,
+  constant-rate portamento and sustain are global, as on the original.
+  It ships with Yamaha's factory pairings from the Owner's Manual charts
+  and four sounds of ours. See docs/38.
+
 - **Adding tracks no longer races playback.** Slicing to a sampler,
   extracting notes, chords or drums, placing stems and placing bounces
   insert tracks with the device stopped, as adding and moving tracks

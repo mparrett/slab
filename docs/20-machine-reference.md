@@ -11,6 +11,7 @@ project or preset stores (docs/19): real units for knobs, the option
 | [`bass`](#bass) | Fretwire | instrument | 4 | `bs-` |
 | [`concoction`](#concoction) | Concoction | instrument | 8 | `cn-` |
 | [`cream`](#cream) | Mog Passenger | instrument | mono | `cr-` |
+| [`cs80`](#cs80) | C-Beam 80 | instrument | 8 | `—` |
 | [`drum2`](#drum2) | DS-404 Drums | instrument | mono | `—` |
 | [`fm86`](#fm86) | FM-7.11 | instrument | 8 | `—` |
 | [`guitar`](#guitar) | Fretwire Guitar | instrument | 6 | `gt-` |
@@ -254,6 +255,113 @@ Presets:
 - `synthwave-bass` — Driving 16th-note bass: saw + square, snappy contour, resonant bite
 - `whistle` — The ladder alone: oscillators off, emphasis past 1, full keyboard tracking - a pure sine that follows the keys
 - `afterimage/v8-bass` — Short saw/pulse octave bass with a restrained sub and snappy filter; Afterimage Express. Dry, before saturation and ducking.
+
+## cs80
+
+**C-Beam 80**, instrument, 8 voices.
+
+| param | section | label | range | default | notes |
+|---|---|---|---|---|---|
+| `cb1-feet` | VCO I | FEET | 0 16' / 1 8' / 2 5 1/3' / 3 4' / 4 2 2/3' / 5 2' | 1 | switch |
+| `cb1-pwm-spd` | VCO I | SPEED | 0.2 … 200 | 6 | exp |
+| `cb1-pwm` | VCO I | PWM | 0 … 10 | 0 | linear |
+| `cb1-pw` | VCO I | PW | 0 … 10 | 0 | linear |
+| `cb1-sqr` | VCO I | SQR | 0 OFF / 1 ON | 0 | switch |
+| `cb1-saw` | VCO I | SAW | 0 OFF / 1 ON | 1 | switch |
+| `cb1-noise` | VCO I | NOISE | 0 … 10 | 0 | pow |
+| `cb1-hpf` | VCF I | HPF | 0 … 10 | 0 | linear |
+| `cb1-res-h` | VCF I | RES | 0 … 10 | 0 | linear |
+| `cb1-lpf` | VCF I | LPF | 0 … 10 | 5.5 | linear |
+| `cb1-res-l` | VCF I | RES | 0 … 10 | 3 | linear |
+| `cb1-il` | VCF I | IL | 0 … 10 | 6 | linear |
+| `cb1-al` | VCF I | AL | 0 … 10 | 6 | linear |
+| `cb1-f-a` | VCF I | A | 0.001 … 1.024 | 0.09 | exp |
+| `cb1-f-d` | VCF I | D | 0.01 … 10.24 | 0.7 | exp |
+| `cb1-f-r` | VCF I | R | 0.01 … 10.24 | 0.4 | exp |
+| `cb1-vcf-lvl` | VCA I | VCF | 0 … 10 | 9 | linear |
+| `cb1-sine` | VCA I | SINE | 0 … 10 | 0 | linear |
+| `cb1-a-a` | VCA I | A | 0.001 … 1.024 | 0.03 | exp |
+| `cb1-a-d` | VCA I | D | 0.01 … 10.24 | 3 | exp |
+| `cb1-a-s` | VCA I | S | 0 … 10 | 9 | linear |
+| `cb1-a-r` | VCA I | R | 0.01 … 10.24 | 0.4 | exp |
+| `cb1-level` | VCA I | LEVEL | 0 … 10 | 9 | linear |
+| `cb1-i-bril` | TOUCH I | I BRIL | 0 … 10 | 2 | linear |
+| `cb1-i-lvl` | TOUCH I | I LVL | 0 … 10 | 5 | linear |
+| `cb1-a-bril` | TOUCH I | A BRIL | 0 … 10 | 5 | linear |
+| `cb1-a-lvl` | TOUCH I | A LVL | 0 … 10 | 5 | linear |
+| `cb2-feet` | VCO II | FEET | 0 16' / 1 8' / 2 5 1/3' / 3 4' / 4 2 2/3' / 5 2' | 1 | switch |
+| `cb2-pwm-spd` | VCO II | SPEED | 0.2 … 200 | 6 | exp |
+| `cb2-pwm` | VCO II | PWM | 0 … 10 | 0 | linear |
+| `cb2-pw` | VCO II | PW | 0 … 10 | 0 | linear |
+| `cb2-sqr` | VCO II | SQR | 0 OFF / 1 ON | 0 | switch |
+| `cb2-saw` | VCO II | SAW | 0 OFF / 1 ON | 1 | switch |
+| `cb2-noise` | VCO II | NOISE | 0 … 10 | 0 | pow |
+| `cb2-hpf` | VCF II | HPF | 0 … 10 | 0 | linear |
+| `cb2-res-h` | VCF II | RES | 0 … 10 | 0 | linear |
+| `cb2-lpf` | VCF II | LPF | 0 … 10 | 5 | linear |
+| `cb2-res-l` | VCF II | RES | 0 … 10 | 2 | linear |
+| `cb2-il` | VCF II | IL | 0 … 10 | 6 | linear |
+| `cb2-al` | VCF II | AL | 0 … 10 | 5 | linear |
+| `cb2-f-a` | VCF II | A | 0.001 … 1.024 | 0.12 | exp |
+| `cb2-f-d` | VCF II | D | 0.01 … 10.24 | 0.9 | exp |
+| `cb2-f-r` | VCF II | R | 0.01 … 10.24 | 0.5 | exp |
+| `cb2-vcf-lvl` | VCA II | VCF | 0 … 10 | 9 | linear |
+| `cb2-sine` | VCA II | SINE | 0 … 10 | 0 | linear |
+| `cb2-a-a` | VCA II | A | 0.001 … 1.024 | 0.05 | exp |
+| `cb2-a-d` | VCA II | D | 0.01 … 10.24 | 3 | exp |
+| `cb2-a-s` | VCA II | S | 0 … 10 | 8.5 | linear |
+| `cb2-a-r` | VCA II | R | 0.01 … 10.24 | 0.5 | exp |
+| `cb2-level` | VCA II | LEVEL | 0 … 10 | 8.5 | linear |
+| `cb2-i-bril` | TOUCH II | I BRIL | 0 … 10 | 2 | linear |
+| `cb2-i-lvl` | TOUCH II | I LVL | 0 … 10 | 3 | linear |
+| `cb2-a-bril` | TOUCH II | A BRIL | 0 … 10 | 5 | linear |
+| `cb2-a-lvl` | TOUCH II | A LVL | 0 … 10 | 6 | linear |
+| `cb-sub-fn` | SUB OSC | FUNC | 0 SINE / 1 SAW DN / 2 SAW UP / 3 SQUARE / 4 NOISE | 0 | switch |
+| `cb-sub-spd` | SUB OSC | SPEED | 0.7 … 60 | 5.5 | exp |
+| `cb-sub-vco` | SUB OSC | VCO | 0 … 10 | 0 | pow |
+| `cb-sub-vcf` | SUB OSC | VCF | 0 … 10 | 0 | pow |
+| `cb-sub-vca` | SUB OSC | VCA | 0 … 10 | 0 | pow |
+| `cb-tr-pitch` | TOUCH RESPONSE | PITCH | 0 … 10 | 0 | linear |
+| `cb-tr-speed` | TOUCH RESPONSE | SPEED | 0 … 10 | 0 | linear |
+| `cb-tr-vco` | TOUCH RESPONSE | VCO | 0 … 10 | 4 | linear |
+| `cb-tr-vcf` | TOUCH RESPONSE | VCF | 0 … 10 | 0 | linear |
+| `cb-kb-bl` | KEYBOARD | BRIL LO | -5 … 5 | 0 | linear |
+| `cb-kb-bh` | KEYBOARD | BRIL HI | -5 … 5 | 0 | linear |
+| `cb-kb-ll` | KEYBOARD | LVL LO | -5 … 5 | 0 | linear |
+| `cb-kb-lh` | KEYBOARD | LVL HI | -5 … 5 | 0 | linear |
+| `cb-ring-spd` | RING MOD | SPEED | 0.2 … 200 | 6.7 | exp |
+| `cb-ring-mod` | RING MOD | MOD | 0 … 10 | 0 | linear |
+| `cb-ring-depth` | RING MOD | DEPTH | 0 … 10 | 0 | linear |
+| `cb-ring-a` | RING MOD | ATTACK | 0.001 … 1.024 | 0.03 | exp |
+| `cb-ring-d` | RING MOD | DECAY | 0.01 … 10.24 | 0.5 | exp |
+| `cb-cho-mode` | CHORUS | MODE | 0 OFF / 1 CHORUS / 2 TREMOLO | 0 | switch |
+| `cb-cho-spd` | CHORUS | SPEED | 0 … 10 | 4 | linear |
+| `cb-cho-depth` | CHORUS | DEPTH | 0 … 10 | 5 | linear |
+| `cb-mix` | MASTER | MIX I-II | 0 … 10 | 5 | linear |
+| `cb-bril` | MASTER | BRILLIANCE | -5 … 5 | 0 | linear |
+| `cb-reso` | MASTER | RESONANCE | 0 … 10 | 0 | linear |
+| `cb-vol` | MASTER | VOLUME | 0 … 1 | 0.7 | pow |
+| `cb-pitch` | PITCH | PITCH | -5 … 7 | 0 | linear |
+| `cb-detune` | PITCH | DETUNE | -1 … 1 | 0.08 | linear |
+| `cb-porta` | PITCH | PORTA | 0 OFF / 1 PORTA / 2 GLISS | 0 | switch |
+| `cb-porta-t` | PITCH | TIME | 0.00017 … 0.16 | 0.01 | exp |
+| `cb-sus-mode` | SUSTAIN | MODE | 0 OFF / 1 I / 2 II | 0 | switch |
+| `cb-sus-t` | SUSTAIN | TIME | 0.01 … 10.24 | 2 | exp |
+| `cb-age` | MASTER | AGE | 0 … 1 | 0.5 | linear |
+
+Presets:
+
+- `bass` — BASS alone: the resonant pluck, both filters ringing
+- `brass` — BRASS 1 + BRASS 2: IL and AL both up, the swell from pressure
+- `brass-3` — BRASS 1 + BRASS 3: shorter, a resonant cornet edge
+- `e-piano` — E. PIANO alone: a 75% pulse, IL and AL with no sustain on the filter
+- `flute` — FLUTE alone: a saw through a full-resonance LPF
+- `harpsichord` — HARPSICHORD 1 + HARPSICHORD 2: narrow pulses through a band
+- `rain-brass` — (ours) brass after the Blade Runner end titles: two detuned BRASS 1s, pressure brings brilliance, level and vibrato. Add a long hall
+- `ring-bells` — (ours) the manual's bells: sine and saw, the ring modulator's envelope sweeping its carrier
+- `solo-lead` — (ours) a solo voice: portamento at the CS-80's constant rate, after touch opens the filter and adds vibrato
+- `strings` — STRING 1 + STRING 2: band-passed resonant saws, pressure swells
+- `tears-pad` — (ours) STRING 2 over a slow PWM layer, chorus on: a pad that breathes with pressure
 
 ## drum2
 

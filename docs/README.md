@@ -117,6 +117,9 @@ status and the source before assuming a feature is absent or complete.
 
 38. [37-realtime-safety.md](37-realtime-safety.md) — ownership handoffs,
     retirement, worker admission, regression and performance checks
+39. [38-cs80.md](38-cs80.md) — C-Beam 80, the Yamaha CS-80 from its
+    circuit: two channels a note, IL/AL filters, poly aftertouch, shared
+    modulators on the host clock
 
 ## Terminology crib sheet
 
