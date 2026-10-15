@@ -41,6 +41,7 @@ const history_mod = @import("history.zig");
 const automation = @import("automation.zig");
 const auto_lane = @import("ui/automation_lane.zig");
 const recorder_mod = @import("recorder.zig");
+const input_menu = @import("ui/input_menu.zig");
 const native_dialog = @import("native_dialog.zig");
 const native_app = @import("native_app.zig");
 const library_mod = @import("library.zig");
@@ -956,6 +957,8 @@ pub fn main(init: std.process.Init) !void {
     audio.setCapture(&recorder, recorder_mod.Recorder.captureFn);
     var rec_finishing = false;
     var rec_track: ?usize = null;
+    // The loop was on when the take started: back on once it's placed.
+    var rec_loop_paused = false;
     // Audio to notes waiting on its source's pitch (docs/30).
     var notes_jobs: NotesQueue = .{};
     // Explode and its stems (docs/30 §Explode, §Stems).
@@ -1168,6 +1171,34 @@ pub fn main(init: std.process.Init) !void {
         const offline = bounce_job.active or render_job.active;
         // The mic opens only while it can be used: an armed track or a take
         // in flight. Idle, the device is playback-only (see Audio.want_capture).
+        // A device died, coreaudiod restarted, a rate changed under us or
+        // the default device moved: reopen it. A take can't survive that
+        // in time, so it ends there.
+        if (!offline and audio.device_event.load(.acquire)) {
+            if (recorder.isRecording()) {
+                recorder.requestStop();
+                transport.stop();
+                rec_finishing = true;
+            }
+            if (audio.takeDeviceEvent()) |did| {
+                if (did) status.set("Audio device changed: reopened{s}", .{if (rec_finishing) ", recording stopped" else ""});
+            } else |err| {
+                std.log.err("audio device reopen failed: {s}", .{@errorName(err)});
+                status.set("Audio device failed", .{});
+            }
+        }
+        // A seek, a loop wrap or a stop mid-take: the take ends where it
+        // still lines up with the timeline.
+        if (recorder.isRecording() and recorder.jumped.load(.acquire)) {
+            recorder.requestStop();
+            rec_finishing = true;
+            status.set("{s}", .{if (transport.isPlaying()) "Recording stopped: the playhead jumped" else "Recording stopped"});
+        }
+        input_menu.channels = audio.inputChannels();
+        if (input_menu.changed) {
+            input_menu.changed = false;
+            dirty = true;
+        }
         if (!offline) audio.setWantCapture(rec_busy or firstArmedAudioTrack(tracks) != null) catch |err| {
             std.log.err("audio device switch failed: {s}", .{@errorName(err)});
             status.set("Audio device failed", .{});
@@ -1281,18 +1312,32 @@ pub fn main(init: std.process.Init) !void {
                 rec_finishing = true;
             } else {
                 rec_track = firstArmedAudioTrack(tracks);
-                if (rec_track == null) {
-                    status.set("Arm a track (R) to record", .{});
-                } else {
+                if (rec_track) |ti| {
+                    // One pass, in time: a loop would wrap the take over
+                    // itself, so it pauses until the take is placed.
+                    if (transport.loopEnabled()) {
+                        transport.setLoopEnabled(false);
+                        rec_loop_paused = true;
+                    }
+                    recorder.input = tracks[ti].rec_input;
+                    // Playing first: the first captured block already
+                    // sees the transport moving.
+                    transport.play();
                     recorder.start() catch |err| {
                         std.log.err("record start failed: {s}", .{@errorName(err)});
                         status.set("Record failed to start", .{});
                         rec_track = null;
+                        transport.stop();
                     };
                     if (rec_track != null) {
-                        transport.play();
-                        status.set("Recording\u{2026}", .{});
+                        var ib: [8]u8 = undefined;
+                        status.set("Recording input {s}{s}\u{2026}", .{ tracks[ti].rec_input.label(&ib), if (rec_loop_paused) " (loop paused)" else "" });
+                    } else if (rec_loop_paused) {
+                        transport.setLoopEnabled(true);
+                        rec_loop_paused = false;
                     }
+                } else {
+                    status.set("Arm a track (R) to record", .{});
                 }
             }
         }
@@ -2130,6 +2175,10 @@ pub fn main(init: std.process.Init) !void {
             };
             rec_finishing = false;
             rec_track = null;
+            if (rec_loop_paused) {
+                transport.setLoopEnabled(true);
+                rec_loop_paused = false;
+            }
         }
 
         // Stems, once separated: their tracks, then what Explode asked for.
@@ -3851,11 +3900,12 @@ fn placeRecordedClip(
 
     const dur_sec = src.seconds();
 
-    // Latency-compensate: captured audio arrives a round-trip late, and the
-    // playback it was played against was late by the project's own latency
-    // (PDC), so place the clip earlier by both.
-    const latency: u64 = @as(u64, audio.roundTripLatencyFrames()) + pdc_latency;
-    const adj_sample = if (res.start_sample > latency) res.start_sample - latency else 0;
+    // Latency-compensate: captured audio arrives a round trip late (the
+    // hardware's both ways, from the HAL, plus however long its first
+    // block waited between the input and output callbacks), and the
+    // playback it was played against was late by the project's own
+    // latency (PDC), so place the clip earlier by all of them.
+    const adj_sample = recorder_mod.takeStart(res.start_sample, audio.roundTripLatencyFrames(), res.backlog, pdc_latency);
     const start = transport.samplesToBeats(adj_sample);
     const len_beats = @max(0.25, transport.secondsToBeats(start, dur_sec));
 

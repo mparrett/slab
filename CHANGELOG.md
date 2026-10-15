@@ -6,6 +6,23 @@ GitHub are its section here (`tools/release.sh` copies them), so add to
 
 ## Unreleased
 
+- **Recorded takes land in time.** Placement now uses the latency the
+  audio device reports each way, plus how long the input actually
+  waited, instead of a two-buffer guess. With AirPods as the output,
+  takes used to land about 150 ms late.
+
+- **Record from any input, mono or stereo.** Right-click a track's R to
+  pick its input: In 1, In 2, … or a stereo pair. Before, every input
+  of an interface was mixed into one, 6 dB down and with the other
+  inputs' noise. The choice is saved with the project.
+
+- **Recording holds up when things go wrong.** Audio the disk couldn't
+  keep up with becomes silence instead of shifting the rest of the take
+  earlier; seeking or stopping ends the take where it still lines up; a
+  loop pauses for the take. Unplugging a device, a sample-rate change
+  from another app, or the system audio service restarting now reopens
+  the device instead of leaving it silent.
+
 - **The Sampler no longer aliases when you play high.** Clean playback
   now band-limits the sample to the speed it is read at, using octave
   copies made when the sample loads, so playing a sample an octave or

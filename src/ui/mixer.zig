@@ -21,6 +21,7 @@ const ui_style = @import("style.zig");
 const ctl = @import("controls.zig");
 const menu = @import("menu.zig");
 const route_menu = @import("route_menu.zig");
+const input_menu = @import("input_menu.zig");
 const track_order = @import("track_order.zig");
 const routing = @import("../routing.zig");
 const automation = @import("../automation.zig");
@@ -151,6 +152,7 @@ pub fn draw(
     drawMasterStrip(ui, master_r, master, send_rows, device_sel);
     dragStrips(ui, tracks, &o, selected_track, band, strips_r, bus_x0, &res);
     if (route_menu.tick(tracks, selected_track.*)) |e| res.route = e;
+    input_menu.tick(tracks);
     return res;
 }
 
@@ -314,6 +316,9 @@ fn drawStrip(
         if (!t.isBus()) {
             var armed = t.isArmed();
             if (ctl.button(ui, br, "arm", &armed, .{ .kind = .latch, .label = "R", .lit = ui_style.rec })) t.setArmed(armed);
+            if (ui.in.right_pressed and br.contains(ui.in.ix(), ui.in.iy())) input_menu.open(ti, ui.in.ix(), ui.in.iy());
+            var tb: [64]u8 = undefined;
+            menu.tip(ui, br, input_menu.tip(&tb, t));
         }
     }
 }
