@@ -15,6 +15,7 @@ project or preset stores (docs/19): real units for knobs, the option
 | [`drum2`](#drum2) | DS-404 Drums | instrument | mono | `—` |
 | [`fm86`](#fm86) | FM-7.11 | instrument | 8 | `—` |
 | [`guitar`](#guitar) | Fretwire Guitar | instrument | 6 | `gt-` |
+| [`jp8`](#jp8) | Juniper-8 | instrument | 8 | `jp-` |
 | [`juno2`](#juno2) | Ju-Know | instrument | 8 | `jn-` |
 | [`ms20`](#ms20) | SM-24 Mono | instrument | mono | `—` |
 | [`profit5`](#profit5) | Profit-5 | instrument | 8 | `p5-` |
@@ -645,6 +646,79 @@ Presets:
 - `jazz` — Archtop jazz: neck pickup, tone rolled off, flatwound thump
 - `palm-mute` — Palm-muted picking: a short chug, give it a high-gain amp
 - `slide` — Bottleneck slide: long sustain, pitch curves glide fret by fret with the rasp
+
+## jp8
+
+**Juniper-8**, instrument, 8 voices.
+
+| param | section | label | range | default | notes |
+|---|---|---|---|---|---|
+| `jp-lfo-rate` | LFO | RATE | 0.05 … 40 | 4 | exp |
+| `jp-lfo-delay` | LFO | DELAY | 0 … 4 | 0 | pow |
+| `jp-lfo-wave` | LFO | WAVE | 0 SINE / 1 SAW / 2 SQUARE / 3 RANDOM | 0 | switch |
+| `jp-lfo-vco` | VCO MOD | LFO | 0 … 10 | 0 | linear |
+| `jp-env-vco` | VCO MOD | ENV | 0 … 10 | 0 | linear |
+| `jp-vmod-dst` | VCO MOD | TO | 0 VCO-1 / 1 BOTH / 2 VCO-2 | 1 | switch |
+| `jp-cross` | VCO-1 | CROSS | 0 … 10 | 0 | linear |
+| `jp-range1` | VCO-1 | RANGE | 0 16' / 1 8' / 2 4' / 3 2' | 1 | switch |
+| `jp-wave1` | VCO-1 | WAVE | 0 TRI / 1 SAW / 2 PULSE / 3 SQUARE | 1 | switch |
+| `jp-range2` | VCO-2 | RANGE | -12 … 24 | 0 | integer |
+| `jp-fine2` | VCO-2 | FINE | -50 … 50 | 6 | linear |
+| `jp-wave2` | VCO-2 | WAVE | 0 SINE / 1 SAW / 2 PULSE / 3 NOISE | 1 | switch |
+| `jp-sync` | VCO-2 | SYNC | 0 OFF / 1 ON | 0 | switch |
+| `jp-low2` | VCO-2 | LOW | 0 OFF / 1 ON | 0 | switch |
+| `jp-pwm` | PWM | PWM | 0 … 10 | 0 | linear |
+| `jp-pwm-src` | PWM | SOURCE | 0 LFO / 1 MAN / 2 ENV-1 | 1 | switch |
+| `jp-mix` | MIX | VCO-1:2 | 0 … 10 | 5 | linear |
+| `jp-hpf` | HPF | CUTOFF | 0 … 10 | 0 | linear |
+| `jp-slope` | VCF | SLOPE | 0 24 dB / 1 12 dB | 0 | switch |
+| `jp-cutoff` | VCF | CUTOFF | 0 … 10 | 5 | linear |
+| `jp-res` | VCF | RES | 0 … 10 | 0 | linear |
+| `jp-env-src` | VCF | ENV | 0 ENV-1 / 1 ENV-2 | 0 | switch |
+| `jp-env-mod` | VCF | ENV MOD | 0 … 10 | 4 | linear |
+| `jp-lfo-vcf` | VCF | LFO | 0 … 10 | 0 | linear |
+| `jp-kf` | VCF | KEY | 0 … 10 | 5 | linear |
+| `jp-vca-lfo` | VCA | LFO | 0 0 / 1 1 / 2 2 / 3 3 | 0 | switch |
+| `jp-level` | VCA | LEVEL | 0 … 10 | 8 | linear |
+| `jp-e1-a` | ENV-1 | A | 0.0015 … 6 | 0.005 | exp |
+| `jp-e1-d` | ENV-1 | D | 0.0015 … 12 | 0.6 | exp |
+| `jp-e1-s` | ENV-1 | S | 0 … 10 | 3 | linear |
+| `jp-e1-r` | ENV-1 | R | 0.0015 … 12 | 0.4 | exp |
+| `jp-e1-kf` | ENV-1 | KEY | 0 OFF / 1 ON | 0 | switch |
+| `jp-e1-pol` | ENV-1 | POL | 0 NORM / 1 INV | 0 | switch |
+| `jp-e2-a` | ENV-2 | A | 0.0015 … 6 | 0.003 | exp |
+| `jp-e2-d` | ENV-2 | D | 0.0015 … 12 | 0.8 | exp |
+| `jp-e2-s` | ENV-2 | S | 0 … 10 | 8 | linear |
+| `jp-e2-r` | ENV-2 | R | 0.0015 … 12 | 0.4 | exp |
+| `jp-e2-kf` | ENV-2 | KEY | 0 OFF / 1 ON | 0 | switch |
+| `jp-bend` | BENDER | LEVER | -1 … 1 | 0 | linear |
+| `jp-bend-vco` | BENDER | VCO | 0 … 10 | 2 | linear |
+| `jp-bend-vcf` | BENDER | VCF | 0 … 10 | 0 | linear |
+| `jp-bend-v1` | BENDER | VCO-1 | 0 OFF / 1 ON | 1 | switch |
+| `jp-bend-v2` | BENDER | VCO-2 | 0 OFF / 1 ON | 1 | switch |
+| `jp-porta` | PORTA | ON | 0 OFF / 1 ON | 0 | switch |
+| `jp-porta-t` | PORTA | TIME | 0 … 3 | 0.15 | pow |
+| `jp-tune` | MASTER | TUNE | -50 … 50 | 0 | linear |
+| `jp-age` | MASTER | AGE | 0 … 1 | 0.3 | linear |
+| `jp-vol` | MASTER | VOLUME | 0 … 1 | 0.7 | pow |
+
+Presets:
+
+- `13-juicy-funk` — 13 JUICY FUNK: inverted ENV-1 snaps the resonant 24 dB filter shut
+- `14-sync-sweep` — 14 SYNC SWEEP: the slow LFO sweeps VCO-2 under sync after a delay. Roland plays it in UNISON: turn UNI on
+- `16-sync-lead` — 16 SYNC LEAD: ENV-1 drops VCO-2 down the sync harmonics, 12 dB on ENV-2. Roland plays it in UNISON: turn UNI on
+- `21-clav` — 21 CLAV: two narrow pulses at 16', inverted ENV-1 on the filter
+- `31-lo-strings` — 31 LO STRINGS: saw and an LFO-swept pulse at 16', 12 dB, vibrato on VCO-1
+- `32-mid-strings` — 32 MID STRINGS: the same an octave up, brighter
+- `35-lo-brass` — 35 LO BRASS: two saws at 16', the 24 dB filter opened by ENV-1 at full
+- `36-hi-brass` — 36 HI BRASS: the brass at 8', slower filter
+- `38-synth-brass` — 38 SYNTH BRASS: 12 dB with some resonance, a fast swell
+- `57-tomita-chime` — 57 TOMITA CHIME: triangle and sine at 4', inverted ENV-1 bends VCO-2
+- `71-fat-fifths` — 71 FAT FIFTHS: two LFO-swept pulses a fifth apart, resonant 12 dB
+- `82-flute` — 82 FLUTE: triangle at 4' with a breath of VCO-2's noise, delayed LFO on the filter
+- `84-cello` — 84 CELLO: saw and pulse at 16', delayed vibrato on VCO-2
+- `87-upright-bass` — 87 UPRIGHT BASS: triangle under a synced pulse, ENV-1 on VCO-2 for the pluck
+- `cross-bells` — (ours) CROSS MOD: VCO-2's sine a fifth up drives VCO-1's pitch, clangorous bells
 
 ## juno2
 

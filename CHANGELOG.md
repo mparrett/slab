@@ -6,6 +6,12 @@ GitHub are its section here (`tools/release.sh` copies them), so add to
 
 ## Unreleased
 
+- **Juniper-8, a Roland Jupiter-8.** Eight voices of two VCOs with
+  exponential cross mod, VCO-2 synced to VCO-1, and PWM on both pulses. A
+  6 dB HPF feeds the IR3109 filter, with 24 dB and its thinner 12 dB tap.
+  Two envelopes with key follow and an inverting ENV-1, and one LFO
+  shared by every voice, with delay. It ships with sounds from Roland's
+  factory patch sheets. See docs/39.
 - **C-Beam 80, a Yamaha CS-80.** Eight notes of two complete voices each.
   Each voice has a linear-in-Hz VCO, an HPF and an LPF that don't
   self-oscillate, and the IL/AL filter envelope behind CS-80 brass. Velocity
