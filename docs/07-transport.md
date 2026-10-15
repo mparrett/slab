@@ -560,8 +560,9 @@ document; edited on the ruler per
 
 The device is **playback-only** until the mic is needed: while a track
 is armed or a take is recording it re-opens in **duplex** mode
-(`ma_device_type_duplex`): stereo f32 playback plus a **mono f32
-capture** half, both at 48 kHz in one callback. Opening the mic at
+(`ma_device_type_duplex`): stereo f32 playback plus an f32 **capture**
+half at the device's own channel count (up to 32), both at 48 kHz in
+one callback. Opening the mic at
 startup would switch Bluetooth headsets (AirPods) into their call
 profile for the whole session, whose narrow band and noise suppression
 mangle the output (drums vanish into clicks). If duplex init fails — no
@@ -574,26 +575,44 @@ The pipeline (`src/recorder.zig`):
 
 1. **Capture (audio thread).** `Recorder.captureFn` runs *before*
    render each block, so it stamps the take's start from the
-   block-start transport position. It only copies the input block into
-   a preallocated **lock-free SPSC ring** (`Ring`) — no allocation, no
-   syscalls, no locks. A short push counts as an overrun.
-2. **Writer thread.** Drains the ring and streams it to a float32-mono
-   **WAV** under `recordings/take-NNN.wav`, patching the RIFF/data
-   sizes on close. (Streaming to a real file — not an in-memory buffer
+   block-start transport position. It copies the track's **input** (one
+   channel, or a pair for a stereo take) out of the device's channels
+   into a preallocated **lock-free SPSC ring** (`Ring`) — no
+   allocation, no syscalls, no locks. Frames the ring has no room for
+   (an overrun) are owed and go in as silence before anything newer,
+   or at the end, so the rest of the take keeps its time. It also notes
+   when the transport doesn't move on by the frames it captured (a
+   seek, a stop): the take ends there.
+2. **Writer thread.** Drains the ring and streams it to a float32 mono
+   or stereo **WAV** under `recordings/take-NNN.wav`, patching the
+   RIFF/data sizes on close. (Streaming to a real file — not an in-memory buffer
    — so takes survive reload: audio clips resolve by path through the
    `AudioPool`.)
 3. **Finalize (UI thread).** When the writer signals done, the host
    joins it, `AudioPool.loadFile`s the take (reusing the normal
    loader), and drops an audio clip on the armed track via the same
    undoable path as audio import. The clip start is **latency-
-   compensated** — shifted earlier by `Audio.roundTripLatencyFrames()`
-   (capture + playback internal periods) so it lands where the sound
-   actually occurred.
+   compensated** (`recorder.takeStart`): shifted earlier by the
+   hardware's round trip, `Audio.roundTripLatencyFrames()` (each side's
+   device latency, safety offset, stream latency and buffer, from the
+   HAL at open, converted to 48 kHz), by the frames the take's first
+   block had waited in miniaudio's duplex ring between the input and
+   output callbacks (measured as it's read: the ring's backlog drifts
+   with over- and underruns), and by the project's PDC, so it lands
+   where the sound actually occurred. Bluetooth outputs matter here:
+   AirPods report 160 ms of device latency. A restart resets the ring
+   to its two periods of silence (a `Slab:` patch), so no backlog
+   outlives one.
 
 UI: a per-track **R** arm toggle (audio tracks only) in the
-arrangement header; the top-bar record button records the first armed
-track, starts the transport, and lights `accent_rec` while capturing.
-`Track.armed` is a transient atomic (not persisted). While recording,
+arrangement header and the mixer strip. Right-click it for the track's
+**input**: In 1, In 2, … mono, or In 1-2, In 3-4, … stereo, from the
+open device (saved with the project, docs/19 `input`; default In 1),
+and whether the take becomes notes. The top-bar record button records
+the first armed track, starts the transport, and lights `accent_rec`
+while capturing. A loop is paused for the take (one pass, in time) and
+comes back on when the take is placed. `Track.armed` is a transient
+atomic (not persisted). While recording,
 the armed lane shows a **live take** — a red region growing from the
 take's start beat to the playhead, with a waveform drawn from the
 recorder's peak buckets (the writer thread fills one peak per
@@ -606,6 +625,15 @@ button (top bar). `Audio` keeps a persistent `ma_context`;
 stops/re-opens/restarts the device with the chosen `ma_device_id`
 (render + capture hooks persist across the swap). Device switching is
 blocked while recording.
+
+**Device events.** `Audio` listens on the open devices for
+`kAudioDevicePropertyDeviceIsAlive` and the nominal sample rate, on the
+system for coreaudiod restarting, and takes miniaudio's reroute
+notification (a new default device). Any of them sets a flag the UI
+loop answers with a full reopen (the 48 kHz request, the resampling
+warning, the workers rejoining on `device_gen`); a take in progress
+ends first. A rate notification that only reports the rate the device
+opened at (our own 48 kHz request) is ignored.
 
 ### Deferred
 

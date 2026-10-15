@@ -353,13 +353,6 @@ bit-identical to the previous master.
 
 Known, not yet addressed (each needs its own design):
 
-- **Recording.** Round-trip compensation uses period sizes only (no HAL
-  device/stream latency or safety offset, nor miniaudio's two-period
-  duplex prefill, which is never reset on restart); capture is the mean
-  of all device input channels; overruns drop frames without padding.
-- **Device events.** No listeners for a device dying, a coreaudiod
-  restart or an external sample-rate change; a reroute keeps miniaudio's
-  in-place reinit (no 48 kHz request, no resampling warning).
 - **Resampling.** A device not at 48 kHz uses miniaudio's linear
   resampler (order-4 LPF).
 - **DSP.** limiter2 lacks a lookahead window minimum (transients clip at
@@ -385,3 +378,20 @@ Known, not yet addressed (each needs its own design):
   Callbacks are now variable-size (`noFixedSizedCallback`); the engine
   already chunks any count. This also removes the double render per
   hardware period on a resampled device.
+
+## Recording and device events (2026-10-15)
+
+- **Takes land where they were played.** Placement subtracts each
+  side's HAL latency (device + safety offset + stream + buffer, at open,
+  scaled to 48 kHz), the duplex ring's backlog measured at the take's
+  first block, and PDC. Before, it subtracted two periods: with AirPods
+  (160 ms device latency) a take landed ~150 ms late. A restart resets
+  the ring to its prefill (a `Slab:` patch in `ma_device_start__coreaudio`).
+- **Capture opens at the device's channel count** (up to 32) and a
+  track records its own input or pair; before, miniaudio averaged every
+  input into one (-6 dB, plus input 2's noise on a 2-in interface).
+- **Overruns pad with silence** instead of sliding the rest of the take
+  earlier; a seek, loop wrap or stop ends the take (loops pause for one).
+- **Device events reopen the device**: DeviceIsAlive, nominal rate and
+  coreaudiod restart listeners plus miniaudio's reroute notification set
+  an atomic flag; the UI loop does a full Slab reopen.

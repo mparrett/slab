@@ -14,10 +14,17 @@ pub const BLOCK_FRAMES: u32 = 256;
 /// length = frames * 2. Called from the miniaudio thread.
 pub const RenderFn = *const fn (ctx: *anyopaque, out: [*]f32, frames: u32) void;
 
-/// Audio-thread capture callback. `in` is `frames` mono f32 input samples
-/// (null when the device has no capture half). Called before render, so the
+/// Audio-thread capture callback. `in` is `frames` f32 input frames of
+/// `channels` interleaved channels, the device's own count (null when the
+/// device has no capture half). `backlog` is how many frames, from the
+/// first of these on, were already waiting between the input and output
+/// callbacks: what the input is late by on top of the hardware's
+/// latency (Audio.inputLatencyFrames). Called before render, so the
 /// transport still reads the block-start position. Must not allocate.
-pub const CaptureFn = *const fn (ctx: *anyopaque, in: ?[*]const f32, frames: u32) void;
+pub const CaptureFn = *const fn (ctx: *anyopaque, in: ?[*]const f32, frames: u32, channels: u32, backlog: u32) void;
+
+/// Input channels the capture side opens at most (an interface's first 32).
+pub const MAX_INPUT_CHANNELS = 32;
 
 /// One enumerated capture device — opaque id (passed back to select it) plus
 /// a display name, copied out of context-owned memory immediately.
@@ -30,6 +37,10 @@ pub const InputDevice = struct {
 
 const AudioObjectPropertyAddress = extern struct { selector: u32, scope: u32, element: u32 };
 extern "c" fn AudioObjectGetPropertyData(id: u32, addr: *const AudioObjectPropertyAddress, qual_size: u32, qual: ?*const anyopaque, size: *u32, data: *anyopaque) i32;
+const PropertyListener = *const fn (id: u32, n: u32, addrs: [*]const AudioObjectPropertyAddress, ctx: ?*anyopaque) callconv(.c) i32;
+extern "c" fn AudioObjectAddPropertyListener(id: u32, addr: *const AudioObjectPropertyAddress, proc: PropertyListener, ctx: ?*anyopaque) i32;
+extern "c" fn AudioObjectRemovePropertyListener(id: u32, addr: *const AudioObjectPropertyAddress, proc: PropertyListener, ctx: ?*anyopaque) i32;
+const SYSTEM_OBJECT: u32 = 1;
 
 fn fourcc(comptime s: *const [4]u8) u32 {
     return std.mem.readInt(u32, s, .big);
@@ -69,6 +80,17 @@ pub const Audio = struct {
     device_gen: u32 = 0,
     /// UI frames until a failed open is tried again.
     reopen_wait: u32 = 0,
+    /// Hardware latency each way at the engine's rate (device + safety
+    /// offset + stream + buffer), read from the HAL at open. UI thread.
+    in_latency: u32 = 0,
+    out_latency: u32 = 0,
+    /// Set by CoreAudio's notification threads: a device died, coreaudiod
+    /// restarted, a rate changed under us, or miniaudio rerouted. The UI
+    /// loop reopens the device (takeDeviceEvent).
+    device_event: std.atomic.Value(bool) = .init(false),
+    /// The device objects the listeners are on (0: none).
+    listen_out: u32 = 0,
+    listen_in: u32 = 0,
     callbacks_ui: Callbacks = .{},
     callbacks: handoff.Latest(Callbacks) = .init(.{}),
     callback_ack: std.atomic.Value(u64) = .init(0),
@@ -114,7 +136,9 @@ pub const Audio = struct {
         duplex.playback.format = c.ma.ma_format_f32;
         duplex.playback.channels = CHANNELS;
         duplex.capture.format = c.ma.ma_format_f32;
-        duplex.capture.channels = 1;
+        // The device's own channel count: a track records the channel or
+        // pair it picks, never a mix of them all.
+        duplex.capture.channels = 0;
         if (self.has_capture_id) duplex.capture.pDeviceID = &self.capture_id;
         duplex.sampleRate = SAMPLE_RATE;
         duplex.periodSizeInFrames = requestedBlockFrames();
@@ -124,6 +148,7 @@ pub const Audio = struct {
         // a whole block (5.3 ms at 256) of output latency for nothing.
         duplex.noFixedSizedCallback = c.ma.MA_TRUE;
         duplex.dataCallback = audioCallback;
+        duplex.notificationCallback = notificationCallback;
         duplex.pUserData = self;
 
         if (c.ma.ma_device_init(&self.context, &duplex, &self.device) != c.ma.MA_SUCCESS) {
@@ -133,9 +158,24 @@ pub const Audio = struct {
             std.log.warn("audio: capture unavailable; recording disabled (playback-only device)", .{});
             return self.openPlayback();
         }
+        if (self.device.capture.channels > MAX_INPUT_CHANNELS) {
+            // More than the hook takes: reopen at the first 32.
+            c.ma.ma_device_uninit(&self.device);
+            duplex.capture.channels = MAX_INPUT_CHANNELS;
+            if (c.ma.ma_device_init(&self.context, &duplex, &self.device) != c.ma.MA_SUCCESS) {
+                self.has_capture_id = false;
+                return self.openPlayback();
+            }
+        }
         self.capture_available = true;
         try self.startDevice();
         self.warnIfResampling();
+    }
+
+    /// Input channels the open device delivers (0 without capture).
+    pub fn inputChannels(self: *const Audio) u32 {
+        if (!self.initialized or !self.capture_available) return 0;
+        return self.device.capture.channels;
     }
 
     /// The engine renders at 48 kHz. A device left at another rate (MacBook
@@ -161,6 +201,7 @@ pub const Audio = struct {
         // a whole block (5.3 ms at 256) of output latency for nothing.
         play.noFixedSizedCallback = c.ma.MA_TRUE;
         play.dataCallback = audioCallback;
+        play.notificationCallback = notificationCallback;
         play.pUserData = self;
         if (c.ma.ma_device_init(&self.context, &play, &self.device) != c.ma.MA_SUCCESS)
             return error.AudioInitFailed;
@@ -175,6 +216,72 @@ pub const Audio = struct {
         }
         self.initialized = true;
         self.device_gen +%= 1;
+        self.readLatencies();
+        self.listen();
+    }
+
+    /// The HAL's latency each way, converted to the engine's rate.
+    fn readLatencies(self: *Audio) void {
+        const ca = &self.device.unnamed_0.coreaudio;
+        self.out_latency = halLatency(ca.deviceObjectIDPlayback, fourcc("outp"));
+        self.in_latency = if (self.capture_available) halLatency(ca.deviceObjectIDCapture, fourcc("inpt")) else 0;
+    }
+
+    const listened = [_]AudioObjectPropertyAddress{
+        .{ .selector = fourcc("livn"), .scope = fourcc("glob"), .element = 0 }, // DeviceIsAlive
+        .{ .selector = fourcc("nsrt"), .scope = fourcc("glob"), .element = 0 }, // NominalSampleRate
+    };
+    const service_restarted = AudioObjectPropertyAddress{ .selector = fourcc("srst"), .scope = fourcc("glob"), .element = 0 };
+
+    /// Listen for what miniaudio doesn't handle: the open devices dying or
+    /// changing rate, and coreaudiod restarting. UI thread.
+    fn listen(self: *Audio) void {
+        self.unlisten();
+        const ca = &self.device.unnamed_0.coreaudio;
+        self.listen_out = ca.deviceObjectIDPlayback;
+        self.listen_in = if (self.capture_available) ca.deviceObjectIDCapture else 0;
+        for ([_]u32{ self.listen_out, self.listen_in }) |id| {
+            if (id == 0) continue;
+            for (&listened) |*a| _ = AudioObjectAddPropertyListener(id, a, onProperty, self);
+        }
+        _ = AudioObjectAddPropertyListener(SYSTEM_OBJECT, &service_restarted, onProperty, self);
+    }
+
+    fn unlisten(self: *Audio) void {
+        if (self.listen_out == 0) return;
+        for ([_]u32{ self.listen_out, self.listen_in }) |id| {
+            if (id == 0) continue;
+            for (&listened) |*a| _ = AudioObjectRemovePropertyListener(id, a, onProperty, self);
+        }
+        _ = AudioObjectRemovePropertyListener(SYSTEM_OBJECT, &service_restarted, onProperty, self);
+        self.listen_out = 0;
+        self.listen_in = 0;
+    }
+
+    fn onProperty(id: u32, n: u32, addrs: [*]const AudioObjectPropertyAddress, ctx: ?*anyopaque) callconv(.c) i32 {
+        const self: *Audio = @ptrCast(@alignCast(ctx orelse return 0));
+        for (addrs[0..n]) |a| {
+            // Our own open asks for 48 kHz: a rate that ends up where the
+            // device runs is that, not a change under us.
+            if (a.selector == fourcc("nsrt") and nominalRate(id) == self.openRate(id)) continue;
+            self.device_event.store(true, .release);
+        }
+        return 0;
+    }
+
+    /// The rate the device opened at, per side (0 if `id` isn't open).
+    fn openRate(self: *const Audio, id: u32) f64 {
+        if (id == self.listen_out) return @floatFromInt(self.device.playback.internalSampleRate);
+        if (id == self.listen_in) return @floatFromInt(self.device.capture.internalSampleRate);
+        return 0;
+    }
+
+    /// UI thread: whether a device event asked for a reopen since the last
+    /// call; reopens the device if so (the workers rejoin on device_gen).
+    pub fn takeDeviceEvent(self: *Audio) !bool {
+        if (!self.device_event.swap(false, .acq_rel)) return false;
+        try self.reopen();
+        return true;
     }
 
     /// The running device's I/O workgroup (os_workgroup_t, retained: the
@@ -195,6 +302,7 @@ pub const Audio = struct {
     }
 
     fn reopen(self: *Audio) !void {
+        self.unlisten();
         if (self.initialized) {
             _ = c.ma.ma_device_stop(&self.device);
             c.ma.ma_device_uninit(&self.device);
@@ -261,13 +369,12 @@ pub const Audio = struct {
         return std.mem.sliceTo(&self.device.capture.name, 0);
     }
 
-    /// Best-effort round-trip latency (input + output) in frames, used to
-    /// nudge a recorded clip back onto the grid. Valid after init.
+    /// Round-trip hardware latency (input + output) in frames at the
+    /// engine's rate, from the HAL. A take is also late by the capture
+    /// hook's `backlog`, measured per take. Valid after init.
     pub fn roundTripLatencyFrames(self: *const Audio) u32 {
         if (!self.initialized) return 0;
-        const cap = self.device.capture.internalPeriodSizeInFrames;
-        const play = self.device.playback.internalPeriodSizeInFrames;
-        return cap + play;
+        return self.in_latency + self.out_latency;
     }
 
     /// Install the input-capture hook (audio thread reads it each block).
@@ -287,6 +394,7 @@ pub const Audio = struct {
     }
 
     pub fn deinit(self: *Audio) void {
+        self.unlisten();
         if (self.initialized) {
             c.ma.ma_device_uninit(&self.device);
             self.initialized = false;
@@ -322,12 +430,12 @@ pub const Audio = struct {
         self.publishCallbacks();
     }
 
-    fn process(self: *Audio, out: [*]f32, input: ?[*]const f32, frames: u32) void {
+    fn process(self: *Audio, out: [*]f32, input: ?[*]const f32, frames: u32, channels: u32, backlog: u32) void {
         if (self.callbacks.adopt()) self.callback_ack.store(self.callbacks.current().generation, .release);
         const hooks = self.callbacks.current();
         // One coherent set for the entire callback. Capture stamps the
         // block-start transport position before render advances it.
-        if (hooks.capture_fn) |capture| capture(hooks.capture_ctx.?, input, frames);
+        if (hooks.capture_fn) |capture| capture(hooks.capture_ctx.?, input, frames, channels, backlog);
         if (hooks.render_fn) |render| {
             const tick0 = std.c.mach_absolute_time();
             render(hooks.render_ctx.?, out, frames);
@@ -347,7 +455,68 @@ fn audioCallback(
     const out_f32: [*]f32 = @ptrCast(@alignCast(out_ptr));
 
     const input: ?[*]const f32 = if (in_raw) |p| @ptrCast(@alignCast(p)) else null;
-    self.process(out_f32, input, @intCast(frames));
+    // Duplex on CoreAudio: the input reaches this (output) callback through
+    // miniaudio's ring. What's in it from these frames on, they waited.
+    var backlog: u32 = 0;
+    var channels: u32 = 0;
+    if (input != null and dev.?.type == c.ma.ma_device_type_duplex) {
+        backlog = @intCast(@max(0, c.ma.ma_pcm_rb_pointer_distance(&dev.?.duplexRB.rb)));
+        channels = dev.?.capture.channels;
+    }
+    self.process(out_f32, input, @intCast(frames), channels, backlog);
+}
+
+fn notificationCallback(n: [*c]const c.ma.ma_device_notification) callconv(.c) void {
+    const note = n orelse return;
+    // miniaudio rerouted in place (a new default device): reopen ours so
+    // the engine's rate is asked for again and the workers rejoin.
+    if (note.*.type != c.ma.ma_device_notification_type_rerouted) return;
+    const self: *Audio = @ptrCast(@alignCast(note.*.pDevice.*.pUserData));
+    self.device_event.store(true, .release);
+}
+
+fn getU32(id: u32, selector: u32, scope: u32) u32 {
+    const addr: AudioObjectPropertyAddress = .{ .selector = selector, .scope = scope, .element = 0 };
+    var v: u32 = 0;
+    var size: u32 = @sizeOf(u32);
+    if (AudioObjectGetPropertyData(id, &addr, 0, null, &size, @ptrCast(&v)) != 0) return 0;
+    return v;
+}
+
+fn nominalRate(id: u32) f64 {
+    const addr: AudioObjectPropertyAddress = .{ .selector = fourcc("nsrt"), .scope = fourcc("glob"), .element = 0 };
+    var v: f64 = 0;
+    var size: u32 = @sizeOf(f64);
+    if (AudioObjectGetPropertyData(id, &addr, 0, null, &size, @ptrCast(&v)) != 0) return 0;
+    return v;
+}
+
+/// One side's latency in frames at the engine's rate: the device's own,
+/// its safety offset, its first stream's, and one buffer.
+fn halLatency(id: u32, scope: u32) u32 {
+    if (id == 0) return 0;
+    var frames: u64 = getU32(id, fourcc("ltnc"), scope);
+    frames += getU32(id, fourcc("saft"), scope);
+    frames += getU32(id, fourcc("fsiz"), scope);
+    const addr: AudioObjectPropertyAddress = .{ .selector = fourcc("stm#"), .scope = scope, .element = 0 };
+    var streams: [8]u32 = undefined;
+    var size: u32 = @sizeOf(@TypeOf(streams));
+    if (AudioObjectGetPropertyData(id, &addr, 0, null, &size, @ptrCast(&streams)) == 0 and size >= 4)
+        frames += getU32(streams[0], fourcc("ltnc"), fourcc("glob"));
+    return scaleFrames(frames, nominalRate(id));
+}
+
+/// `frames` at `rate` as frames at the engine's rate.
+fn scaleFrames(frames: u64, rate: f64) u32 {
+    if (!(rate > 0)) return @intCast(@min(frames, std.math.maxInt(u32)));
+    return @intFromFloat(@round(@as(f64, @floatFromInt(frames)) * SAMPLE_RATE / rate));
+}
+
+test "HAL frames scale to the engine's rate" {
+    try std.testing.expectEqual(@as(u32, 480), scaleFrames(441, 44_100));
+    try std.testing.expectEqual(@as(u32, 256), scaleFrames(256, 48_000));
+    try std.testing.expectEqual(@as(u32, 128), scaleFrames(256, 96_000));
+    try std.testing.expectEqual(@as(u32, 300), scaleFrames(300, 0));
 }
 
 fn requestedBlockFrames() u32 {
@@ -392,7 +561,7 @@ test "realtime: audio hook publication keeps functions paired with their context
     var two = Handler{ .value = 2 };
     var out: [64]f32 = undefined;
     audio.setRender(&one, Handler.one);
-    audio.process(&out, null, 32);
+    audio.process(&out, null, 32, 0, 0);
     const held = audio.callbacks.current();
     for (0..100) |_| {
         audio.setRender(&two, Handler.two);
@@ -403,11 +572,11 @@ test "realtime: audio hook publication keeps functions paired with their context
     audio.setRender(&two, Handler.two);
     const generation = audio.callbacks_ui.generation;
     try std.testing.expect(audio.callback_ack.load(.acquire) < generation);
-    audio.process(&out, null, 32);
+    audio.process(&out, null, 32, 0, 0);
     try std.testing.expectEqual(@as(f32, 2), out[0]);
     try std.testing.expectEqual(generation, audio.callback_ack.load(.acquire));
     audio.setRender(null, null);
-    audio.process(&out, null, 32);
+    audio.process(&out, null, 32, 0, 0);
     for (out) |v| try std.testing.expectEqual(@as(f32, 0), v);
 }
 
@@ -429,4 +598,12 @@ test "realtime device: output workgroup remains valid across stop and restart" {
     defer Release.os_release(restarted);
     try std.testing.expect(running == stopped);
     try std.testing.expect(running == restarted);
+}
+
+test "realtime device: the HAL reports an output latency of at least a buffer" {
+    if (std.c.getenv("SLAB_AUDIO_DEVICE_TEST") == null) return;
+    var audio: Audio = undefined;
+    try audio.init();
+    defer audio.deinit();
+    try std.testing.expect(audio.out_latency >= audio.device.playback.internalPeriodSizeInFrames * SAMPLE_RATE / audio.device.playback.internalSampleRate);
 }
