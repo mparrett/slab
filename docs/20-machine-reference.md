@@ -351,17 +351,33 @@ Presets:
 
 Presets:
 
-- `bass` — BASS alone: the resonant pluck, both filters ringing
+- `bass` — BASS alone: square and saw at 16', the resonant pluck, both filters ringing
 - `brass` — BRASS 1 + BRASS 2: IL and AL both up, the swell from pressure
 - `brass-3` — BRASS 1 + BRASS 3: shorter, a resonant cornet edge
-- `e-piano` — E. PIANO alone: a 75% pulse, IL and AL with no sustain on the filter
+- `clavichord` — CLAVICHORD 1 + CLAVICHORD 2: narrow pulses, a plucked band
+- `e-piano` — E. PIANO alone: a square, IL and AL with no sustain on the filter
 - `flute` — FLUTE alone: a saw through a full-resonance LPF
+- `funky` — FUNKY 1 + FUNKY 2: the CS-80's envelope-swept funk
+- `funky-2` — FUNKY 3 + FUNKY 4: the other funk pairing
+- `guitar` — GUITAR 1 + GUITAR 2: a plucked pulse and its resonant band
 - `harpsichord` — HARPSICHORD 1 + HARPSICHORD 2: narrow pulses through a band
+- `organ` — ORGAN 1 + ORGAN 2: gated, unfiltered, the two channels' footages
 - `rain-brass` — (ours) brass after the Blade Runner end titles: two detuned BRASS 1s, pressure brings brilliance, level and vibrato. Add a long hall
 - `ring-bells` — (ours) the manual's bells: sine and saw, the ring modulator's envelope sweeping its carrier
 - `solo-lead` — (ours) a solo voice: portamento at the CS-80's constant rate, after touch opens the filter and adds vibrato
 - `strings` — STRING 1 + STRING 2: band-passed resonant saws, pressure swells
+- `strings-2` — STRING 3 + STRING 4: slow open saws, after touch brings the level
 - `tears-pad` — (ours) STRING 2 over a slow PWM layer, chorus on: a pad that breathes with pressure
+- `manual/bells-gongs` — Owner's Manual §III, BELLS & GONGS: Channel II
+- `manual/clarinet` — Owner's Manual §III, CLARINET: Channel I
+- `manual/clavichord` — Owner's Manual §III, CLAVICHORD: Channel I
+- `manual/flute` — Owner's Manual §III, FLUTE: Channel I
+- `manual/multiple-strings` — Owner's Manual §III, MULTIPLE STRINGS: Channel II
+- `manual/oboe` — Owner's Manual §III, OBOE: Channel I
+- `manual/pizzicato-legato` — Owner's Manual §III, PIZZICATO & LEGATO: both channels
+- `manual/solo-violin` — Owner's Manual §III, SOLO VIOLIN: Channel II
+- `manual/timpani` — Owner's Manual §III, TIMPANI: both channels
+- `manual/trumpet` — Owner's Manual §III, TRUMPET: Channel II
 
 ## drum2
 

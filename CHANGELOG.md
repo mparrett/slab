@@ -13,8 +13,9 @@ GitHub are its section here (`tools/release.sh` copies them), so add to
   raises the level and brings in vibrato on the pressed notes only. The
   sub oscillator, ring modulator, BBD chorus/tremolo, keyboard scaling,
   constant-rate portamento and sustain are global, as on the original.
-  It ships with Yamaha's factory pairings from the Owner's Manual charts
-  and four sounds of ours. See docs/38.
+  It ships with all 22 of Yamaha's factory presets as their Channel I + II
+  pairings, the Owner's Manual's ten programming examples (clarinet to
+  timpani), and four sounds of ours. See docs/38.
 
 - **The Extract pack finds uv when Slab is opened from Finder.** Its
   download said uv was missing unless Slab was started from a terminal; it
