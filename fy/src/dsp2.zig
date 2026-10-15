@@ -169,10 +169,16 @@ pub const Builder = struct {
     initial_arity: usize = 0,
     /// Lane mode: f64 values are 2-lane vectors (see emitLanes).
     lanes: bool = false,
+    /// Set while emitMode runs: scalar loads and stores address
+    /// [base, #off] instead of materializing base + off.
+    folding: bool = false,
     /// The versioned `ifte`s this body took an arm of, in order.
     guards: compat.ArrayList(Guard) = undefined,
     /// laneBuilder's LaneGuardVarying: the guard's token.
     bad_guard: usize = 0,
+    /// Pure values already built, for hash-consing (addValue): the same
+    /// operation on the same operands is one value, computed once.
+    cse: std.AutoHashMapUnmanaged(CseKey, usize) = .empty,
 
     pub fn init(allocator: std.mem.Allocator) Builder {
         return .{
@@ -187,6 +193,7 @@ pub const Builder = struct {
     }
 
     pub fn deinit(self: *Builder) void {
+        self.cse.deinit(self.allocator);
         self.guards.deinit();
         self.values.deinit();
         self.stack.deinit();
@@ -310,13 +317,7 @@ pub const Builder = struct {
             try self.expectTy(ptr, .ptr);
             const offset = self.values.items[offset_id];
             if (offset.op != .int_const or offset.int_value < 0) return Error.NonConstantPick;
-            const id = try self.addValue(.{
-                .op = .ptr_add,
-                .ty = .ptr,
-                .a = ptr,
-                .int_value = offset.int_value,
-            });
-            try self.stack.append(id);
+            try self.stack.append(try self.ptrAdd(ptr, offset.int_value));
             return;
         }
         if (std.mem.eql(u8, word, "f!64")) {
@@ -723,6 +724,63 @@ pub const Builder = struct {
         }
     }
 
+    /// A store's address registers when its bases are entry args' own in
+    /// raw_registers mode (never clobbered): lane 0's and lane 1's.
+    fn argRegs(self: *const Builder, sa: StoreAddr, arg_abi: ArgAbi) ?[2]u5 {
+        if (arg_abi != .raw_registers) return null;
+        const r0 = self.argReg(sa.base) orelse return null;
+        if (!self.lanes) return .{ r0, r0 };
+        if (!sa.folded) return null;
+        const r1 = self.argReg(sa.base_b.?) orelse return null;
+        return .{ r0, r1 };
+    }
+
+    fn argReg(self: *const Builder, id: usize) ?u5 {
+        const b = self.values.items[id];
+        if (b.op != .arg or b.arg_index >= RAW_X_ARG_REGS.len) return null;
+        return RAW_X_ARG_REGS[b.arg_index];
+    }
+
+    /// Whether stores[i] (a folded field of an entry arg) can be written
+    /// while the body is still computing instead of waiting in the stash:
+    /// no load still to be emitted may read its field, and no earlier
+    /// store still waiting may land on it after it.
+    fn storeNow(self: *const Builder, cg: *const Codegen, i: usize, direct: []const bool) bool {
+        const st = self.stores.items[i];
+        if (!self.storeNowAt(cg, i, direct, st.ptr)) return false;
+        if (st.ptr_b) |pb| return self.storeNowAt(cg, i, direct, pb);
+        return true;
+    }
+
+    fn storeNowAt(self: *const Builder, cg: *const Codegen, i: usize, direct: []const bool, ptr: usize) bool {
+        const k = self.addrKey(ptr);
+        for (self.values.items, 0..) |v, id| {
+            switch (v.op) {
+                .load_f64, .load_ptr, .load_lane2, .load_splat => {},
+                else => continue,
+            }
+            if (cg.remaining_uses[id] == 0 or cg.locs[id] != .none or cg.spill_slot[id] != null) continue;
+            if (self.mayAlias(k, v.a)) return false;
+            if (v.op == .load_lane2 and self.mayAlias(k, v.b)) return false;
+        }
+        for (self.stores.items[0..i], 0..) |st, j| {
+            if (direct[j]) continue;
+            if (self.mayAlias(k, st.ptr)) return false;
+            if (st.ptr_b) |pb| if (self.mayAlias(k, pb)) return false;
+        }
+        return true;
+    }
+
+    /// Whether `ptr` may address the field `k` (an entry arg + offset).
+    /// Different entry args are different memory, as `invariant` assumes.
+    fn mayAlias(self: *const Builder, k: AddrKey, ptr: usize) bool {
+        const pk = self.addrKey(ptr);
+        const root = self.values.items[pk.root];
+        if (root.op == .arg) return pk.root == k.root and pk.off == k.off;
+        if (root.op == .ptr_add_idx or root.op == .ptr_add_idx_lane) return self.baseArg(pk.root) == k.root or self.baseArg(pk.root) == null;
+        return true;
+    }
+
     /// The entry arg under a pointer's ptr+/indexed chain, if any.
     fn baseArg(self: *const Builder, id: usize) ?usize {
         var cur = id;
@@ -730,7 +788,7 @@ pub const Builder = struct {
             const v = self.values.items[cur];
             switch (v.op) {
                 .arg => return cur,
-                .ptr_add, .ptr_add_idx => cur = v.a,
+                .ptr_add, .ptr_add_idx, .ptr_add_idx_lane => cur = v.a,
                 else => return null,
             }
         }
@@ -740,6 +798,9 @@ pub const Builder = struct {
         const has_outputs = self.stack.items.len != 0;
         if (self.stores.items.len == 0 and !has_outputs) return Error.BadStackEffect;
         const n_values = self.values.items.len;
+        // Only bodies count uses through folds; guards (countCone) don't.
+        self.folding = true;
+        defer self.folding = false;
 
         const locs = self.allocator.alloc(Loc, n_values) catch return Error.OutOfMemory;
         defer self.allocator.free(locs);
@@ -813,29 +874,62 @@ pub const Builder = struct {
         const frame_at = out.items.len;
         if (use_frame) try out.append(Asm.sub_sp_imm(@intCast(stash_bytes)));
 
+        const direct = self.allocator.alloc(bool, self.stores.items.len) catch return Error.OutOfMemory;
+        defer self.allocator.free(direct);
+        @memset(direct, false);
         if (spill_stores) {
             for (self.stores.items, 0..) |store, i| {
                 const mark = cg.pin_len;
                 const val_reg = try cg.valueD(store.value);
-                const ptr_reg = try cg.valueX(store.ptr);
                 const offset: u12 = @intCast(i * stash_stride);
-                if (self.lanes) {
-                    const ptr_b = try cg.valueX(store.ptr_b.?);
-                    try out.append(Asm.str_q_imm(val_reg, 31, offset));
-                    try out.append(Asm.str_x_imm(ptr_reg, 31, offset + 16));
-                    try out.append(Asm.str_x_imm(ptr_b, 31, offset + 24));
+                const sa = self.storeAddr(store);
+                // An entry arg's register holds its pointer for the whole
+                // body: the store needs only its value.
+                if (self.argRegs(sa, arg_abi)) |ar| {
+                    if (self.storeNow(&cg, i, direct)) {
+                        // Nothing left to compute reads the field: write it now.
+                        if (store.cond) |cd| {
+                            const cond_reg = try cg.valueD(cd);
+                            const bits = try cg.allocX();
+                            try out.append(Asm.@"fmov Xd, Dn"(bits, cond_reg));
+                            try out.append(Asm.@"cbz Xt, offset"(bits, 2));
+                            cg.releaseX(bits);
+                        }
+                        try out.append(Asm.str_d_uimm(val_reg, ar[0], sa.off));
+                        if (self.lanes) {
+                            const t = try cg.allocD();
+                            try out.append(Asm.@"mov Dd, Vn.D[1]"(t, val_reg));
+                            try out.append(Asm.str_d_uimm(t, ar[1], sa.off_b));
+                            cg.releaseD(t);
+                        }
+                        direct[i] = true;
+                    } else {
+                        try out.append(if (self.lanes) Asm.str_q_imm(val_reg, 31, offset) else Asm.str_d_imm(val_reg, 31, offset));
+                        if (store.cond) |cd| {
+                            const cond_reg = try cg.valueD(cd);
+                            try out.append(Asm.str_d_imm(cond_reg, 31, offset + 16));
+                        }
+                    }
                 } else {
-                    try out.append(Asm.str_d_imm(val_reg, 31, offset));
-                    try out.append(Asm.str_x_imm(ptr_reg, 31, offset + 8));
-                    if (store.cond) |cd| {
-                        const cond_reg = try cg.valueD(cd);
-                        try out.append(Asm.str_d_imm(cond_reg, 31, offset + 16));
+                    const ptr_reg = try cg.valueX(sa.base);
+                    if (self.lanes) {
+                        const ptr_b = try cg.valueX(sa.base_b.?);
+                        try out.append(Asm.str_q_imm(val_reg, 31, offset));
+                        try out.append(Asm.str_x_imm(ptr_reg, 31, offset + 16));
+                        try out.append(Asm.str_x_imm(ptr_b, 31, offset + 24));
+                    } else {
+                        try out.append(Asm.str_d_imm(val_reg, 31, offset));
+                        try out.append(Asm.str_x_imm(ptr_reg, 31, offset + 8));
+                        if (store.cond) |cd| {
+                            const cond_reg = try cg.valueD(cd);
+                            try out.append(Asm.str_d_imm(cond_reg, 31, offset + 16));
+                        }
                     }
                 }
                 cg.unpinTo(mark);
                 cg.consumeValue(store.value);
-                cg.consumeValue(store.ptr);
-                if (store.ptr_b) |pb| cg.consumeValue(pb);
+                cg.consumeValue(sa.base);
+                if (sa.base_b) |pb| cg.consumeValue(pb);
                 if (store.cond) |cd| cg.consumeValue(cd);
             }
         }
@@ -857,25 +951,35 @@ pub const Builder = struct {
         }
 
         if (spill_stores) {
-            for (self.stores.items, 0..) |_, i| {
+            for (self.stores.items, 0..) |st, i| {
+                if (direct[i]) continue;
+                const sa = self.storeAddr(st);
+                const ar = self.argRegs(sa, arg_abi);
                 const val_reg = try cg.allocD();
                 const ptr_reg = try cg.allocX();
                 const offset: u12 = @intCast(i * stash_stride);
                 if (self.lanes) {
                     try out.append(Asm.ldr_q_imm(val_reg, 31, offset));
-                    try out.append(Asm.ldr_x_imm(ptr_reg, 31, offset + 16));
-                    try out.append(Asm.str_d_imm(val_reg, ptr_reg, 0));
-                    try out.append(Asm.ldr_x_imm(ptr_reg, 31, offset + 24));
-                    try out.append(Asm.@"st1 {Vt.D}[1], [Xn]"(val_reg, ptr_reg));
+                    var p = if (ar) |r| r[0] else ptr_reg;
+                    if (ar == null) try out.append(Asm.ldr_x_imm(ptr_reg, 31, offset + 16));
+                    try out.append(Asm.str_d_uimm(val_reg, p, sa.off));
+                    try out.append(Asm.@"mov Dd, Vn.D[1]"(val_reg, val_reg));
+                    p = if (ar) |r| r[1] else ptr_reg;
+                    if (ar == null) try out.append(Asm.ldr_x_imm(ptr_reg, 31, offset + 24));
+                    try out.append(Asm.str_d_uimm(val_reg, p, sa.off_b));
                 } else {
-                    if (self.stores.items[i].cond != null) {
-                        // Skip the load-load-store when the mask is clear.
+                    if (st.cond != null) {
+                        // Skip the load(-load)-store when the mask is clear.
                         try out.append(Asm.ldr_x_imm(ptr_reg, 31, offset + 16));
-                        try out.append(Asm.@"cbz Xt, offset"(ptr_reg, 4));
+                        try out.append(Asm.@"cbz Xt, offset"(ptr_reg, if (ar != null) 3 else 4));
                     }
                     try out.append(Asm.ldr_d_imm(val_reg, 31, offset));
-                    try out.append(Asm.ldr_x_imm(ptr_reg, 31, offset + 8));
-                    try out.append(Asm.str_d_imm(val_reg, ptr_reg, 0));
+                    if (ar) |r| {
+                        try out.append(Asm.str_d_uimm(val_reg, r[0], sa.off));
+                    } else {
+                        try out.append(Asm.ldr_x_imm(ptr_reg, 31, offset + 8));
+                        try out.append(Asm.str_d_uimm(val_reg, ptr_reg, sa.off));
+                    }
                 }
                 cg.releaseD(val_reg);
                 cg.releaseX(ptr_reg);
@@ -883,8 +987,9 @@ pub const Builder = struct {
         } else {
             for (self.stores.items) |store| {
                 const mark = cg.pin_len;
+                const sa = self.storeAddr(store);
                 const val_reg = try cg.valueD(store.value);
-                const ptr_reg = try cg.valueX(store.ptr);
+                const ptr_reg = try cg.valueX(sa.base);
                 if (store.cond) |cd| {
                     const cond_reg = try cg.valueD(cd);
                     const bits = try cg.allocX();
@@ -893,15 +998,22 @@ pub const Builder = struct {
                     cg.releaseX(bits);
                     cg.consumeValue(cd);
                 }
-                try out.append(Asm.str_d_imm(val_reg, ptr_reg, 0));
-                if (store.ptr_b) |pb| {
+                try out.append(Asm.str_d_uimm(val_reg, ptr_reg, sa.off));
+                if (sa.base_b) |pb| {
                     const ptr_b = try cg.valueX(pb);
-                    try out.append(Asm.@"st1 {Vt.D}[1], [Xn]"(val_reg, ptr_b));
+                    if (sa.folded) {
+                        const t = try cg.allocD();
+                        try out.append(Asm.@"mov Dd, Vn.D[1]"(t, val_reg));
+                        try out.append(Asm.str_d_uimm(t, ptr_b, sa.off_b));
+                        cg.releaseD(t);
+                    } else {
+                        try out.append(Asm.@"st1 {Vt.D}[1], [Xn]"(val_reg, ptr_b));
+                    }
                 }
                 cg.unpinTo(mark);
                 cg.consumeValue(store.value);
-                cg.consumeValue(store.ptr);
-                if (store.ptr_b) |pb| cg.consumeValue(pb);
+                cg.consumeValue(sa.base);
+                if (sa.base_b) |pb| cg.consumeValue(pb);
             }
         }
         if (use_frame) {
@@ -971,35 +1083,97 @@ pub const Builder = struct {
         return self.stack.items.len;
     }
 
+    const CseKey = struct { op: Op, ty: Ty, a: usize, b: usize, c: usize, iv: i64, fv: u64 };
+
+    /// Pure and typed when built: equal ones are interchangeable. Loads
+    /// stay apart (one more load is cheaper than a value held across a
+    /// body under pressure), as do args and integers (their types settle
+    /// later, from use).
+    fn cseable(op: Op) bool {
+        return switch (op) {
+            .arg, .int_const, .load_f64, .load_ptr, .load_lane2, .load_splat => false,
+            else => true,
+        };
+    }
+
     fn addValue(self: *Builder, value: Value) Error!usize {
+        const key: ?CseKey = if (cseable(value.op)) .{
+            .op = value.op,
+            .ty = value.ty,
+            .a = value.a,
+            .b = value.b,
+            .c = value.c,
+            .iv = value.int_value,
+            .fv = @bitCast(value.float_value),
+        } else null;
+        if (key) |k| if (self.cse.get(k)) |id| return id;
         const id = self.values.items.len;
         try self.values.append(value);
+        if (key) |k| self.cse.put(self.allocator, k, id) catch return Error.OutOfMemory;
         return id;
     }
 
+    /// Uses per value, one per edge from what the body keeps (its stores
+    /// and outputs) and what those need. A value nothing live reaches (an
+    /// arm's replaced store, a forwarded load) holds no operand's register.
     fn countUses(self: *const Builder, remaining_uses: []u32) void {
-        for (self.values.items) |value| {
-            switch (value.op) {
-                .arg, .int_const, .f64_const => {},
-                .ptr_add, .load_f64, .load_ptr, .fabs, .fneg, .fsqrt, .ffloor, .fexp2i, .flog2i, .fmant, .mnot, .mask_to_f, .load_splat => remaining_uses[value.a] += 1,
-                .ptr_add_idx, .fadd, .fsub, .fmul, .fdiv, .fmin, .fmax, .fcmp, .mand, .mor, .load_lane2, .ptr_add_idx_lane => {
-                    remaining_uses[value.a] += 1;
-                    remaining_uses[value.b] += 1;
-                },
-                .select => {
-                    remaining_uses[value.a] += 1;
-                    remaining_uses[value.b] += 1;
-                    remaining_uses[value.c] += 1;
-                },
-            }
-        }
         for (self.stores.items) |store| {
-            remaining_uses[store.ptr] += 1;
+            const sa = self.storeAddr(store);
+            remaining_uses[sa.base] += 1;
             remaining_uses[store.value] += 1;
-            if (store.ptr_b) |pb| remaining_uses[pb] += 1;
+            if (sa.base_b) |pb| remaining_uses[pb] += 1;
             if (store.cond) |cd| remaining_uses[cd] += 1;
         }
         for (self.stack.items) |value| remaining_uses[value] += 1;
+        // Operands have smaller ids: one sweep down finds every live value.
+        var i = self.values.items.len;
+        while (i > 0) {
+            i -= 1;
+            if (remaining_uses[i] == 0) continue;
+            const v = self.values.items[i];
+            var ops = self.operands(v);
+            switch (v.op) {
+                .load_f64, .load_ptr, .load_splat => if (self.fold(v.a)) |f| {
+                    ops[0] = f.base;
+                },
+                .load_lane2 => {
+                    if (self.fold(v.a)) |f| ops[0] = f.base;
+                    if (self.fold(v.b)) |f| ops[1] = f.base;
+                },
+                else => {},
+            }
+            for (ops) |o| if (o) |oid| {
+                remaining_uses[oid] += 1;
+            };
+        }
+    }
+
+    const Fold = struct { base: usize, off: u32 };
+
+    /// An access at base + a constant offset, addressed as [base, #off]
+    /// instead of computing the pointer first.
+    fn fold(self: *const Builder, ptr: usize) ?Fold {
+        if (!self.folding) return null;
+        const v = self.values.items[ptr];
+        if (v.op != .ptr_add or v.int_value < 0 or @rem(v.int_value, 8) != 0 or v.int_value >= 32768) return null;
+        return .{ .base = v.a, .off = @intCast(v.int_value) };
+    }
+
+    const StoreAddr = struct { base: usize, off: u32, base_b: ?usize = null, off_b: u32 = 0, folded: bool = false };
+
+    /// Where a store writes: [base, #off], and in lane mode lane 1's
+    /// [base_b, #off_b]. A lane store folds only when both lanes do;
+    /// otherwise lane 1 goes through `st1 {v.d}[1], [ptr_b]`, which has no
+    /// offset form.
+    fn storeAddr(self: *const Builder, st: Store) StoreAddr {
+        const f0 = self.fold(st.ptr);
+        if (st.ptr_b) |pb| {
+            const f1 = self.fold(pb);
+            if (f0 != null and f1 != null) return .{ .base = f0.?.base, .off = f0.?.off, .base_b = f1.?.base, .off_b = f1.?.off, .folded = true };
+            return .{ .base = st.ptr, .off = 0, .base_b = pb };
+        }
+        if (f0) |f| return .{ .base = f.base, .off = f.off, .folded = true };
+        return .{ .base = st.ptr, .off = 0 };
     }
 
     /// Longest operand chain under each value (values are in topological
@@ -1160,14 +1334,23 @@ pub const Builder = struct {
     fn indexAddr(self: *Builder, base: usize, idx: usize) Error!usize {
         if (self.constF64(idx)) |x| {
             const e = @floor(x);
-            if (e >= 0 and e < 1 << 21) return self.addValue(.{
-                .op = .ptr_add,
-                .ty = .ptr,
-                .a = base,
-                .int_value = @as(i64, @intFromFloat(e)) * 8,
-            });
+            if (e >= 0 and e < 1 << 21) return self.ptrAdd(base, @as(i64, @intFromFloat(e)) * 8);
         }
         return self.addValue(.{ .op = .ptr_add_idx, .ty = .ptr, .a = base, .b = idx });
+    }
+
+    /// ptr + off, a chain of them folded into one (the same canonical
+    /// address, addrKey), and + 0 the pointer itself.
+    fn ptrAdd(self: *Builder, ptr: usize, off: i64) Error!usize {
+        var base = ptr;
+        var total = off;
+        const v = self.values.items[ptr];
+        if (v.op == .ptr_add) {
+            base = v.a;
+            total += v.int_value;
+        }
+        if (total == 0) return base;
+        return self.addValue(.{ .op = .ptr_add, .ty = .ptr, .a = base, .int_value = total });
     }
 
     fn unary(self: *Builder, op: Op, a: usize) Error!usize {
@@ -1967,6 +2150,13 @@ const Codegen = struct {
                 break :blk reg;
             },
             .load_ptr => blk: {
+                if (self.builder.fold(value.a)) |f| {
+                    const base = try self.valueX(f.base);
+                    const reg = try self.allocX();
+                    try self.out.append(Asm.ldr_x_uimm(reg, base, f.off));
+                    self.consumeValue(f.base);
+                    break :blk reg;
+                }
                 const ptr = try self.valueX(value.a);
                 const reg = try self.allocX();
                 try self.out.append(Asm.ldr_x_imm(reg, ptr, 0));
@@ -2084,6 +2274,13 @@ const Codegen = struct {
                 return reg;
             },
             .load_f64 => {
+                if (self.builder.fold(value.a)) |f| {
+                    const base = try self.valueX(f.base);
+                    const reg = try self.allocD();
+                    try self.out.append(Asm.ldr_d_uimm(reg, base, f.off));
+                    self.consumeValue(f.base);
+                    return reg;
+                }
                 const ptr = try self.valueX(value.a);
                 const reg = try self.allocD();
                 try self.out.append(Asm.ldr_d_imm(reg, ptr, 0));
@@ -2237,16 +2434,35 @@ const Codegen = struct {
                 return reg;
             },
             .load_lane2 => {
-                const p0 = try self.valueX(value.a);
-                const p1 = try self.valueX(value.b);
+                const f0 = self.builder.fold(value.a);
+                const f1 = self.builder.fold(value.b);
+                const a = if (f0) |f| f.base else value.a;
+                const b = if (f1) |f| f.base else value.b;
+                const p0 = try self.valueX(a);
+                const p1 = try self.valueX(b);
                 const reg = try self.allocD();
-                try self.out.append(Asm.ldr_d_imm(reg, p0, 0));
-                try self.out.append(Asm.@"ld1 {Vt.D}[1], [Xn]"(reg, p1));
-                self.consumeValue(value.a);
-                self.consumeValue(value.b);
+                try self.out.append(Asm.ldr_d_uimm(reg, p0, if (f0) |f| f.off else 0));
+                if (f1) |f| {
+                    const t = try self.allocD();
+                    try self.out.append(Asm.ldr_d_uimm(t, p1, f.off));
+                    try self.out.append(Asm.@"mov Vd.D[1], Vn.D[0]"(reg, t));
+                    self.releaseD(t);
+                } else {
+                    try self.out.append(Asm.@"ld1 {Vt.D}[1], [Xn]"(reg, p1));
+                }
+                self.consumeValue(a);
+                self.consumeValue(b);
                 return reg;
             },
             .load_splat => {
+                if (self.builder.fold(value.a)) |f| {
+                    const p = try self.valueX(f.base);
+                    const reg = try self.allocD();
+                    try self.out.append(Asm.ldr_d_uimm(reg, p, f.off));
+                    try self.out.append(Asm.@"dup Vd.2D, Vn.D[0]"(reg, reg));
+                    self.consumeValue(f.base);
+                    return reg;
+                }
                 const p = try self.valueX(value.a);
                 const reg = try self.allocD();
                 try self.out.append(Asm.@"ld1r {Vt.2D}, [Xn]"(reg, p));

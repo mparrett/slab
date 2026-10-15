@@ -355,9 +355,7 @@ Known, not yet addressed (each needs its own design):
 
 - **Resampling.** A device not at 48 kHz uses miniaudio's linear
   resampler (order-4 LPF).
-- **DSP.** limiter2 lacks a lookahead window minimum (transients clip at
-  the ceiling); the sampler's CLEAN engine is not band-limited and its
-  envelope and voice steals click; event overflow can drop note-offs.
+- **Events.** Event overflow can drop note-offs.
 
 ## Declicking and output latency (2026-10-15)
 
@@ -411,3 +409,22 @@ Known, not yet addressed (each needs its own design):
   placement measures and removes (docs/07 §Recording). Notes from the
   UI still start at the block they are drained in (up to one block of
   jitter); CoreMIDI input does not exist yet.
+
+## Limiter and sampler quality (2026-10-15)
+
+- **limiter2 is a lookahead limiter, not a clipper.** The reduction a
+  sample needs is held at its maximum over the lookahead (two
+  consecutive blocks of L+1 samples cover the window in O(1)), released,
+  and averaged over L+1 samples, so the gain is down by the time a peak
+  leaves the delay. A 1-sample spike 6 dB over moved the gain by 0.48 in
+  one sample (the ceiling clamp); now the steepest step is 0.005.
+- **The sampler's CLEAN engine is band-limited.** A 26-tap windowed sinc
+  whose cutoff follows the read speed, over octave copies built when the
+  keymap loads (kernels/06-voices/sampler.fy, src/keymap.zig
+  `withMips`). A 10 kHz sample played 19 semitones up (30 kHz) folds to
+  18 kHz at -70 dB instead of -19; 36 semitones up, -94 dB. It costs
+  ~26 ns more per sounding voice per sample (6 to 32 ns).
+- **Sampler envelope, chokes and steals ramp.** The RC envelope
+  (env_rc.fy) attacks and releases from where it is; a choke fades from
+  the current level over 4 ms; a note that takes a sounding voice lets
+  the old output decay out over 3 ms instead of stepping.

@@ -20,6 +20,8 @@ include "../lib/manifest.fy"
 
   ( 12 ms lookahead ring per channel; LOOK tops out at 10 ms )
   "look" LimState.dline LimState.dline-len 0.012 buffer
+  ( the gain ramp's running average, same length )
+  "box" LimState.bline LimState.bline-len 0.012 buffer
 
   ( stereo-linked detector: host writes the max-abs-both-channels trace )
 

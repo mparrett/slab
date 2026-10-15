@@ -10,7 +10,10 @@
   pitch is TUNE plus the distance from the zone's root [or ROOT when the
   file didn't say].  Two engines:
 
-    CLEAN  4-point Hermite interpolation between stored samples
+    CLEAN  band-limited: a 16-tap windowed sinc whose cutoff follows
+           the read speed, from the octave copy [src/keymap.zig
+           withMips] that puts it between 1 and 2 stored samples per
+           output sample, so nothing folds over the output's Nyquist
     VARI   drop-sample playback: the voice's own sample clock steps
     FIXED  through the sample stored at RATE with no interpolation,
            quantized to BITS [see smp-clock] - the Fairlight /
@@ -19,22 +22,26 @@
            so the host's grid adds no aliasing of its own.
 
   Then a 4-pole lowpass whose corner can follow the pitch [TRK: 1 moves
-  it with the voice's clock like the CMI's output filter], the cap-ADSR,
-  and velocity.
+  it with the voice's clock like the CMI's output filter], the RC
+  envelope [env_rc.fy: a retrigger attacks from where it is, a release
+  falls from where it is], and velocity.  A note that takes over a
+  sounding voice lets the old output decay out over ~3 ms instead of
+  stepping to the new sample's first value.
 
   Choke groups: every note-on takes a sequence number; a note in group
   g > 0 writes it into params.choke[g], and a voice whose off-by names a
-  group that has seen a newer note releases in 4 ms. One-shot zones
+  group that has seen a newer note fades out in 4 ms. One-shot zones
   [drums] ignore note-off and play to the end. )
 
 include "../00-primitives/ctx.fy"  ( kernel ABI: Ctx, Io )
-include "../03-envelopes/primitives/segments.fy"
+include "../03-envelopes/primitives/env_rc.fy"
 include "../00-primitives/math.fy"
+include "../00-primitives/table.fy"
 include "../04-filters/coeffs.fy"
 include "../04-filters/tpt_svf.fy"
 include "../09-digital/digital.fy"
 
-( One keymap zone: 19 f64 cells, mirrored by Zone in src/keymap.zig.
+( One keymap zone: ZONE-CELLS f64 cells, mirrored by Zone in src/keymap.zig.
   The zone plays on the rr-pos-th of every rr-len notes on its key.
   trigger 1 is a release zone: it plays at note-off, rt-decay dB
   quieter per second the note was held. )
@@ -44,9 +51,34 @@ ustruct: Zone
   f64 root  f64 gain  f64 loop-mode  f64 loop-start  f64 loop-end
   f64 group  f64 off-by  f64 pan  f64 rr-len  f64 rr-pos
   f64 trigger  f64 rt-decay
+  f64 mips  f64 mip1  f64 mip2  f64 mip3  f64 mip4
 ;
 
 :: MAX-ZONES 256 ;
+:: ZONE-CELLS 24.0 ;
+( a zone that isn't there plays here: guard zeros wide enough for the
+  sinc's 13 taps either side )
+:: SMP-SILENCE 13.0 ;
+
+( The interpolation kernel: sinc[x] under a cosh window [Kaiser-like,
+  beta 7] over |x| <= 8, 128 points per zero crossing.  Read at fc * t,
+  it is a lowpass at fc of the stored rate; SMP-TAPS taps cover it down
+  to fc = 16 / SMP-TAPS.  [Six crossings in 20 taps leave a fold from
+  30 kHz at -45 dB; eight in 26 put it at -70.] )
+:: SMP-TAPS 26 ;
+:: _smp-lib "/usr/lib/libSystem.B.dylib" dl-open ;
+:: _smp-sin  _smp-lib "sin" dl-sym ;
+:: _smp-cosh  _smp-lib "cosh" dl-sym ;
+:: _smp-sqrt  _smp-lib "sqrt" dl-sym ;
+noalloc: smp-libsin  _smp-sin bind: d:d ;
+noalloc: smp-libcosh  _smp-cosh bind: d:d ;
+noalloc: smp-libsqrt  _smp-sqrt bind: d:d ;
+table: smp-kern 1024
+  128.0 f/ dup
+  0.000000001 f+ 3.141592653589793 f* dup smp-libsin swap f/
+  swap 0.125 f* dup f* 1.0 swap f- smp-libsqrt 7.0 f* smp-libcosh 548.317035155212 f/
+  f*
+;
 
 ( Per-zone edits over the knobs, host-owned: src/keymap.zig ZoneEdits.
   The voice reads its zone's cells at note-on and writes hit / last,
@@ -101,6 +133,13 @@ ustruct: SamplerState
   f64 age
   f64 gate-time
   f64 vel
+  EnvRc env
+  f64 chk        ( choke fade, 1 until a newer note in the group )
+  f64 last-y     ( the voice's last output )
+  f64 xf         ( what it was when a new note took the voice, decaying )
+  ( octave copy: read position = ph * lsc + loff, likewise the release's )
+  f64 lsc  f64 loff
+  f64 r-lsc  f64 r-loff
 ;
 
 ustruct: SamplerParams
@@ -138,6 +177,9 @@ ustruct: SamplerParams
   f64 note-seq   ( note-ons so far )
   f64 choke 16  ( per group 0..15: the sequence number of its newest note )
   f64 rr-count 128  ( per key: note-ons so far, for round robin )
+  EnvRcCoefs co
+  f64 chk-c      ( choke fade coefficient, 99% in 4 ms )
+  f64 xf-c       ( take-over decay, 99% in 3 ms )
 ;
 
 :: BW-D1 0.9238795325112867 ;
@@ -148,6 +190,9 @@ dsp: sampler-block-prepare | ctx:Ctx state params:SamplerParams |
   1.0 params.bits 1.0 16.0 fclamp f- exp2 -> params.step
   params.rate params.inv-sr f* 1.0 fmin -> params.oc-inc
   0.3826834323650898  1.0 params.res 0.0 1.0 fclamp 0.92 f* f-  f* -> params.fd2
+  params.co&  params.atk params.dec params.sus params.rel  0.0 0.0  params.inv-sr env-rc-coefs
+  0.004 params.inv-sr 4.605170185988091 env-rc-coef -> params.chk-c
+  0.003 params.inv-sr 4.605170185988091 env-rc-coef -> params.xf-c
 ;
 
 ( zt key vel cnt trig -- k : the first zone of trigger trig [0 attack,
@@ -159,7 +204,7 @@ dsp: sampler-block-prepare | ctx:Ctx state params:SamplerParams |
 dsp: zone-find | zt key vel0 cnt trig -- k |
   vel0 0.5 f+ floor | vel |
   -1.0 0.0 MAX-ZONES [ | best i |
-    i 19.0 f* | c |
+    i ZONE-CELLS f* | c |
     zt c 3.0 f+ f@i key f<=   key zt c 4.0 f+ f@i f<=  and
     zt c 5.0 f+ f@i vel f<=  and   vel zt c 6.0 f+ f@i f<=  and
     zt c 15.0 f+ f@i | n |
@@ -169,6 +214,36 @@ dsp: zone-find | zt key vel0 cnt trig -- k |
     i best select
     i 1.0 f+ ] times
   drop
+;
+
+( zt c inc start -- lsc loff : the octave copy for a read advancing inc
+  stored samples per output sample: floor[log2[inc / 0.75]] if the zone
+  has it, so the copy's advance lies in 0.75..1.5 [or under].  Position
+  in it = ph * lsc + loff. )
+dsp: smp-octave | zt c inc start -- lsc loff |
+  inc 1.3333333333333333 f* log2 floor 0.0 fmax  zt c 19.0 f+ f@i fmin | lvl |
+  0.0 lvl f- exp2 | sc |
+  lvl 0.5 f>  zt c 19.0 f+ lvl f+ f@i  start  select | base |
+  sc
+  base start sc f* f-
+;
+
+( buf pos inc -- y : band-limited read at pos, advancing inc per output
+  sample: the windowed sinc at fc = 0.95 / max[inc, 1.05], so what would
+  fold lands above 20 kHz and 60 dB down [no lower than 16 / SMP-TAPS:
+  the octave copies keep inc under 1.5], over the SMP-TAPS stored
+  samples around pos, normalized by the taps' sum. )
+dsp: smp-sinc | buf pos inc -- y |
+  pos floor | i0 |
+  pos i0 f- | u |
+  0.95 inc 1.05 fmax f/ 0.6153846153846154 fmax 128.0 f* | fs |
+  0.0 0.0 -12.0 SMP-TAPS [ | acc hs j |
+    u j f- fabs fs f* 1023.99 fmin | ix |
+    smp-kern ix tbl-lerp | h |
+    buf i0 j f+ f@i | x |
+    acc h x f* f+  hs h f+  j 1.0 f+ ] times
+  drop | acc hs |
+  acc hs f/
 ;
 
 ( ctx state params -- : find the zone, set up playback, take a sequence
@@ -185,14 +260,16 @@ dsp: sampler-note-on | ctx:Ctx state:SamplerState params:SamplerParams |
   ctx.vel 127.0 f* -> state.velk
   cnt -> state.cnt
   ( no release playing until note-off; the guard zeros read as silence )
-  4.0 -> state.r-ph
-  4.0 -> state.r-end
+  SMP-SILENCE -> state.r-ph
+  SMP-SILENCE -> state.r-end
+  1.0 -> state.r-lsc
+  0.0 -> state.r-loff
   0.0 -> state.r-inc
   0.0 -> state.r-gain
   k 0.0 f>= | hit |
-  k 0.0 fmax 19.0 f* | c |
-  ( a miss plays an empty zone at pool index 4: guard zeros )
-  hit  zt c f@i  4.0  select | start |
+  k 0.0 fmax ZONE-CELLS f* | c |
+  ( a miss plays an empty zone in the pool's leading guard zeros )
+  hit  zt c f@i  SMP-SILENCE  select | start |
   hit  zt c 1.0 f+ f@i  0.0  select | len |
   ( a zone of rate 0 is CMI voice RAM [.VC]: the sampler plays it as
     24 kHz; the Unfairlight plays it at its RATE )
@@ -230,6 +307,8 @@ dsp: sampler-note-on | ctx:Ctx state:SamplerState params:SamplerParams |
   key params.tune f+  ed.tune& k0 f@i f+  root f- 0.08333333333333333 f* exp2 | ratio |
   zsr ctx.sr f/ ratio f* 16.0 fmin -> state.inc
   state.inc -> state.inc0
+  zt c state.inc start smp-octave
+  -> state.loff -> state.lsc
   0.0 -> state.bend
   start  params.start len f* f+ -> state.ph
   0.0 -> state.held
@@ -249,6 +328,9 @@ dsp: sampler-note-on | ctx:Ctx state:SamplerState params:SamplerParams |
   0.0 -> state.age
   1000000000.0 -> state.gate-time
   ctx.vel -> state.vel
+  state.env& params.co& 0.0 env-rc-trigger
+  1.0 -> state.chk
+  state.last-y -> state.xf
   ( choke bookkeeping )
   params.note-seq 1.0 f+ | seq |
   seq -> params.note-seq
@@ -272,11 +354,15 @@ dsp: sampler-note-off | ctx:Ctx state:SamplerState params:SamplerParams |
     starts nothing )
   state.gate-time 100000000.0 f> | held |
   state.oneshot 0.5  state.age  state.gate-time  fsel-lt -> state.gate-time
+  state.env& | e:EnvRc |
+  state.oneshot 0.5 f< | rel |
+  rel 0.0 e.gate select -> e.gate
+  rel 0.0 e.timer select -> e.timer
   params.zones& p@64 | zt |
   zt state.key state.velk state.cnt 1.0 zone-find | k |
   k 0.0 f>=  held and | hit |
-  k 0.0 fmax 19.0 f* | c |
-  hit  zt c f@i  4.0  select | start |
+  k 0.0 fmax ZONE-CELLS f* | c |
+  hit  zt c f@i  SMP-SILENCE  select | start |
   hit  zt c 1.0 f+ f@i  0.0  select | len |
   zt c 7.0 f+ f@i | zroot |
   zroot 0.0  params.root zroot fsel-lt | root |
@@ -285,6 +371,8 @@ dsp: sampler-note-off | ctx:Ctx state:SamplerState params:SamplerParams |
   state.key state.bend f+  params.tune f+  ed.tune& k0 f@i f+  root f- 0.08333333333333333 f* exp2 | ratio |
   zt c 2.0 f+ f@i | rsr0 |
   rsr0 0.5 f<  24000.0  rsr0  select  ctx.sr f/ ratio f* 16.0 fmin -> state.r-inc
+  zt c state.r-inc start smp-octave
+  -> state.r-loff -> state.r-lsc
   start -> state.r-ph
   start len f+ -> state.r-end
   0.0  zt c 18.0 f+ f@i state.age f*  f- db>lin | fall |
@@ -366,7 +454,9 @@ dsp: k-sampler-voice | out:Io ctx state:SamplerState params:SamplerParams -- |
   state.ph | ph |
   ph state.end f< mask>f | alive |
   ( ENGINE is a mode: CLEAN reads the zone, the others run its clock )
-  params.engine 0.5 f<  [ buf ph smp-hermite ]  [ state buf params smp-clock ]  ifte | x |
+  params.engine 0.5 f<
+    [ buf  ph state.lsc f* state.loff f+  state.inc state.lsc f*  smp-sinc ]
+    [ state buf params smp-clock ]  ifte | x |
   state.f1& state.f2& x state.fg BW-D1 tpt-svf-lp-step | a |
   state.f3& state.f4& a state.fg params.fd2 tpt-svf-lp-step | y |
   ( advance: wrap inside the loop, else park at the end )
@@ -379,7 +469,10 @@ dsp: k-sampler-voice | out:Io ctx state:SamplerState params:SamplerParams -- |
   age -> state.age
   choked  state.gate-time age fmin  state.gate-time  select | gt |
   gt -> state.gate-time
-  age params.atk params.dec params.sus gt  choked 0.004 params.rel select  adsr-cap | env |
+  state.env& params.co& env-rc-step | env |
+  ( a choke fades from wherever the voice is )
+  state.chk | chk |
+  choked  chk chk params.chk-c f* f-  chk  select -> state.chk
   1.0 params.vel-amt f-  state.vel params.vel-amt f*  f+ | va |
   state.fade | fade |
   fade state.fade-k f* -> state.fade
@@ -387,11 +480,18 @@ dsp: k-sampler-voice | out:Io ctx state:SamplerState params:SamplerParams -- |
   ( the release sample, if note-off started one: clean playback,
     after the filter )
   state.r-ph | rp |
-  rp state.r-end f< mask>f | ralive |
+  rp state.r-end f< | ralive |
   rp state.r-inc f+ state.r-end fmin -> state.r-ph
-  buf rp smp-hermite  state.r-gain f*  va f*  params.level f*  ralive f* | rx |
-  y env f*  va f*  state.gain f*  fade f*  params.level f*  alive f*
-  rx f+
-  f+
+  ralive
+    [ buf  rp state.r-lsc f* state.r-loff f+  state.r-inc state.r-lsc f*  smp-sinc
+      state.r-gain f*  va f*  params.level f* ]
+    [ 0.0 ]  ifte | rx |
+  ( a note that took the voice over: the old output decays out )
+  state.xf | xf |
+  xf xf params.xf-c f* f- -> state.xf
+  y env f*  va f*  state.gain f*  fade f*  chk f*  params.level f*  alive f*
+  rx f+  xf f+ | v |
+  v -> state.last-y
+  v f+
   out f!64
 ;
