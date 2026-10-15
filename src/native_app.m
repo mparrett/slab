@@ -172,3 +172,21 @@ void slab_show_licenses(void) {
         }
     }
 }
+
+// Wake the UI loop from a raylib event wait (EnableEventWaiting blocks in
+// -nextEventMatchingMask: until an event arrives): an empty application-
+// defined event, as GLFW's own glfwPostEmptyEvent posts. Any thread.
+void slab_wake_ui(void) {
+    @autoreleasepool {
+        NSEvent *e = [NSEvent otherEventWithType:NSEventTypeApplicationDefined
+                                        location:NSMakePoint(0, 0)
+                                   modifierFlags:0
+                                       timestamp:0
+                                    windowNumber:0
+                                         context:nil
+                                         subtype:0
+                                           data1:0
+                                           data2:0];
+        [NSApp postEvent:e atStart:YES];
+    }
+}

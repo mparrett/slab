@@ -36438,6 +36438,16 @@ static ma_result ma_device_start__coreaudio(ma_device* pDevice)
 {
     MA_ASSERT(pDevice != NULL);
 
+    /* Slab: a restart begins the duplex ring where init left it, two capture periods of silence
+    ahead of the reader. Otherwise whatever backlog the last run ended with (up to the ring's five
+    periods, after an over- or underrun) stays as extra input latency for good, and old input
+    plays again. Both units are stopped here, so nothing else touches the ring. */
+    if (pDevice->type == ma_device_type_duplex && pDevice->duplexRB.rb.rb.pBuffer != NULL) {
+        ma_pcm_rb_reset(&pDevice->duplexRB.rb);
+        MA_ZERO_MEMORY(pDevice->duplexRB.rb.rb.pBuffer, (size_t)pDevice->duplexRB.rb.rb.subbufferSizeInBytes * pDevice->duplexRB.rb.rb.subbufferCount);
+        ma_pcm_rb_seek_write(&pDevice->duplexRB.rb, pDevice->capture.internalPeriodSizeInFrames * 2);
+    }
+
     if (pDevice->type == ma_device_type_capture || pDevice->type == ma_device_type_duplex) {
         OSStatus status = ((ma_AudioOutputUnitStart_proc)pDevice->pContext->coreaudio.AudioOutputUnitStart)((AudioUnit)pDevice->coreaudio.audioUnitCapture);
         if (status != noErr) {

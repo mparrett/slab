@@ -13,6 +13,7 @@ const pane = @import("pane_input.zig");
 const menu = @import("menu.zig");
 const routing = @import("../routing.zig");
 const route_menu = @import("route_menu.zig");
+const input_menu = @import("input_menu.zig");
 const track_order = @import("track_order.zig");
 const bridge = @import("bridge.zig");
 const ui_core = @import("core.zig");
@@ -1869,6 +1870,7 @@ pub fn draw(
     targetMenuTick(tracks, alloc);
     headerAutoMenuTick(tracks, alloc);
     result.route = route_menu.tick(tracks, selected_track.*);
+    input_menu.tick(tracks);
 
     // Overview strip on top (rendered last so nothing scissor-clips it).
     drawOverview(ui, overview_rect, timeline_w, tracks, content_beats, transport, m);
@@ -2697,11 +2699,11 @@ fn drawLaneHeader(ui: *Ui, r_legacy: c.rl.Rectangle, t: *Track, idx: usize, numb
     if (!t.isBus()) {
         var armed = t.isArmed();
         if (ctl.button(ui, arm_r, "arm", &armed, .{ .kind = .latch, .label = if (t.rec_notes) "N" else "R", .lit = ui_style.rec, .disabled = t.kind != .audio })) t.setArmed(armed);
-        // Right-click: a take here becomes notes (hum to notes, docs/30).
-        if (ui.in.right_pressed and t.kind == .audio and arm_r.contains(ui.in.ix(), ui.in.iy())) t.rec_notes = !t.rec_notes;
-        menu.tip(ui, arm_r, if (t.isArmed())
-            (if (t.rec_notes) "Disarm (record to notes)" else "Disarm (record)")
-        else if (t.rec_notes) "Arm to record notes (right-click: audio)" else "Arm for recording (right-click: to notes)");
+        // Right-click: the input, and whether a take becomes notes (hum to
+        // notes, docs/30).
+        if (t.kind == .audio and ui.in.right_pressed and arm_r.contains(ui.in.ix(), ui.in.iy())) input_menu.open(idx, ui.in.ix(), ui.in.iy());
+        var tb: [64]u8 = undefined;
+        menu.tip(ui, arm_r, input_menu.tip(&tb, t));
     }
     var muted = t.mute.load(.monotonic);
     const mute_r = btns.cutLeft(17).insetXY(0, 2);

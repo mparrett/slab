@@ -293,7 +293,13 @@ pub const Settings = struct {
     home: []const u8 = "",
     /// Copy the sample-pack files a project uses into it on save.
     collect_lib: bool = true,
+    /// The audio device's buffer, frames at 48 kHz: 64, 128, 256, 512
+    /// or 1024. Smaller is less latency and more CPU headroom needed.
+    buffer_frames: u32 = 256,
 };
+
+/// settings.json's buffer_frames, as loaded or last picked.
+pub var buffer_frames: u32 = 256;
 
 /// Read settings.json and apply it. A missing file is the defaults; the
 /// app writes them (`write_missing`) so the user can find and edit it, a
@@ -311,6 +317,16 @@ pub fn loadSettings(alloc: std.mem.Allocator, write_missing: bool) void {
     defer parsed.deinit();
     if (parsed.value.home.len > 0) setHomeSetting(parsed.value.home);
     collect_lib = parsed.value.collect_lib;
+    buffer_frames = parsed.value.buffer_frames;
+}
+
+/// Write settings.json with what's in effect now (a choice just made).
+pub fn saveSettings(alloc: std.mem.Allocator) void {
+    writeSettings(alloc, .{
+        .home = home_setting_buf[0..home_setting_len],
+        .collect_lib = collect_lib,
+        .buffer_frames = buffer_frames,
+    });
 }
 
 pub fn writeSettings(alloc: std.mem.Allocator, s: Settings) void {

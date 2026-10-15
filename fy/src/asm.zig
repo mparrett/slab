@@ -474,6 +474,27 @@ pub fn ldr_s_imm(rt: u5, rn: u5, offset_bytes: u12) u32 {
 }
 
 // LDR Dt, [Xn, #imm] — float64 load, unsigned byte offset (must be multiple of 8)
+// LDR/STR with the full scaled range: byte offsets 0..32760, multiples of 8.
+/// mov Vd.D[1], Vn.D[0]: insert a scalar as lane 1.
+pub fn @"mov Vd.D[1], Vn.D[0]"(d: u5, n: u5) u32 {
+    return 0x6E180400 | (@as(u32, n) << 5) | @as(u32, d);
+}
+
+pub fn ldr_d_uimm(rt: u5, rn: u5, offset_bytes: u32) u32 {
+    @import("std").debug.assert(offset_bytes % 8 == 0 and offset_bytes < 32768);
+    return 0xFD400000 | ((offset_bytes >> 3) << 10) | (@as(u32, rn) << 5) | @as(u32, rt);
+}
+
+pub fn str_d_uimm(rt: u5, rn: u5, offset_bytes: u32) u32 {
+    @import("std").debug.assert(offset_bytes % 8 == 0 and offset_bytes < 32768);
+    return 0xFD000000 | ((offset_bytes >> 3) << 10) | (@as(u32, rn) << 5) | @as(u32, rt);
+}
+
+pub fn ldr_x_uimm(rt: u5, rn: u5, offset_bytes: u32) u32 {
+    @import("std").debug.assert(offset_bytes % 8 == 0 and offset_bytes < 32768);
+    return 0xF9400000 | ((offset_bytes >> 3) << 10) | (@as(u32, rn) << 5) | @as(u32, rt);
+}
+
 pub fn ldr_d_imm(rt: u5, rn: u5, offset_bytes: u12) u32 {
     const scaled: u32 = @as(u32, offset_bytes) >> 3;
     return 0xFD400000 | (scaled << 10) | (@as(u32, rn) << 5) | @as(u32, rt);
@@ -713,6 +734,8 @@ test "two-lane encodings match the assembler" {
     try t.expectEqual(@as(u32, 0x5e180441), @"mov Dd, Vn.D[1]"(1, 2));
     try t.expectEqual(@as(u32, 0x4d408441), @"ld1 {Vt.D}[1], [Xn]"(1, 2));
     try t.expectEqual(@as(u32, 0x4d008441), @"st1 {Vt.D}[1], [Xn]"(1, 2));
+    try t.expectEqual(@as(u32, 0x6e180441), @"mov Vd.D[1], Vn.D[0]"(1, 2));
+    try t.expectEqual(@as(u32, 0xfd7ffc83), ldr_d_uimm(3, 4, 32760));
     try t.expectEqual(@as(u32, 0x4d40cc41), @"ld1r {Vt.2D}, [Xn]"(1, 2));
     try t.expectEqual(@as(u32, 0x3dc00841), ldr_q_imm(1, 2, 32));
     try t.expectEqual(@as(u32, 0x3d800841), str_q_imm(1, 2, 32));

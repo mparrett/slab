@@ -17,6 +17,50 @@ GitHub are its section here (`tools/release.sh` copies them), so add to
   pairings, the Owner's Manual's ten programming examples (clarinet to
   timpani), and four sounds of ours. See docs/38.
 
+- **Choose the audio buffer size.** The audio menu next to record lists
+  64 to 1024 frames with their latency; 64 is 1.3 ms. The choice is
+  remembered.
+
+- **Notes played at idle sound at once.** A key pressed after the app
+  had been quiet could wait up to 50 ms before reaching the engine.
+
+- **Recorded takes land in time.** Placement now uses the latency the
+  audio device reports each way, plus how long the input actually
+  waited, instead of a two-buffer guess. With AirPods as the output,
+  takes used to land about 150 ms late.
+
+- **Record from any input, mono or stereo.** Right-click a track's R to
+  pick its input: In 1, In 2, … or a stereo pair. Before, every input
+  of an interface was mixed into one, 6 dB down and with the other
+  inputs' noise. The choice is saved with the project.
+
+- **Recording holds up when things go wrong.** Audio the disk couldn't
+  keep up with becomes silence instead of shifting the rest of the take
+  earlier; seeking or stopping ends the take where it still lines up; a
+  loop pauses for the take. Unplugging a device, a sample-rate change
+  from another app, or the system audio service restarting now reopens
+  the device instead of leaving it silent.
+
+- **The Sampler no longer aliases when you play high.** Clean playback
+  now band-limits the sample to the speed it is read at, using octave
+  copies made when the sample loads, so playing a sample an octave or
+  more above its root, or a 96 kHz file, no longer folds whistles and
+  grit back into the mix.
+
+- **No more Sampler clicks on retrigger, choke or voice steal.** Its
+  envelope now picks up from wherever it is, a choked hi-hat fades
+  instead of cutting, and a note that takes over a sounding voice fades
+  the old one out.
+
+- **The Limiter no longer clips transients.** It now holds the gain
+  reduction a peak needs across the whole lookahead and ramps into it, so
+  a drum hit or a single-sample spike over the ceiling is turned down
+  smoothly instead of being clipped. Latency is unchanged.
+
+- **Machines use about 20% less CPU.** The fy compiler computes repeated
+  expressions once, addresses state fields directly and writes them as
+  soon as they are final. Output is bit-identical.
+
 - **The Extract pack finds uv when Slab is opened from Finder.** Its
   download said uv was missing unless Slab was started from a terminal; it
   now looks in Homebrew's, `~/.local/bin` and `~/.cargo/bin` too.

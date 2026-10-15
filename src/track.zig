@@ -12,6 +12,7 @@ const warp_mod = @import("warp.zig");
 const stretch_mod = @import("stretch.zig");
 const audio_pool_mod = @import("audio_pool.zig");
 const automation = @import("automation.zig");
+const recorder_mod = @import("recorder.zig");
 const routing = @import("routing.zig");
 const handoff = @import("handoff.zig");
 
@@ -235,6 +236,9 @@ pub const Track = struct {
     /// A take recorded here becomes notes when it stops (docs/30 §Audio
     /// to notes: hum to notes). UI-only, not persisted, like `armed`.
     rec_notes: bool = false,
+    /// What a take records from: an input channel or pair (docs/19
+    /// `input`). Saved with the project; the default is input 1, mono.
+    rec_input: recorder_mod.Input = .{},
     /// Master only: the subsonic filter [engine.Subsonic] on the master's
     /// input. UI-owned, read by the audio thread; saved with the project.
     subsonic: std.atomic.Value(bool) = std.atomic.Value(bool).init(false),
