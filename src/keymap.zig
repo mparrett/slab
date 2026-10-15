@@ -43,9 +43,10 @@ const Dirent = extern struct {
 const DT_DIR: u8 = 4;
 
 pub const MAX_ZONES = 256;
-/// Zero samples before and after each sample in the pool, so a 4-point
-/// interpolator at either end reads silence, never a neighbour.
-pub const GUARD = 4;
+/// Zero samples before and after each sample in the pool, so the voice's
+/// 26-tap interpolator (13 either side) at either end reads silence,
+/// never a neighbour.
+pub const GUARD = 16;
 const MAX_FILES = 256;
 const MAX_SFZ_BYTES = 1 << 20;
 
@@ -79,9 +80,15 @@ pub const Zone = extern struct {
     // dB quieter for each second the note was held
     trigger: f64 = 0,
     rt_decay: f64 = 0,
+    // Octave copies for playing far above the sample's rate (withMips):
+    // how many, and where copy k (half the rate of copy k - 1) starts.
+    mips: f64 = 0,
+    mip: [MAX_MIPS]f64 = .{ 0, 0, 0, 0 },
 };
 
-pub const ZONE_CELLS = 19;
+pub const ZONE_CELLS = 24;
+/// Octave copies a zone can have: up to 16x its rate, the voice's limit.
+pub const MAX_MIPS = 4;
 comptime {
     std.debug.assert(@sizeOf(Zone) == ZONE_CELLS * 8);
 }
@@ -311,6 +318,173 @@ pub fn derive(alloc: std.mem.Allocator, base: Keymap, d: *const Derive) Error!Ke
     km.names = exact;
     km.count = n;
     return km;
+}
+
+// ── Octave copies ───────────────────────────────────────────────────────
+
+/// Half-band lowpass ahead of each 2:1 decimation: Kaiser-windowed sinc
+/// (beta 8, ~-80 dB stopband), cutoff at the new Nyquist.
+const HB_TAPS = 63;
+const hb_kernel: [HB_TAPS]f64 = blk: {
+    @setEvalBranchQuota(100_000);
+    var h: [HB_TAPS]f64 = undefined;
+    const m = (HB_TAPS - 1) / 2;
+    const beta = 8.0;
+    var sum: f64 = 0;
+    for (0..HB_TAPS) |i| {
+        const n: f64 = @as(f64, @floatFromInt(i)) - m;
+        const x = n * 0.5; // cutoff 0.25 cycles/sample
+        const sinc = if (n == 0) 1.0 else @sin(std.math.pi * x) / (std.math.pi * x);
+        const r = n / m;
+        h[i] = sinc * besselI0(beta * @sqrt(@max(0.0, 1 - r * r))) / besselI0(beta);
+        sum += h[i];
+    }
+    for (&h) |*v| v.* /= sum;
+    break :blk h;
+};
+
+fn besselI0(x: f64) f64 {
+    var sum: f64 = 1;
+    var term: f64 = 1;
+    var k: f64 = 1;
+    while (k < 40) : (k += 1) {
+        term *= (x / (2 * k)) * (x / (2 * k));
+        sum += term;
+    }
+    return sum;
+}
+
+/// Octaves above a zone's own rate it may be played at: its highest key
+/// over its root, an octave of headroom for TUNE and bends, and its
+/// rate over 48 kHz. Unknown root (the machine's ROOT): all of them.
+fn mipsWanted(z: Zone) usize {
+    if (z.len < 2 * HB_TAPS) return 0;
+    if (z.root < 0) return MAX_MIPS;
+    const semis = @max(0, z.hi_key - z.root) + 12;
+    const inc = @max(z.sr, 1) / 48_000.0 * std.math.exp2(semis / 12.0);
+    // the voice reads copy floor(log2(inc / 0.75))
+    if (inc < 1.5) return 0;
+    return @min(MAX_MIPS, @as(usize, @intFromFloat(@floor(std.math.log2(inc / 0.75)))));
+}
+
+/// `km` with octave copies of each zone's sample, so the voice plays a
+/// pitch far above the sample's rate from one band-limited to it instead
+/// of folding everything above the output's Nyquist back down. Copy k is
+/// copy k - 1 half-band filtered and decimated 2:1; zones sharing a
+/// sample share its copies. Consumes `km`; out of memory, it comes back
+/// without copies (and aliases as before). UI thread (allocates).
+pub fn withMips(alloc: std.mem.Allocator, km: Keymap) Keymap {
+    var out = km;
+    var region_start: [MAX_ZONES]f64 = undefined;
+    var region_len: [MAX_ZONES]f64 = undefined;
+    var region_n: [MAX_ZONES]usize = undefined;
+    var region_at: [MAX_ZONES][MAX_MIPS]usize = undefined;
+    var regions: usize = 0;
+    var extra: usize = 0;
+    for (out.zones[0..out.count]) |z| {
+        const want = mipsWanted(z);
+        if (want == 0) continue;
+        const r = for (0..regions) |r| {
+            if (region_start[r] == z.start and region_len[r] == z.len) break r;
+        } else blk: {
+            region_start[regions] = z.start;
+            region_len[regions] = z.len;
+            region_n[regions] = 0;
+            regions += 1;
+            break :blk regions - 1;
+        };
+        var len: usize = @intFromFloat(z.len);
+        for (0..MAX_MIPS) |k| {
+            len = (len + 1) / 2;
+            if (k >= region_n[r] and k < want) {
+                region_at[r][k] = out.pool.len + extra;
+                extra += len + GUARD;
+            }
+        }
+        region_n[r] = @max(region_n[r], want);
+    }
+    if (regions == 0) return out;
+    const pool = alloc.alloc(f64, out.pool.len + extra) catch return out;
+    @memcpy(pool[0..out.pool.len], out.pool);
+    @memset(pool[out.pool.len..], 0);
+    for (0..regions) |r| {
+        var src_at: usize = @intFromFloat(region_start[r]);
+        var src_len: usize = @intFromFloat(region_len[r]);
+        for (0..region_n[r]) |k| {
+            const dst_len = (src_len + 1) / 2;
+            decimate(pool[src_at..][0..src_len], pool[region_at[r][k]..][0..dst_len]);
+            src_at = region_at[r][k];
+            src_len = dst_len;
+        }
+    }
+    for (out.zones[0..out.count]) |*z| {
+        const r = for (0..regions) |r| {
+            if (region_start[r] == z.start and region_len[r] == z.len) break r;
+        } else continue;
+        const want = mipsWanted(z.*);
+        z.mips = @floatFromInt(@min(want, region_n[r]));
+        for (0..MAX_MIPS) |k| z.mip[k] = if (k < want) @floatFromInt(region_at[r][k]) else 0;
+    }
+    alloc.free(out.pool);
+    out.pool = pool;
+    return out;
+}
+
+/// 2:1: dst[i] = (hb * src)[2i], zeros outside src.
+fn decimate(src: []const f64, dst: []f64) void {
+    const m = (HB_TAPS - 1) / 2;
+    for (dst, 0..) |*d, i| {
+        const c: isize = @intCast(2 * i);
+        var acc: f64 = 0;
+        for (hb_kernel, 0..) |h, j| {
+            const at = c + @as(isize, @intCast(j)) - m;
+            if (at < 0 or at >= src.len) continue;
+            acc += h * src[@intCast(at)];
+        }
+        d.* = acc;
+    }
+}
+
+test "octave copies: band-limited, decimated, shared by zones on one sample" {
+    const a = std.testing.allocator;
+    const n = 48_000;
+    const pool = try a.alloc(f64, GUARD + n + GUARD);
+    @memset(pool, 0);
+    // 1 kHz (kept) plus 18 kHz (over copy 1's 12 kHz Nyquist: removed)
+    for (0..n) |i| {
+        const t = @as(f64, @floatFromInt(i)) / 48_000;
+        pool[GUARD + i] = @sin(2 * std.math.pi * 1000 * t) + @sin(2 * std.math.pi * 18_000 * t);
+    }
+    const zones = try a.alloc(Zone, MAX_ZONES);
+    @memset(zones, unused_zone);
+    zones[0] = .{ .start = GUARD, .len = n, .root = 60, .lo_key = 0, .hi_key = 96 };
+    zones[1] = .{ .start = GUARD, .len = n, .root = 60, .lo_key = 97, .hi_key = 127 };
+    zones[2] = .{ .start = GUARD, .len = n, .root = 60, .lo_key = 60, .hi_key = 60 };
+    const names = try a.alloc(Name, 3);
+    for (names) |*nm| nm.* = Name.set("x");
+    var km = withMips(a, .{ .pool = pool, .zones = zones, .count = 3, .names = names });
+    defer km.deinit(a);
+    // 36 + 12 semis over: 4 octaves; 0 + 12: none
+    try std.testing.expectEqual(@as(f64, 4), km.zones[0].mips);
+    try std.testing.expectEqual(@as(f64, 4), km.zones[1].mips);
+    try std.testing.expectEqual(km.zones[0].mip, km.zones[1].mip);
+    try std.testing.expectEqual(@as(f64, 1), km.zones[2].mips);
+    try std.testing.expectEqual(km.zones[0].mip[0], km.zones[2].mip[0]);
+    const c1: usize = @intFromFloat(km.zones[0].mip[0]);
+    const y = km.pool[c1..][0 .. n / 2];
+    // copy 1 at 24 kHz: correlate with 1 kHz and 6 kHz (18 kHz's fold)
+    var p1: f64 = 0;
+    var p6: f64 = 0;
+    for (y[1000 .. n / 2 - 1000], 1000..) |v, i| {
+        const t = @as(f64, @floatFromInt(i)) / 24_000;
+        p1 += v * @sin(2 * std.math.pi * 1000 * t);
+        p6 += v * @cos(2 * std.math.pi * 6000 * t) + v * @sin(2 * std.math.pi * 6000 * t);
+    }
+    const len_f: f64 = @floatFromInt(n / 2 - 2000);
+    try std.testing.expectApproxEqAbs(@as(f64, 0.5), p1 / len_f, 0.01);
+    try std.testing.expect(@abs(p6 / len_f) < 1e-3);
+    // guard zeros after each copy
+    try std.testing.expectEqual(@as(f64, 0), km.pool[c1 + n / 2 + 1]);
 }
 
 /// The nearest key to `key` that no zone plays, looking up first.
