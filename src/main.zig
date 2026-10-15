@@ -5,6 +5,22 @@
 const std = @import("std");
 const c = @import("c.zig");
 
+/// Wakes the UI out of its idle event wait IDLE_FPS times a second, so
+/// background work (jobs finishing, device events, status timers) still
+/// gets frames while nothing happens.
+const IdleWaker = struct {
+    var on = std.atomic.Value(bool).init(false);
+    var quit = std.atomic.Value(bool).init(false);
+
+    fn run() void {
+        const ts = std.c.timespec{ .sec = 0, .nsec = std.time.ns_per_s / IDLE_FPS };
+        while (!quit.load(.acquire)) {
+            _ = std.c.nanosleep(&ts, null);
+            if (on.load(.acquire)) native_app.wakeUi();
+        }
+    }
+};
+
 /// Redraw rate once the UI has been quiet for IDLE_AFTER_FRAMES frames.
 const IDLE_FPS = 20;
 const IDLE_AFTER_FRAMES = 60;
@@ -914,7 +930,7 @@ pub fn main(init: std.process.Init) !void {
     };
     try engine.initPdc(alloc);
     defer engine.deinitPdc(alloc);
-    try engine.initPool(alloc, cli.workers(), if (cli.rt_workers) .{ .period_ns = audio_mod.blockPeriodNs() } else null);
+    try engine.initPool(alloc, cli.workers(), if (cli.rt_workers) .{ .period_ns = audio_mod.blockPeriodNs(storage.buffer_frames) } else null);
     defer engine.deinitPool(alloc);
 
     // The browser's preview data: declared before the device so it is
@@ -924,7 +940,7 @@ pub fn main(init: std.process.Init) !void {
 
     // ── Audio device ─────────────────────────────────────────────────
     var audio: audio_mod.Audio = undefined;
-    try audio.init();
+    try audio.init(storage.buffer_frames);
     live_audio = &audio;
     defer live_audio = null;
     defer {
@@ -938,6 +954,7 @@ pub fn main(init: std.process.Init) !void {
         audio.stop();
         const wg = audio.workgroup();
         if (cli.rt_workers) std.log.info("render workers: real-time, {s}", .{if (wg != null) "in the audio workgroup" else "no audio workgroup"});
+        p.setPeriod(audio.periodNs());
         _ = p.setWorkgroup(wg);
         try audio.start();
     }
@@ -1049,9 +1066,17 @@ pub fn main(init: std.process.Init) !void {
 
     splash.finishBoot();
     // Idle throttle: once the UI has been quiet (no input, no drag, stopped
-    // transport) for a moment, redraw at IDLE_FPS instead of 120.
+    // transport) for a moment, frames wait for an event instead of
+    // running at 120: input wakes one at once (a key played at idle used
+    // to wait up to a whole 20 FPS frame, 50 ms, to reach the engine),
+    // and the waker keeps IDLE_FPS frames for background work.
     var quiet_frames: u32 = 0;
     var fps_idle = false;
+    const waker = std.Thread.spawn(.{}, IdleWaker.run, .{}) catch null;
+    defer if (waker) |w| {
+        IdleWaker.quit.store(true, .release);
+        w.join();
+    };
     while (!c.rl.WindowShouldClose()) {
         // A queued open runs here, between frames, behind the loading card.
         if (pending_open) |path| {
@@ -1215,6 +1240,7 @@ pub fn main(init: std.process.Init) !void {
                     std.log.warn("render workers kept the audio thread waiting; rendering serially until they rejoin", .{});
                 }
                 audio.stop();
+                p.setPeriod(audio.periodNs());
                 _ = p.setWorkgroup(audio.workgroup());
                 audio.start() catch |err| {
                     std.log.err("audio restart failed: {s}", .{@errorName(err)});
@@ -1252,6 +1278,8 @@ pub fn main(init: std.process.Init) !void {
             .can_record = audio.capture_available,
             .input_names = input_name_ptrs[0..input_count],
             .current_input_idx = current_input_idx,
+            .buffer_frames = audio.block_frames,
+            .period_frames = audio.periodFrames(),
             .master_peak = .{ master.meter().l, master.meter().r },
             .master_volume = master.volume(),
             .auto_arm = auto_arm,
@@ -1303,6 +1331,23 @@ pub fn main(init: std.process.Init) !void {
                 };
                 input_refresh = 0; // force re-enumerate + re-resolve next frame
                 status.set("Input: {s}", .{std.mem.sliceTo(&input_devices[pi].name, 0)});
+            }
+        }
+        if (tres.buffer_pick) |frames| {
+            if (rec_busy) {
+                status.set("Buffer size can't change while recording", .{});
+            } else {
+                storage.buffer_frames = frames;
+                storage.saveSettings(alloc);
+                audio.setBlockFrames(frames) catch |err| {
+                    std.log.err("audio buffer change failed: {s}", .{@errorName(err)});
+                    status.set("Audio device failed", .{});
+                };
+                const run = audio.periodFrames();
+                if (run != frames)
+                    status.set("Buffer {d}: the device runs {d} ({d:.1} ms)", .{ frames, run, @as(f32, @floatFromInt(run)) / 48.0 })
+                else
+                    status.set("Buffer {d} ({d:.1} ms)", .{ frames, @as(f32, @floatFromInt(frames)) / 48.0 });
             }
         }
         if (tres.record_toggle and !rec_finishing) {
@@ -2040,9 +2085,10 @@ pub fn main(init: std.process.Init) !void {
 
         quiet_frames = if (ui.wants_frame or transport.isPlaying() or modal) 0 else quiet_frames +| 1;
         const want_idle = quiet_frames > IDLE_AFTER_FRAMES;
-        if (want_idle != fps_idle) {
+        if (want_idle != fps_idle and waker != null) {
             fps_idle = want_idle;
-            c.rl.SetTargetFPS(if (fps_idle) IDLE_FPS else 120);
+            IdleWaker.on.store(fps_idle, .release);
+            if (fps_idle) c.rl.EnableEventWaiting() else c.rl.DisableEventWaiting();
         }
 
         for (tracks) |*t| t.publishSnapshot(&audio_pool);

@@ -12,6 +12,12 @@ extern fn slab_take_menu_commands() c_uint;
 extern fn slab_set_browser_checked(on: c_int) void;
 extern fn slab_show_licenses() void;
 extern fn slab_set_window_document(window: ?*anyopaque, title: [*:0]const u8, path: ?[*:0]const u8, edited: c_int) void;
+extern fn slab_wake_ui() void;
+
+/// Wake the UI loop out of an event wait. Any thread.
+pub fn wakeUi() void {
+    slab_wake_ui();
+}
 
 /// Receive the projects Finder opens with slab (double-click, Open With,
 /// a drop on the Dock icon). Call before InitWindow: a double-click that

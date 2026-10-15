@@ -320,6 +320,17 @@ heavy synth through its bus and the master.
 
 **Not yet:** splitting one node's insert chain across threads.
 
+### Buffer size and the device's period
+
+The device is asked for `buffer_frames` (settings.json, 64 to 1024,
+default 256; the audio caret next to record lists them with their
+milliseconds; `$SLAB_AUDIO_BLOCK_FRAMES` overrides). A smaller buffer is
+less latency each way and less time per callback to render in. What the
+device grants can differ: a Bluetooth output keeps its own size. The
+render workers' time-constraint period and the watchdog's budget come
+from the period the device actually runs (`Audio.periodNs`, re-read on
+every reopen), not from the request.
+
 ## UI-side scheduling (control-rate)
 
 Some things run on the UI thread, not audio:
@@ -338,6 +349,12 @@ audio only through:
 - Param writes (pending buffer + dirty flag)
 - Note events from UI (piano roll playback) — pushed into an SPSC
   ring that the audio thread drains at the top of each block
+
+Live input waits on the UI loop before it reaches that ring. The loop
+runs at 120 FPS while anything moves; once quiet, it waits for an event
+instead of sleeping out a frame (raylib's event waiting, woken
+`IDLE_FPS` times a second for background work), so a key played at
+idle is read at once rather than up to a 20 FPS frame (50 ms) later.
 - Graph swaps (atomic pointer)
 - Hot-patch trampoline repoints (atomic pointer under fy's mutex)
 

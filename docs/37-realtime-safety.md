@@ -395,3 +395,19 @@ Known, not yet addressed (each needs its own design):
 - **Device events reopen the device**: DeviceIsAlive, nominal rate and
   coreaudiod restart listeners plus miniaudio's reroute notification set
   an atomic flag; the UI loop does a full Slab reopen.
+
+## Live latency (2026-10-15)
+
+- **Buffer size is a setting** (settings.json `buffer_frames`, the audio
+  menu): 64 frames is 1.3 ms a side.
+- **The workers follow the device's real period**: `Audio.periodNs`
+  from the device's granted buffer and rate, applied on every reopen
+  (`Pool.setPeriod`). A Bluetooth output that runs 1024 frames had the
+  workers' time constraint and the watchdog's budget at a quarter of it.
+- **Idle UI waits for events**: a key at idle no longer waits up to
+  50 ms for the next 20 FPS frame.
+- **Not changed:** the duplex ring's two-period prefill. Nothing
+  monitors input live, so it only delays captured audio, which take
+  placement measures and removes (docs/07 §Recording). Notes from the
+  UI still start at the block they are drained in (up to one block of
+  jitter); CoreMIDI input does not exist yet.

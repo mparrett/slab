@@ -16,6 +16,7 @@ const menu = @import("menu.zig");
 const bridge = @import("bridge.zig");
 const snap_mod = @import("snap.zig");
 const Transport = @import("../transport.zig").Transport;
+const audio_mod = @import("../audio.zig");
 const meter_mod = @import("../meter.zig");
 
 const Ui = core.Ui;
@@ -33,6 +34,8 @@ pub const Result = struct {
     record_toggle: bool = false,
     /// Index into `input_names` the user picked from the input-device menu.
     input_pick: ?usize = null,
+    /// A buffer size picked from the same menu, frames.
+    buffer_pick: ?u32 = null,
     /// New master fader gain (linear, 0..MASTER_MAX_GAIN).
     master_volume: ?f32 = null,
     /// KILL: stop and silence everything.
@@ -56,6 +59,9 @@ pub const Args = struct {
     can_record: bool,
     input_names: []const [*:0]const u8,
     current_input_idx: ?usize,
+    /// The buffer asked for, and the one the device runs (frames at 48 kHz).
+    buffer_frames: u32 = 256,
+    period_frames: u32 = 256,
     /// Master bus peak (linear, L/R) for the output meter.
     master_peak: [2]f32 = .{ 0, 0 },
     /// Master fader gain (linear).
@@ -293,22 +299,43 @@ fn fileTile(ui: *Ui, r: Rect, a: Args, res: *Result) void {
     }
 }
 
-/// Input-device caret next to record: opens the (legacy) device menu.
+const BUFFER_ID: u32 = 0x1000;
+var buffer_labels: [audio_mod.BLOCK_CHOICES.len][32]u8 = undefined;
+
+/// Audio caret next to record: the input device, and the buffer size.
 fn inputTile(ui: *Ui, r: Rect, a: Args, res: *Result) void {
     const have = a.input_names.len > 0;
     var open = menu.isOpen(INPUT_MENU_KEY);
-    if (ctl.button(ui, r, "input", &open, .{ .glyph = .tri_down, .glyph_on = style.text, .flush = true, .disabled = !have }) and have and !menu.isOpen(INPUT_MENU_KEY)) {
+    if (ctl.button(ui, r, "input", &open, .{ .glyph = .tri_down, .glyph_on = style.text, .flush = true }) and !menu.isOpen(INPUT_MENU_KEY)) {
         menu.openBelow(INPUT_MENU_KEY, r);
     }
-    const cur_tip: []const u8 = if (!have)
-        "Input device (none found)"
-    else if (a.current_input_idx) |ci| std.mem.span(a.input_names[@min(ci, a.input_names.len - 1)]) else "Select input device";
-    menu.tip(ui, r, cur_tip);
-    if (menu.isOpen(INPUT_MENU_KEY) and have) {
-        var items: [34]menu.Item = undefined;
-        const n = @min(a.input_names.len, items.len);
+    var tb: [96]u8 = undefined;
+    const dev: []const u8 = if (!have)
+        "no input device"
+    else if (a.current_input_idx) |ci| std.mem.span(a.input_names[@min(ci, a.input_names.len - 1)]) else "default input";
+    const ms = @as(f32, @floatFromInt(a.period_frames)) / 48.0;
+    menu.tip(ui, r, std.fmt.bufPrint(&tb, "Audio: {s}, buffer {d} ({d:.1} ms)", .{ dev, a.period_frames, ms }) catch "Audio");
+    if (menu.isOpen(INPUT_MENU_KEY)) {
+        var items: [34 + audio_mod.BLOCK_CHOICES.len + 1]menu.Item = undefined;
+        const n = @min(a.input_names.len, 34);
         for (0..n) |i| items[i] = .{ .label = std.mem.span(a.input_names[i]), .id = @intCast(i) };
-        if (menu.pick(INPUT_MENU_KEY, items[0..n])) |id| res.input_pick = @intCast(id);
+        var k = n;
+        if (n > 0) {
+            items[k] = .{ .separator = true };
+            k += 1;
+        }
+        for (audio_mod.BLOCK_CHOICES, 0..) |b, i| {
+            const mark = if (b == a.buffer_frames) "\u{2022} " else "  ";
+            const bms = @as(f32, @floatFromInt(b)) / 48.0;
+            // The device may run another size than asked (a Bluetooth
+            // output's own): say so on the one in use.
+            const note = if (b == a.buffer_frames and a.period_frames != b) " (device runs another)" else "";
+            items[k] = .{ .label = std.fmt.bufPrint(&buffer_labels[i], "{s}Buffer {d}  {d:.1} ms{s}", .{ mark, b, bms, note }) catch "?", .id = BUFFER_ID | b };
+            k += 1;
+        }
+        if (menu.pick(INPUT_MENU_KEY, items[0..k])) |id| {
+            if (id & BUFFER_ID != 0) res.buffer_pick = id & ~BUFFER_ID else res.input_pick = @intCast(id);
+        }
     }
 }
 
