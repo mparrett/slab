@@ -23,6 +23,25 @@ GitHub are its section here (`tools/release.sh` copies them), so add to
   from another app, or the system audio service restarting now reopens
   the device instead of leaving it silent.
 
+- **The Sampler no longer aliases when you play high.** Clean playback
+  now band-limits the sample to the speed it is read at, using octave
+  copies made when the sample loads, so playing a sample an octave or
+  more above its root, or a 96 kHz file, no longer folds whistles and
+  grit back into the mix.
+
+- **No more Sampler clicks on retrigger, choke or voice steal.** Its
+  envelope now picks up from wherever it is, a choked hi-hat fades
+  instead of cutting, and a note that takes over a sounding voice fades
+  the old one out.
+
+- **The Limiter no longer clips transients.** It now holds the gain
+  reduction a peak needs across the whole lookahead and ramps into it, so
+  a drum hit or a single-sample spike over the ceiling is turned down
+  smoothly instead of being clipped. Latency is unchanged.
+
+- **Machines use about 20% less CPU.** The fy compiler computes repeated
+  expressions once, addresses state fields directly and writes them as
+  soon as they are final. Output is bit-identical.
 
 - **The Extract pack finds uv when Slab is opened from Finder.** Its
   download said uv was missing unless Slab was started from a terminal; it
