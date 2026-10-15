@@ -156,22 +156,6 @@ ustruct: CbParams
   f64 vp-dec  f64 vp-sm  f64 press-sm
 ;
 
-( --- shared sources ------------------------------------------------------ )
-
-( t salt -- n : white noise in -1..1 as a function of the sample clock.
-  Every voice reading the same t and salt gets the same sample: the
-  CS-80's noise is one zener per channel, shared by all eight voices.
-  A Weyl step on t [split so the products stay exact] through two
-  quadratic folds: flat to 0.1 dB, lag-1 correlation under 0.005. )
-dsp: cb-hash | t salt -- n |
-  t 0.000244140625 f* ffrac 4096.0 f* | lo |
-  t lo f- 0.000244140625 f* | hi |
-  lo 0.7548776662466927 f*  hi 0.5698402909980532 f* f+  salt f+ ffrac | w |
-  w  w 179.37 f* 31.17 f+  f* ffrac | w |
-  w  w 137.13 f* 41.97 f+  f* ffrac | w |
-  w 2.0 f* 1.0 f-
-;
-
 ( --- the IG00156 ---------------------------------------------------------- )
 
 ( f x g a h -- hp bp lp : one 2x step of an OTA state-variable filter.
@@ -283,7 +267,7 @@ dsp: cb-chan | c:CbChan cp:CbChanParams p:CbParams t k po vib ipb cvc gmul vp pr
   ( the channel's noise source, two 2x samples of it )
   p.any-noise 0.5 f<
     [ 0.0 0.0 ]
-    [ t 2.0 f* salt cb-hash  t 2.0 f* 1.0 f+ salt cb-hash ]
+    [ t 2.0 f* salt clock-hash  t 2.0 f* 1.0 f+ salt clock-hash ]
   ifte | n0 n1 |
   c cp p dt pw gh ah hh gl al hl gp g n0 cb-sub
   c cp p dt pw gh ah hh gl al hl gp g n1 cb-sub
@@ -529,7 +513,7 @@ dsp: k-cb-voice | io:Io ctx state:CbState params:CbParams -- |
     [ params.sub-fn | fn |
       fn 1.5 f<  1.0 sp 2.0 f* f-
         fn 2.5 f<  sp 2.0 f* 1.0 f-
-          fn 3.5 f<  sp 0.5 1.0 -1.0 fsel-lt  t 0.123 cb-hash  select
+          fn 3.5 f<  sp 0.5 1.0 -1.0 fsel-lt  t 0.123 clock-hash  select
         select
       select ]
   ifte | sub |
