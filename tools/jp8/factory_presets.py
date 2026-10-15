@@ -19,6 +19,7 @@ The last presets are ours, not Roland's: marked "(ours)" in the note.
 
 import json
 import os
+import re
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, "..", "..", "machines", "jp8", "presets")
@@ -115,7 +116,7 @@ def preset(name, note, **over):
 
 def fine(deg):
     """FINE TUNE's pointer angle from 12 o'clock -> cents, +-50 over +-135 deg."""
-    return round(deg * 50 / 135, 1)
+    return round(max(-50.0, min(50.0, deg * 50 / 135)), 1)
 
 
 # Roland's sheets.  VCO-2 RANGE is a continuous knob, about 7.5 deg a
@@ -184,6 +185,35 @@ preset("87-upright-bass", "87 UPRIGHT BASS: triangle under a synced pulse, ENV-1
        sync=1, range2=0, fine2=fine(-8), wave2="pulse",
        cutoff=4, env_src="env2", env_mod=3, kf=3.5, level=10,
        e1=(0, 3.5, 3.5, 0), e1_kf=1, e2=(0, 4.75, 2.5, 2.5), e2_kf=1)
+
+# The rest of the 64, transcribed the same way into sheets.json: slider
+# positions as on the sheet, VCO-2 RANGE in semitones from 8', FINE as the
+# pointer's angle.  The bender box's VCF switch sets a third of BEND VCF.
+SHEETS = os.path.join(HERE, "sheets.json")
+
+
+def slug(name):
+    return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
+
+
+def load_sheets():
+    if not os.path.exists(SHEETS):
+        return
+    with open(SHEETS) as f:
+        sheets = json.load(f)
+    for s in sorted(sheets, key=lambda s: s["num"]):
+        p = dict(s["params"])
+        p["fine2"] = fine(p.pop("fine_deg"))
+        p["e1"] = tuple(p["e1"])
+        p["e2"] = tuple(p["e2"])
+        p["bend_vcf"] = 3 if p.get("bend_vcf") else 0
+        note = f'{s["num"]} {s["name"]}: {s["note"]}'
+        if s.get("assign", "").lower().startswith("unison"):
+            note += ". Roland plays it in UNISON: turn UNI on"
+        preset(f'{s["num"]}-{slug(s["name"])}', note, **p)
+
+
+load_sheets()
 
 # Ours: what the sheets above leave out.
 preset("cross-bells", "(ours) CROSS MOD: VCO-2's sine a fifth up drives VCO-1's pitch, clangorous bells",
