@@ -63,8 +63,11 @@ Untyped pointers still use the struct accessors `ptr Struct.field@`,
   including through `ptr+` and `s.field&` chains, so a helper that writes
   through `s.phase&` and a later `s.phase` read agree.
 - A later store to a field replaces an earlier one.
-- Stores are written to memory at the end of the word, so a load never
-  observes a store from later in the program.
+- Stores behave as if written at the end of the word, so a load never
+  observes a store from later in the program. The compiler writes a
+  field earlier once nothing left in the body can read it, so distinct
+  pointer args must not overlap: a state block too small for its struct
+  spills into whatever follows it.
 - **Indexed stores (`f!i`) with a runtime index have no constant
   address**: a later `f@i` in the same word reads memory as it was at
   word entry. Delay lines write one cell and read another, so this is
@@ -103,6 +106,14 @@ it is a constant or an entry-stack arg. Destinations are allocated after
 operands, so deep expressions don't hold a register per level.
 `RegisterExhausted` now only means more than 8 pointer args, or a frame
 over 4 KB of spill slots.
+
+The same pure expression written twice (the same operation on the same
+operands, constants included) is computed once. A field at a constant
+offset from a pointer is addressed as `[ptr, #offset]` (up to 32 KB), so
+`ptr+` chains and struct fields cost no instructions. Stores through an
+entry arg keep only their value until the end, or go straight to memory
+when no remaining load can read the field; other stores wait on the
+stack with their address.
 
 Constants: `fmov #imm` covers ±(16..31)/16·2^-3..2^4 (0.5, 1.0, 2.5,
 27.0, …), `0.0` is `fmov d, xzr`, and other values cost one to four
