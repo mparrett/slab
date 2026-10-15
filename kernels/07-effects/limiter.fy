@@ -4,11 +4,19 @@
   Gain reduction is computed from the host detector trace [max abs of
   both input channels, io.det] so L and R always receive
   identical gain and the stereo image stays put.  The audio is delayed
-  through a host ring [manifest buffer] by the lookahead time, while the
-  gain envelope is computed from the *un-delayed* detector with an attack
-  whose time constant tracks the lookahead - so the reduction ramp lands
-  on the peak as it emerges from the delay.  A final ceiling clamp makes
-  it a true brickwall regardless of envelope overshoot.
+  through a host ring [manifest buffer] by the lookahead time L.
+  The gain comes from the *un-delayed* detector: the reduction each
+  sample needs [u = 1 - ceil/peak] is held at its maximum over the last
+  L+1 samples, released by a one-pole, and averaged over L+1 samples.
+  The average reaches a peak's full reduction exactly when the peak
+  leaves the delay, ramping down linearly before it, so a transient is
+  turned down, not clipped.  The final ceiling clamp only catches
+  rounding [and LOOK moving mid-peak].
+
+  The hold is the max of two consecutive L+1-sample blocks [the one in
+  progress and the last], which always covers the window: O[1] per
+  sample, no loop.  The average is a running sum over a host ring,
+  rebuilt exactly at each block end so it can't drift.
 
   LUFS: each channel runs its K-weighting two-biquad chain [BS.1770-4
   48 kHz coefficients, supplied as const params] on the OUTPUT and
@@ -44,6 +52,14 @@ ustruct: LimState
   f64 mss       ( short-term mean-square, one-pole )
   f64 msum      ( integrated: running sum of K-weighted square )
   f64 mn        ( integrated: sample count )
+  f64 ucur      ( reduction max, block in progress )
+  f64 uprev     ( reduction max, last block )
+  f64 cnt       ( samples into the block )
+  f64 uenv      ( held reduction after release )
+  f64 bsum      ( running sum of uenv over the box )
+  f64 bfresh    ( sum of uenv over the block in progress )
+  f64 bline     ( host ring of uenv, base pointer )
+  f64 bline-len
 ;
 
 ustruct: LimParams
@@ -64,6 +80,8 @@ ustruct: LimParams
   ( K-weighting biquad coefficients [const-f64, BS.1770-4 @ 48 kHz] )
   f64 k1b0 f64 k1b1 f64 k1b2 f64 k1a1 f64 k1a2
   f64 k2b0 f64 k2b1 f64 k2b2 f64 k2a1 f64 k2a2
+  f64 nbox      ( hold/average length, look-spl + 1 )
+  f64 inv-nbox
 ;
 
 ( ctx state params -- : block-rate derived fill. )
@@ -81,6 +99,8 @@ dsp: lim-block-prepare
   0.0 0.0 raw-look f- floor f- | ls |
   ls -> params.look-spl
   ls -> params.lat
+  ls 1.0 f+ -> params.nbox
+  1.0 ls 1.0 f+ f/ -> params.inv-nbox
   3.0 ls f/ 0.0 1.0 fclamp
   -> params.atk-c
   1.0 params.rel-s sr f* f/ 0.0 1.0 fclamp
@@ -104,18 +124,45 @@ dsp: lim-prepare
 ;
 
 ( Gain computer.  Reads the shared detector trace, applies input drive,
-  derives the target gain and slews the envelope. )
+  holds the reduction over the lookahead window, releases it and
+  averages it into a ramp that lands on the peak.  Runs before lim-io,
+  so state.wpos is this sample's ring slot. )
 dsp: lim-gain | io:Io state:LimState params:LimParams -- g |
   io.det params.gain-lin f* | d |
   ( dc = max(d, 1e-9) )
   d 0.000000001 fmax | dc |
-  ( gt = min(1, ceil/dc) )
-  params.ceil-lin dc f/ | raw |
-  raw 1.0 fmin | gt |
-  state.gain | g0 |
-  ( c = gt<g0 ? atk : rel )
-  gt g0 params.atk-c params.rel-c fsel-lt | c |
-  g0 gt g0 f- c f* f+ | g |
+  ( u = 1 - min(1, ceil/dc): the reduction this sample needs )
+  params.ceil-lin dc f/ 1.0 fmin | gt |
+  1.0 gt f- | u |
+  ( hold: max over this block and the last covers the last nbox samples )
+  state.ucur u fmax | mc |
+  state.uprev mc fmax | h |
+  state.cnt 1.0 f+ | c1 |
+  params.nbox | nb |
+  ( block end [c1 >= nb]: this block becomes the last one )
+  state.uprev | up |
+  c1 nb up mc fsel-lt -> state.uprev
+  c1 nb mc 0.0 fsel-lt -> state.ucur
+  c1 nb c1 0.0 fsel-lt -> state.cnt
+  ( release: up at once, down by the release one-pole )
+  state.uenv | r0 |
+  r0 h h  r0 h r0 f- params.rel-c f* f+  fsel-lt | r |
+  r -> state.uenv
+  ( average the last nb values of r )
+  state.bline& p@64 | bb |
+  state.bline-len | blen |
+  state.wpos | w |
+  w nb f- | rp0 |
+  rp0 0.0 rp0 blen f+ rp0 fsel-lt | rp |
+  bb rp f@i | old |
+  r bb w f!i
+  state.bsum r f+ old f- | run |
+  state.bfresh r f+ | fresh |
+  ( at a block end the fresh sum is exactly the window: resync )
+  c1 nb run fresh fsel-lt -> state.bsum
+  c1 nb fresh 0.0 fsel-lt -> state.bfresh
+  c1 nb run fresh fsel-lt params.inv-nbox f* 0.0 1.0 fclamp | ub |
+  1.0 ub f- | g |
   g -> state.gain
   ( gmin = min(gmin, g) )
   state.gmin g fmin

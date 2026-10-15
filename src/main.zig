@@ -5,6 +5,22 @@
 const std = @import("std");
 const c = @import("c.zig");
 
+/// Wakes the UI out of its idle event wait IDLE_FPS times a second, so
+/// background work (jobs finishing, device events, status timers) still
+/// gets frames while nothing happens.
+const IdleWaker = struct {
+    var on = std.atomic.Value(bool).init(false);
+    var quit = std.atomic.Value(bool).init(false);
+
+    fn run() void {
+        const ts = std.c.timespec{ .sec = 0, .nsec = std.time.ns_per_s / IDLE_FPS };
+        while (!quit.load(.acquire)) {
+            _ = std.c.nanosleep(&ts, null);
+            if (on.load(.acquire)) native_app.wakeUi();
+        }
+    }
+};
+
 /// Redraw rate once the UI has been quiet for IDLE_AFTER_FRAMES frames.
 const IDLE_FPS = 20;
 const IDLE_AFTER_FRAMES = 60;
@@ -41,6 +57,7 @@ const history_mod = @import("history.zig");
 const automation = @import("automation.zig");
 const auto_lane = @import("ui/automation_lane.zig");
 const recorder_mod = @import("recorder.zig");
+const input_menu = @import("ui/input_menu.zig");
 const native_dialog = @import("native_dialog.zig");
 const native_app = @import("native_app.zig");
 const library_mod = @import("library.zig");
@@ -913,7 +930,7 @@ pub fn main(init: std.process.Init) !void {
     };
     try engine.initPdc(alloc);
     defer engine.deinitPdc(alloc);
-    try engine.initPool(alloc, cli.workers(), if (cli.rt_workers) .{ .period_ns = audio_mod.blockPeriodNs() } else null);
+    try engine.initPool(alloc, cli.workers(), if (cli.rt_workers) .{ .period_ns = audio_mod.blockPeriodNs(storage.buffer_frames) } else null);
     defer engine.deinitPool(alloc);
 
     // The browser's preview data: declared before the device so it is
@@ -923,7 +940,7 @@ pub fn main(init: std.process.Init) !void {
 
     // ── Audio device ─────────────────────────────────────────────────
     var audio: audio_mod.Audio = undefined;
-    try audio.init();
+    try audio.init(storage.buffer_frames);
     live_audio = &audio;
     defer live_audio = null;
     defer {
@@ -937,6 +954,7 @@ pub fn main(init: std.process.Init) !void {
         audio.stop();
         const wg = audio.workgroup();
         if (cli.rt_workers) std.log.info("render workers: real-time, {s}", .{if (wg != null) "in the audio workgroup" else "no audio workgroup"});
+        p.setPeriod(audio.periodNs());
         _ = p.setWorkgroup(wg);
         try audio.start();
     }
@@ -956,6 +974,8 @@ pub fn main(init: std.process.Init) !void {
     audio.setCapture(&recorder, recorder_mod.Recorder.captureFn);
     var rec_finishing = false;
     var rec_track: ?usize = null;
+    // The loop was on when the take started: back on once it's placed.
+    var rec_loop_paused = false;
     // Audio to notes waiting on its source's pitch (docs/30).
     var notes_jobs: NotesQueue = .{};
     // Explode and its stems (docs/30 §Explode, §Stems).
@@ -1046,9 +1066,17 @@ pub fn main(init: std.process.Init) !void {
 
     splash.finishBoot();
     // Idle throttle: once the UI has been quiet (no input, no drag, stopped
-    // transport) for a moment, redraw at IDLE_FPS instead of 120.
+    // transport) for a moment, frames wait for an event instead of
+    // running at 120: input wakes one at once (a key played at idle used
+    // to wait up to a whole 20 FPS frame, 50 ms, to reach the engine),
+    // and the waker keeps IDLE_FPS frames for background work.
     var quiet_frames: u32 = 0;
     var fps_idle = false;
+    const waker = std.Thread.spawn(.{}, IdleWaker.run, .{}) catch null;
+    defer if (waker) |w| {
+        IdleWaker.quit.store(true, .release);
+        w.join();
+    };
     while (!c.rl.WindowShouldClose()) {
         // A queued open runs here, between frames, behind the loading card.
         if (pending_open) |path| {
@@ -1168,6 +1196,34 @@ pub fn main(init: std.process.Init) !void {
         const offline = bounce_job.active or render_job.active;
         // The mic opens only while it can be used: an armed track or a take
         // in flight. Idle, the device is playback-only (see Audio.want_capture).
+        // A device died, coreaudiod restarted, a rate changed under us or
+        // the default device moved: reopen it. A take can't survive that
+        // in time, so it ends there.
+        if (!offline and audio.device_event.load(.acquire)) {
+            if (recorder.isRecording()) {
+                recorder.requestStop();
+                transport.stop();
+                rec_finishing = true;
+            }
+            if (audio.takeDeviceEvent()) |did| {
+                if (did) status.set("Audio device changed: reopened{s}", .{if (rec_finishing) ", recording stopped" else ""});
+            } else |err| {
+                std.log.err("audio device reopen failed: {s}", .{@errorName(err)});
+                status.set("Audio device failed", .{});
+            }
+        }
+        // A seek, a loop wrap or a stop mid-take: the take ends where it
+        // still lines up with the timeline.
+        if (recorder.isRecording() and recorder.jumped.load(.acquire)) {
+            recorder.requestStop();
+            rec_finishing = true;
+            status.set("{s}", .{if (transport.isPlaying()) "Recording stopped: the playhead jumped" else "Recording stopped"});
+        }
+        input_menu.channels = audio.inputChannels();
+        if (input_menu.changed) {
+            input_menu.changed = false;
+            dirty = true;
+        }
         if (!offline) audio.setWantCapture(rec_busy or firstArmedAudioTrack(tracks) != null) catch |err| {
             std.log.err("audio device switch failed: {s}", .{@errorName(err)});
             status.set("Audio device failed", .{});
@@ -1184,6 +1240,7 @@ pub fn main(init: std.process.Init) !void {
                     std.log.warn("render workers kept the audio thread waiting; rendering serially until they rejoin", .{});
                 }
                 audio.stop();
+                p.setPeriod(audio.periodNs());
                 _ = p.setWorkgroup(audio.workgroup());
                 audio.start() catch |err| {
                     std.log.err("audio restart failed: {s}", .{@errorName(err)});
@@ -1221,6 +1278,8 @@ pub fn main(init: std.process.Init) !void {
             .can_record = audio.capture_available,
             .input_names = input_name_ptrs[0..input_count],
             .current_input_idx = current_input_idx,
+            .buffer_frames = audio.block_frames,
+            .period_frames = audio.periodFrames(),
             .master_peak = .{ master.meter().l, master.meter().r },
             .master_volume = master.volume(),
             .auto_arm = auto_arm,
@@ -1274,6 +1333,23 @@ pub fn main(init: std.process.Init) !void {
                 status.set("Input: {s}", .{std.mem.sliceTo(&input_devices[pi].name, 0)});
             }
         }
+        if (tres.buffer_pick) |frames| {
+            if (rec_busy) {
+                status.set("Buffer size can't change while recording", .{});
+            } else {
+                storage.buffer_frames = frames;
+                storage.saveSettings(alloc);
+                audio.setBlockFrames(frames) catch |err| {
+                    std.log.err("audio buffer change failed: {s}", .{@errorName(err)});
+                    status.set("Audio device failed", .{});
+                };
+                const run = audio.periodFrames();
+                if (run != frames)
+                    status.set("Buffer {d}: the device runs {d} ({d:.1} ms)", .{ frames, run, @as(f32, @floatFromInt(run)) / 48.0 })
+                else
+                    status.set("Buffer {d} ({d:.1} ms)", .{ frames, @as(f32, @floatFromInt(frames)) / 48.0 });
+            }
+        }
         if (tres.record_toggle and !rec_finishing) {
             if (recorder.isRecording()) {
                 recorder.requestStop();
@@ -1281,18 +1357,32 @@ pub fn main(init: std.process.Init) !void {
                 rec_finishing = true;
             } else {
                 rec_track = firstArmedAudioTrack(tracks);
-                if (rec_track == null) {
-                    status.set("Arm a track (R) to record", .{});
-                } else {
+                if (rec_track) |ti| {
+                    // One pass, in time: a loop would wrap the take over
+                    // itself, so it pauses until the take is placed.
+                    if (transport.loopEnabled()) {
+                        transport.setLoopEnabled(false);
+                        rec_loop_paused = true;
+                    }
+                    recorder.input = tracks[ti].rec_input;
+                    // Playing first: the first captured block already
+                    // sees the transport moving.
+                    transport.play();
                     recorder.start() catch |err| {
                         std.log.err("record start failed: {s}", .{@errorName(err)});
                         status.set("Record failed to start", .{});
                         rec_track = null;
+                        transport.stop();
                     };
                     if (rec_track != null) {
-                        transport.play();
-                        status.set("Recording\u{2026}", .{});
+                        var ib: [8]u8 = undefined;
+                        status.set("Recording input {s}{s}\u{2026}", .{ tracks[ti].rec_input.label(&ib), if (rec_loop_paused) " (loop paused)" else "" });
+                    } else if (rec_loop_paused) {
+                        transport.setLoopEnabled(true);
+                        rec_loop_paused = false;
                     }
+                } else {
+                    status.set("Arm a track (R) to record", .{});
                 }
             }
         }
@@ -1995,9 +2085,10 @@ pub fn main(init: std.process.Init) !void {
 
         quiet_frames = if (ui.wants_frame or transport.isPlaying() or modal) 0 else quiet_frames +| 1;
         const want_idle = quiet_frames > IDLE_AFTER_FRAMES;
-        if (want_idle != fps_idle) {
+        if (want_idle != fps_idle and waker != null) {
             fps_idle = want_idle;
-            c.rl.SetTargetFPS(if (fps_idle) IDLE_FPS else 120);
+            IdleWaker.on.store(fps_idle, .release);
+            if (fps_idle) c.rl.EnableEventWaiting() else c.rl.DisableEventWaiting();
         }
 
         for (tracks) |*t| t.publishSnapshot(&audio_pool);
@@ -2130,6 +2221,10 @@ pub fn main(init: std.process.Init) !void {
             };
             rec_finishing = false;
             rec_track = null;
+            if (rec_loop_paused) {
+                transport.setLoopEnabled(true);
+                rec_loop_paused = false;
+            }
         }
 
         // Stems, once separated: their tracks, then what Explode asked for.
@@ -3851,11 +3946,12 @@ fn placeRecordedClip(
 
     const dur_sec = src.seconds();
 
-    // Latency-compensate: captured audio arrives a round-trip late, and the
-    // playback it was played against was late by the project's own latency
-    // (PDC), so place the clip earlier by both.
-    const latency: u64 = @as(u64, audio.roundTripLatencyFrames()) + pdc_latency;
-    const adj_sample = if (res.start_sample > latency) res.start_sample - latency else 0;
+    // Latency-compensate: captured audio arrives a round trip late (the
+    // hardware's both ways, from the HAL, plus however long its first
+    // block waited between the input and output callbacks), and the
+    // playback it was played against was late by the project's own
+    // latency (PDC), so place the clip earlier by all of them.
+    const adj_sample = recorder_mod.takeStart(res.start_sample, audio.roundTripLatencyFrames(), res.backlog, pdc_latency);
     const start = transport.samplesToBeats(adj_sample);
     const len_beats = @max(0.25, transport.secondsToBeats(start, dur_sec));
 

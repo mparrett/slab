@@ -1,7 +1,9 @@
 //! Audio input recorder. The capture half of the duplex device hands the
-//! audio thread a block of mono f32 input each callback; `captureFn` copies
-//! it into a lock-free SPSC ring. A writer thread drains the ring and streams
-//! it to a float32-mono WAV on disk. On stop the file is finalized and the UI
+//! audio thread a block of the device's input channels each callback;
+//! `captureFn` takes the take's channel (or pair) into a lock-free SPSC
+//! ring. A writer thread drains the ring and streams it to a float32 WAV
+//! on disk, mono or stereo. Frames the ring had no room for come back as
+//! silence, so the rest of the take keeps its time. On stop the file is finalized and the UI
 //! thread turns it into an AudioPool source + clip (via the existing loader).
 //!
 //! Audio-thread discipline: `captureFn` only pushes into a preallocated ring —
@@ -76,6 +78,18 @@ pub const Ring = struct {
         return n;
     }
 
+    /// Producer: like push, but only whole frames of `ch` samples.
+    pub fn pushFrames(self: *Ring, src: []const f32, ch: usize) usize {
+        const w = self.write.load(.monotonic);
+        const r = self.read.load(.acquire);
+        const free = self.buf.len - (w -% r);
+        const n = @min(src.len, free - free % ch);
+        var i: usize = 0;
+        while (i < n) : (i += 1) self.buf[(w +% i) & self.mask] = src[i];
+        self.write.store(w +% n, .release);
+        return n;
+    }
+
     /// Consumer (writer thread). Returns the number of frames copied out.
     pub fn pop(self: *Ring, dst: []f32) usize {
         const r = self.read.load(.monotonic);
@@ -94,11 +108,57 @@ const State = enum(u32) { idle = 0, recording = 1 };
 pub const Result = struct {
     /// Repo-relative path of the finished WAV (valid until the next start()).
     path: []const u8,
-    /// Total mono frames captured.
+    /// Total frames in the take, dropped ones (written as silence) included.
     frames: u64,
     /// Transport sample position at the first captured block.
     start_sample: u64,
+    /// Frames the first block had waited in the device's duplex ring: it
+    /// is late by this on top of the hardware's round trip.
+    backlog: u32,
 };
+
+/// Which input a take records: one channel, or a pair from `first`.
+pub const Input = struct {
+    first: u8 = 0, // 0-based
+    stereo: bool = false,
+
+    pub fn channels(self: Input) u32 {
+        return if (self.stereo) 2 else 1;
+    }
+
+    /// "1", "1-2": 1-based, as the UI and the project file show it.
+    pub fn label(self: Input, buf: []u8) []const u8 {
+        return if (self.stereo)
+            std.fmt.bufPrint(buf, "{d}-{d}", .{ self.first + 1, self.first + 2 }) catch "?"
+        else
+            std.fmt.bufPrint(buf, "{d}", .{self.first + 1}) catch "?";
+    }
+
+    pub fn parse(text: []const u8) ?Input {
+        if (std.mem.indexOfScalar(u8, text, '-')) |dash| {
+            const a = std.fmt.parseInt(u8, text[0..dash], 10) catch return null;
+            const b = std.fmt.parseInt(u8, text[dash + 1 ..], 10) catch return null;
+            if (a < 1 or b != a + 1) return null;
+            return .{ .first = a - 1, .stereo = true };
+        }
+        const a = std.fmt.parseInt(u8, text, 10) catch return null;
+        if (a < 1) return null;
+        return .{ .first = a - 1 };
+    }
+};
+
+/// Where a take belongs on the timeline: its first block was stamped at
+/// `start_sample`, but the sound in it reached the mic a round trip
+/// earlier than the output it was played against (hardware both ways,
+/// plus `backlog` frames waiting between the callbacks, plus the
+/// project's own `pdc` latency on the output).
+pub fn takeStart(start_sample: u64, round_trip: u32, backlog: u32, pdc: u32) u64 {
+    const late = @as(u64, round_trip) + backlog + pdc;
+    return start_sample -| late;
+}
+
+const ZEROS = [_]f32{0} ** 512;
+const CHUNK = 256;
 
 pub const Recorder = struct {
     alloc: std.mem.Allocator,
@@ -118,6 +178,18 @@ pub const Recorder = struct {
     start_stamped: std.atomic.Value(bool) = std.atomic.Value(bool).init(false),
     frames_captured: std.atomic.Value(u64) = std.atomic.Value(u64).init(0),
     overruns: std.atomic.Value(u32) = std.atomic.Value(u32).init(0),
+    start_backlog: std.atomic.Value(u32) = .init(0),
+    /// The transport moved other than forward by the frames captured (a
+    /// seek or a loop wrap): the take no longer matches its timeline.
+    jumped: std.atomic.Value(bool) = .init(false),
+    /// Dropped frames not yet made up with silence; the writer pads what's
+    /// left at the end. Audio thread writes, writer reads after quiescence.
+    gap: std.atomic.Value(u64) = .init(0),
+
+    // Set on the UI thread before start() publishes the take.
+    input: Input = .{},
+    // Audio-thread-owned.
+    next_pos: u64 = 0,
 
     // Live waveform — written by the writer thread, read by the UI. Each
     // slot is the peak |sample| of one bucket; `peak_count` publishes how
@@ -179,23 +251,70 @@ pub const Recorder = struct {
         return self.frames_captured.load(.monotonic);
     }
 
-    /// Audio-thread entry. `in` is `frames` mono f32 samples (the capture
-    /// half of the duplex callback), or null if the device has no input.
-    pub fn captureFn(ctx: *anyopaque, in: ?[*]const f32, frames: u32) void {
+    /// Audio-thread entry. `in` is `frames` frames of `channels`
+    /// interleaved input (the capture half of the duplex callback), or null
+    /// if the device has no input; `backlog` is how long they waited.
+    pub fn captureFn(ctx: *anyopaque, in: ?[*]const f32, frames: u32, channels: u32, backlog: u32) void {
         const self: *Recorder = @ptrCast(@alignCast(ctx));
         if (!self.beginCapture()) return;
         defer self.endCapture();
         const ptr = in orelse return;
+        const pos = self.transport.samples();
         if (!self.start_stamped.load(.acquire)) {
-            self.start_sample.store(self.transport.samples(), .monotonic);
+            self.start_sample.store(pos, .monotonic);
+            self.start_backlog.store(backlog, .monotonic);
             self.start_stamped.store(true, .release);
+        } else if (pos != self.next_pos) self.jumped.store(true, .release);
+        self.next_pos = pos + frames;
+        self.take(ptr, frames, @max(channels, 1));
+    }
+
+    /// The take's channel(s) out of `frames` interleaved frames of `ch`,
+    /// into the ring. Audio thread.
+    fn take(self: *Recorder, in: [*]const f32, frames: u32, ch: u32) void {
+        const oc = self.input.channels();
+        const a = @min(self.input.first, ch - 1);
+        const b = @min(a + 1, ch - 1);
+        var buf: [CHUNK * 2]f32 = undefined;
+        var done: u32 = 0;
+        while (done < frames) {
+            const n = @min(frames - done, CHUNK);
+            for (0..n) |i| {
+                const f = in + (done + i) * ch;
+                if (oc == 2) {
+                    buf[2 * i] = f[a];
+                    buf[2 * i + 1] = f[b];
+                } else buf[i] = f[a];
+            }
+            self.pushPadded(buf[0 .. n * oc], oc);
+            done += n;
         }
-        const block = ptr[0..frames];
-        const accepted = self.ring.push(block);
-        if (accepted < frames) {
-            _ = self.overruns.fetchAdd(@intCast(frames - accepted), .monotonic);
+        _ = self.frames_captured.fetchAdd(frames, .monotonic);
+    }
+
+    /// Frames dropped earlier go in first, as silence; whatever doesn't
+    /// fit now is owed. Audio thread.
+    fn pushPadded(self: *Recorder, samples: []const f32, oc: u32) void {
+        var gap = self.gap.load(.monotonic);
+        while (gap > 0) {
+            const z = @min(gap * oc, ZEROS.len - ZEROS.len % oc);
+            const got = self.ring.pushFrames(ZEROS[0..z], oc);
+            gap -= got / oc;
+            if (got < z) break;
         }
-        _ = self.frames_captured.fetchAdd(accepted, .monotonic);
+        const n = samples.len / oc;
+        if (gap > 0) {
+            gap += n;
+            _ = self.overruns.fetchAdd(@intCast(n), .monotonic);
+        } else {
+            const got = self.ring.pushFrames(samples, oc);
+            if (got < samples.len) {
+                const lost = (samples.len - got) / oc;
+                gap += lost;
+                _ = self.overruns.fetchAdd(@intCast(lost), .monotonic);
+            }
+        }
+        self.gap.store(gap, .monotonic);
     }
 
     fn beginCapture(self: *Recorder) bool {
@@ -230,13 +349,16 @@ pub const Recorder = struct {
         if (fd < 0) return error.OpenFailed;
         self.fd = fd;
         self.data_bytes = 0;
-        if (!self.writeHeaderPlaceholder()) {
+        if (!self.writeHeaderPlaceholder(@intCast(self.input.channels()))) {
             _ = close(fd);
             self.fd = -1;
             return error.WriteFailed;
         }
 
         self.ring.reset();
+        self.gap.store(0, .monotonic);
+        self.jumped.store(false, .monotonic);
+        self.start_backlog.store(0, .monotonic);
         self.peak_count.store(0, .release);
         self.bucket_acc = 0;
         self.bucket_fill = 0;
@@ -285,6 +407,7 @@ pub const Recorder = struct {
             .path = self.path_buf[0..self.path_len],
             .frames = self.frames_captured.load(.monotonic),
             .start_sample = self.start_sample.load(.monotonic),
+            .backlog = self.start_backlog.load(.monotonic),
         };
     }
 
@@ -311,6 +434,13 @@ pub const Recorder = struct {
             const ts = timespec{ .sec = 0, .nsec = std.time.ns_per_ms };
             _ = nanosleep(&ts, null);
         }
+        // Frames still owed when the take stopped: silence, to the end.
+        var owed = self.gap.load(.acquire) * self.input.channels();
+        while (owed > 0) {
+            const z = @min(owed, ZEROS.len);
+            self.writeSamples(ZEROS[0..z]);
+            owed -= z;
+        }
         self.finalizeFile();
         self.done.store(true, .release);
     }
@@ -334,7 +464,7 @@ pub const Recorder = struct {
             const a = @abs(s);
             if (a > self.bucket_acc) self.bucket_acc = a;
             self.bucket_fill += 1;
-            if (self.bucket_fill >= SAMPLES_PER_BUCKET) {
+            if (self.bucket_fill >= SAMPLES_PER_BUCKET * self.input.channels()) {
                 const idx = self.peak_count.load(.monotonic);
                 if (idx < self.live_peaks.len) {
                     self.live_peaks[idx] = self.bucket_acc;
@@ -364,11 +494,10 @@ pub const Recorder = struct {
         self.fd = -1;
     }
 
-    /// 44-byte canonical WAV header, float32 mono, sizes left at zero (patched
+    /// 44-byte canonical WAV header, float32, sizes left at zero (patched
     /// in finalizeFile). Returns false on a short write.
-    fn writeHeaderPlaceholder(self: *Recorder) bool {
+    fn writeHeaderPlaceholder(self: *Recorder, ch: u16) bool {
         var h: [44]u8 = undefined;
-        const ch: u16 = 1;
         const bits: u16 = 32;
         const byte_rate: u32 = SAMPLE_RATE * ch * (bits / 8);
         const block_align: u16 = ch * (bits / 8);
@@ -483,4 +612,97 @@ test "realtime: recording stop drains a callback already inside capture" {
     try testing.expectEqual(@as(usize, 64), loaded.data.len);
     for (loaded.data) |v| try testing.expectEqual(@as(f64, 0.25), v);
     try testing.expect(!rec.beginCapture());
+}
+
+test "take placement: hardware round trip, ring backlog and PDC all come off" {
+    try testing.expectEqual(@as(u64, 48_000 - 700 - 512 - 97), takeStart(48_000, 700, 512, 97));
+    try testing.expectEqual(@as(u64, 0), takeStart(100, 700, 512, 0));
+}
+
+test "input labels round-trip; a pair must be adjacent" {
+    var b: [8]u8 = undefined;
+    try testing.expectEqualStrings("1", (Input{}).label(&b));
+    try testing.expectEqualStrings("3-4", (Input{ .first = 2, .stereo = true }).label(&b));
+    try testing.expectEqual(Input{ .first = 2, .stereo = true }, Input.parse("3-4").?);
+    try testing.expectEqual(Input{ .first = 4 }, Input.parse("5").?);
+    try testing.expect(Input.parse("3-5") == null);
+    try testing.expect(Input.parse("0") == null);
+    try testing.expect(Input.parse("x") == null);
+}
+
+fn testRecorder(transport: *const Transport, ring_frames: usize) !Recorder {
+    var rec = try Recorder.init(testing.allocator, transport);
+    rec.ring.deinit(testing.allocator);
+    rec.ring = try Ring.init(testing.allocator, ring_frames);
+    rec.state.store(@intFromEnum(State.recording), .seq_cst);
+    return rec;
+}
+
+test "capture takes the track's channel or pair out of the device's channels" {
+    var transport = Transport{};
+    var rec = try testRecorder(&transport, 64);
+    defer rec.deinit();
+    defer rec.state.store(@intFromEnum(State.idle), .seq_cst);
+    // 4 channels, frame i: 10i + channel
+    var in: [8 * 4]f32 = undefined;
+    for (0..8) |i| for (0..4) |ch| {
+        in[i * 4 + ch] = @floatFromInt(10 * i + ch);
+    };
+    rec.input = .{ .first = 2, .stereo = true };
+    Recorder.captureFn(&rec, &in, 8, 4, 0);
+    var out: [16]f32 = undefined;
+    try testing.expectEqual(@as(usize, 16), rec.ring.pop(&out));
+    for (0..8) |i| {
+        try testing.expectEqual(@as(f32, @floatFromInt(10 * i + 2)), out[2 * i]);
+        try testing.expectEqual(@as(f32, @floatFromInt(10 * i + 3)), out[2 * i + 1]);
+    }
+    // a channel past the device's: its last one, not a neighbour's memory
+    rec.input = .{ .first = 7 };
+    Recorder.captureFn(&rec, &in, 8, 4, 0);
+    try testing.expectEqual(@as(usize, 8), rec.ring.pop(&out));
+    for (0..8) |i| try testing.expectEqual(@as(f32, @floatFromInt(10 * i + 3)), out[i]);
+}
+
+test "an overrun comes back as silence, so the rest of the take keeps its time" {
+    var transport = Transport{};
+    var rec = try testRecorder(&transport, 16);
+    defer rec.deinit();
+    defer rec.state.store(@intFromEnum(State.idle), .seq_cst);
+    var a: [12]f32 = undefined;
+    for (&a, 0..) |*v, i| v.* = @floatFromInt(i + 1);
+    // 24 frames into 16: 8 dropped
+    Recorder.captureFn(&rec, &a, 12, 1, 0);
+    transport.sample_pos.store(12, .monotonic);
+    Recorder.captureFn(&rec, &a, 12, 1, 0);
+    try testing.expectEqual(@as(u32, 8), rec.overruns.load(.monotonic));
+    var out: [32]f32 = undefined;
+    try testing.expectEqual(@as(usize, 16), rec.ring.pop(&out));
+    // drained: the 8 owed frames go in as zeros before the next block
+    transport.sample_pos.store(24, .monotonic);
+    var b = [_]f32{0.5} ** 4;
+    Recorder.captureFn(&rec, &b, 4, 1, 0);
+    const n = rec.ring.pop(&out);
+    try testing.expectEqual(@as(usize, 12), n);
+    for (out[0..8]) |v| try testing.expectEqual(@as(f32, 0), v);
+    for (out[8..12]) |v| try testing.expectEqual(@as(f32, 0.5), v);
+    try testing.expectEqual(@as(u64, 28), rec.frames_captured.load(.monotonic));
+    try testing.expect(!rec.jumped.load(.monotonic));
+}
+
+test "a take notices the transport jumping, and stamps its first block's backlog" {
+    var transport = Transport{};
+    var rec = try testRecorder(&transport, 1024);
+    defer rec.deinit();
+    defer rec.state.store(@intFromEnum(State.idle), .seq_cst);
+    var a = [_]f32{0} ** 64;
+    transport.sample_pos.store(1000, .monotonic);
+    Recorder.captureFn(&rec, &a, 64, 1, 512);
+    transport.sample_pos.store(1064, .monotonic);
+    Recorder.captureFn(&rec, &a, 64, 1, 300);
+    try testing.expect(!rec.jumped.load(.monotonic));
+    try testing.expectEqual(@as(u64, 1000), rec.start_sample.load(.monotonic));
+    try testing.expectEqual(@as(u32, 512), rec.start_backlog.load(.monotonic));
+    transport.sample_pos.store(0, .monotonic); // a loop wrap
+    Recorder.captureFn(&rec, &a, 64, 1, 300);
+    try testing.expect(rec.jumped.load(.monotonic));
 }
