@@ -120,6 +120,9 @@ status and the source before assuming a feature is absent or complete.
 39. [38-cs80.md](38-cs80.md) — C-Beam 80, the Yamaha CS-80 from its
     circuit: two channels a note, IL/AL filters, poly aftertouch, shared
     modulators on the host clock
+40. [39-jp8.md](39-jp8.md) — Juniper-8, the Roland Jupiter-8 from its
+    voice board: expo cross mod, VCO-2 sync, the IR3109's 24/12 dB taps,
+    one shared LFO
 
 ## Terminology crib sheet
 

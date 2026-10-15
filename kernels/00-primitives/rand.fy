@@ -45,3 +45,18 @@ dsp: rand-seed-once | p salt -- |
   salt 0.6180339887498949 f* 0.1234567 f+ ffrac  4294967296.0 f* floor  2.3283064365386963e-10 f* | seed |
   s0 0.0 f=  seed s0  select  p f!64
 ;
+
+( t salt -- n : white noise in -1..1 as a pure function of a sample
+  count.  Every voice reading the same t and salt gets the same sample,
+  so instrument-wide sources [one noise, one S&H] can be computed per
+  voice from ctx.clock.  A Weyl step on t [split so the products stay
+  exact] through two quadratic folds: flat to 0.1 dB, lag-1 correlation
+  under 0.005. )
+dsp: clock-hash | t salt -- n |
+  t 0.000244140625 f* ffrac 4096.0 f* | lo |
+  t lo f- 0.000244140625 f* | hi |
+  lo 0.7548776662466927 f*  hi 0.5698402909980532 f* f+  salt f+ ffrac | w |
+  w  w 179.37 f* 31.17 f+  f* ffrac | w |
+  w  w 137.13 f* 41.97 f+  f* ffrac | w |
+  w 2.0 f* 1.0 f-
+;

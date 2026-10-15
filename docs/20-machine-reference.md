@@ -15,6 +15,7 @@ project or preset stores (docs/19): real units for knobs, the option
 | [`drum2`](#drum2) | DS-404 Drums | instrument | mono | `—` |
 | [`fm86`](#fm86) | FM-7.11 | instrument | 8 | `—` |
 | [`guitar`](#guitar) | Fretwire Guitar | instrument | 6 | `gt-` |
+| [`jp8`](#jp8) | Juniper-8 | instrument | 8 | `jp-` |
 | [`juno2`](#juno2) | Ju-Know | instrument | 8 | `jn-` |
 | [`ms20`](#ms20) | SM-24 Mono | instrument | mono | `—` |
 | [`profit5`](#profit5) | Profit-5 | instrument | 8 | `p5-` |
@@ -351,17 +352,33 @@ Presets:
 
 Presets:
 
-- `bass` — BASS alone: the resonant pluck, both filters ringing
+- `bass` — BASS alone: square and saw at 16', the resonant pluck, both filters ringing
 - `brass` — BRASS 1 + BRASS 2: IL and AL both up, the swell from pressure
 - `brass-3` — BRASS 1 + BRASS 3: shorter, a resonant cornet edge
-- `e-piano` — E. PIANO alone: a 75% pulse, IL and AL with no sustain on the filter
+- `clavichord` — CLAVICHORD 1 + CLAVICHORD 2: narrow pulses, a plucked band
+- `e-piano` — E. PIANO alone: a square, IL and AL with no sustain on the filter
 - `flute` — FLUTE alone: a saw through a full-resonance LPF
+- `funky` — FUNKY 1 + FUNKY 2: the CS-80's envelope-swept funk
+- `funky-2` — FUNKY 3 + FUNKY 4: the other funk pairing
+- `guitar` — GUITAR 1 + GUITAR 2: a plucked pulse and its resonant band
 - `harpsichord` — HARPSICHORD 1 + HARPSICHORD 2: narrow pulses through a band
+- `organ` — ORGAN 1 + ORGAN 2: gated, unfiltered, the two channels' footages
 - `rain-brass` — (ours) brass after the Blade Runner end titles: two detuned BRASS 1s, pressure brings brilliance, level and vibrato. Add a long hall
 - `ring-bells` — (ours) the manual's bells: sine and saw, the ring modulator's envelope sweeping its carrier
 - `solo-lead` — (ours) a solo voice: portamento at the CS-80's constant rate, after touch opens the filter and adds vibrato
 - `strings` — STRING 1 + STRING 2: band-passed resonant saws, pressure swells
+- `strings-2` — STRING 3 + STRING 4: slow open saws, after touch brings the level
 - `tears-pad` — (ours) STRING 2 over a slow PWM layer, chorus on: a pad that breathes with pressure
+- `manual/bells-gongs` — Owner's Manual §III, BELLS & GONGS: Channel II
+- `manual/clarinet` — Owner's Manual §III, CLARINET: Channel I
+- `manual/clavichord` — Owner's Manual §III, CLAVICHORD: Channel I
+- `manual/flute` — Owner's Manual §III, FLUTE: Channel I
+- `manual/multiple-strings` — Owner's Manual §III, MULTIPLE STRINGS: Channel II
+- `manual/oboe` — Owner's Manual §III, OBOE: Channel I
+- `manual/pizzicato-legato` — Owner's Manual §III, PIZZICATO & LEGATO: both channels
+- `manual/solo-violin` — Owner's Manual §III, SOLO VIOLIN: Channel II
+- `manual/timpani` — Owner's Manual §III, TIMPANI: both channels
+- `manual/trumpet` — Owner's Manual §III, TRUMPET: Channel II
 
 ## drum2
 
@@ -645,6 +662,129 @@ Presets:
 - `jazz` — Archtop jazz: neck pickup, tone rolled off, flatwound thump
 - `palm-mute` — Palm-muted picking: a short chug, give it a high-gain amp
 - `slide` — Bottleneck slide: long sustain, pitch curves glide fret by fret with the rasp
+
+## jp8
+
+**Juniper-8**, instrument, 8 voices.
+
+| param | section | label | range | default | notes |
+|---|---|---|---|---|---|
+| `jp-lfo-rate` | LFO | RATE | 0.05 … 40 | 4 | exp |
+| `jp-lfo-delay` | LFO | DELAY | 0 … 4 | 0 | pow |
+| `jp-lfo-wave` | LFO | WAVE | 0 SINE / 1 SAW / 2 SQUARE / 3 RANDOM | 0 | switch |
+| `jp-lfo-vco` | VCO MOD | LFO | 0 … 10 | 0 | linear |
+| `jp-env-vco` | VCO MOD | ENV | 0 … 10 | 0 | linear |
+| `jp-vmod-dst` | VCO MOD | TO | 0 VCO-1 / 1 BOTH / 2 VCO-2 | 1 | switch |
+| `jp-cross` | VCO-1 | CROSS | 0 … 10 | 0 | linear |
+| `jp-range1` | VCO-1 | RANGE | 0 16' / 1 8' / 2 4' / 3 2' | 1 | switch |
+| `jp-wave1` | VCO-1 | WAVE | 0 TRI / 1 SAW / 2 PULSE / 3 SQUARE | 1 | switch |
+| `jp-range2` | VCO-2 | RANGE | -12 … 24 | 0 | integer |
+| `jp-fine2` | VCO-2 | FINE | -50 … 50 | 6 | linear |
+| `jp-wave2` | VCO-2 | WAVE | 0 SINE / 1 SAW / 2 PULSE / 3 NOISE | 1 | switch |
+| `jp-sync` | VCO-2 | SYNC | 0 OFF / 1 ON | 0 | switch |
+| `jp-low2` | VCO-2 | LOW | 0 OFF / 1 ON | 0 | switch |
+| `jp-pwm` | PWM | PWM | 0 … 10 | 0 | linear |
+| `jp-pwm-src` | PWM | SOURCE | 0 LFO / 1 MAN / 2 ENV-1 | 1 | switch |
+| `jp-mix` | MIX | VCO-1:2 | 0 … 10 | 5 | linear |
+| `jp-hpf` | HPF | CUTOFF | 0 … 10 | 0 | linear |
+| `jp-slope` | VCF | SLOPE | 0 24 dB / 1 12 dB | 0 | switch |
+| `jp-cutoff` | VCF | CUTOFF | 0 … 10 | 5 | linear |
+| `jp-res` | VCF | RES | 0 … 10 | 0 | linear |
+| `jp-env-src` | VCF | ENV | 0 ENV-1 / 1 ENV-2 | 0 | switch |
+| `jp-env-mod` | VCF | ENV MOD | 0 … 10 | 4 | linear |
+| `jp-lfo-vcf` | VCF | LFO | 0 … 10 | 0 | linear |
+| `jp-kf` | VCF | KEY | 0 … 10 | 5 | linear |
+| `jp-vca-lfo` | VCA | LFO | 0 0 / 1 1 / 2 2 / 3 3 | 0 | switch |
+| `jp-level` | VCA | LEVEL | 0 … 10 | 8 | linear |
+| `jp-e1-a` | ENV-1 | A | 0.0015 … 6 | 0.005 | exp |
+| `jp-e1-d` | ENV-1 | D | 0.0015 … 12 | 0.6 | exp |
+| `jp-e1-s` | ENV-1 | S | 0 … 10 | 3 | linear |
+| `jp-e1-r` | ENV-1 | R | 0.0015 … 12 | 0.4 | exp |
+| `jp-e1-kf` | ENV-1 | KEY | 0 OFF / 1 ON | 0 | switch |
+| `jp-e1-pol` | ENV-1 | POL | 0 NORM / 1 INV | 0 | switch |
+| `jp-e2-a` | ENV-2 | A | 0.0015 … 6 | 0.003 | exp |
+| `jp-e2-d` | ENV-2 | D | 0.0015 … 12 | 0.8 | exp |
+| `jp-e2-s` | ENV-2 | S | 0 … 10 | 8 | linear |
+| `jp-e2-r` | ENV-2 | R | 0.0015 … 12 | 0.4 | exp |
+| `jp-e2-kf` | ENV-2 | KEY | 0 OFF / 1 ON | 0 | switch |
+| `jp-bend` | BENDER | LEVER | -1 … 1 | 0 | linear |
+| `jp-bend-vco` | BENDER | VCO | 0 … 10 | 2 | linear |
+| `jp-bend-vcf` | BENDER | VCF | 0 … 10 | 0 | linear |
+| `jp-bend-v1` | BENDER | VCO-1 | 0 OFF / 1 ON | 1 | switch |
+| `jp-bend-v2` | BENDER | VCO-2 | 0 OFF / 1 ON | 1 | switch |
+| `jp-porta` | PORTA | ON | 0 OFF / 1 ON | 0 | switch |
+| `jp-porta-t` | PORTA | TIME | 0 … 3 | 0.15 | pow |
+| `jp-tune` | MASTER | TUNE | -50 … 50 | 0 | linear |
+| `jp-age` | MASTER | AGE | 0 … 1 | 0.3 | linear |
+| `jp-vol` | MASTER | VOLUME | 0 … 1 | 0.7 | pow |
+
+Presets:
+
+- `11-neg-sync` — 11 NEG SYNC: Synced pulse pair with an inverted, key-followed ENV-1 on a resonant 24 dB filter, so the cutoff dips then surges back; delayed LFO vibrato on VCO-2. [raw: range2_raw_deg=40]
+- `12-neg-pluck` — 12 NEG PLUCK: VCO-1 pulse over VCO-2 sine an octave down, ENV-1 inverted into an open resonant filter and also sweeping the pulse width, for a dipping, plucky chord sound. [raw: range2_raw_deg=-128]
+- `13-juicy-funk` — 13 JUICY FUNK: inverted ENV-1 snaps the resonant 24 dB filter shut
+- `14-sync-sweep` — 14 SYNC SWEEP: the slow LFO sweeps VCO-2 under sync after a delay. Roland plays it in UNISON: turn UNI on
+- `15-cars-sync` — 15 CARS SYNC: Classic sync lead: VCO-2 pulse alone (mix fully VCO-2) synced to a 16-foot square, ENV-1 decay sweeping VCO-2 pitch for the sync zap, 12 dB filter on ENV-2. [raw: range2_raw_deg=-132, mix_raw_deg=158]. Roland plays it in UNISON: turn UNI on
+- `16-sync-lead` — 16 SYNC LEAD: ENV-1 drops VCO-2 down the sync harmonics, 12 dB on ENV-2. Roland plays it in UNISON: turn UNI on
+- `17-hammer-lead` — 17 HAMMER LEAD: Square plus synced, slightly sharp pulse, equal mix, through a closed 24 dB filter opened mostly by ENV-1 (env mod 8.5, key follow 6.5) for a mellow singing lead. [raw: range2_raw_deg=-124]. Roland plays it in UNISON: turn UNI on
+- `18-duke-lead` — 18 DUKE LEAD: Two pulses an octave apart with ENV-1-driven PWM, low cutoff swept by full ENV-1 env mod for a funky wah-like attack. [raw: range2_raw_deg=-126]
+- `21-clav` — 21 CLAV: two narrow pulses at 16', inverted ENV-1 on the filter
+- `22-harpsichord` — 22 HARPSICHORD: Saw plus pulse at 8-foot unison with a slight sharp detune, HPF at 5.5 thins it, key-followed ENV-1 decay on the VCF for the pluck. [raw: range2_raw_deg=-39]
+- `23-echo-piano` — 23 ECHO PIANO: Two saws an octave apart; ENV-1 (A0 D0 S10 R0) holds VCO-2 pitch up via env mod 8.5 while the key is down and drops it at release, so the ENV-2 release tail sounds as a shifted echo. [raw: range2_raw_deg=40]
+- `24-mellow-rhodes` — 24 MELLOW RHODES: VCO-1 pulse fundamental with a quieter VCO-2 sine high up as the tine harmonic, static mid filter (no env mod), ENV-2 decay to low sustain, VCA LFO tremolo at position 2. [raw: range2_raw_deg=108]
+- `25-honky-tonk` — 25 HONKY TONK: Two pulses at 8-foot unison, equal mix, low cutoff opened hard by key-followed ENV-1 for a piano-like bright attack; detune is drawn near zero. [raw: range2_raw_deg=-41]
+- `26-xylo` — 26 XYLO: VCO-1 triangle with VCO-2 pulse synced two octaves up and a small ENV-1 pitch kick, 12 dB filter with ENV-1 decay and high key follow for the mallet strike. [raw: range2_raw_deg=135]
+- `27-sitar` — 27 SITAR: VCO-1 pulse only (mix full VCO-1) with inverted ENV-1 sweeping the pulse width, HPF at 7 and a resonant 12 dB filter on ENV-2 for the buzzy jawari tone. [raw: range2_raw_deg=-129, mix_raw_deg=-156]
+- `28-harp` — 28 HARP: Triangle plus mid-width pulse at 8-foot unison, filter fully closed and opened by key-followed ENV-1 (env mod 8.5), ENV-2 decay to zero with long release for the pluck ring. [raw: range2_raw_deg=-36]
+- `31-lo-strings` — 31 LO STRINGS: saw and an LFO-swept pulse at 16', 12 dB, vibrato on VCO-1
+- `32-mid-strings` — 32 MID STRINGS: the same an octave up, brighter
+- `33-hi-strings` — 33 HI STRINGS: Bright string ensemble: VCO-1 saw 4' + VCO-2 pulse 4' detuned (+21 deg), LFO-PWM and LFO vibrato on VCO-1, 12 dB filter with light ENV-2 mod, ENV-2 slow attack/release shapes filter and VCA (ENV-1 all zero); VCO-2 range pointer +45 deg.
+- `34-mellow-strings` — 34 MELLOW STRINGS: Warm strings: VCO-1 saw 8' + VCO-2 pulse 8' near unison, heavier LFO-PWM and vibrato on VCO-1, 12 dB filter at 7 with no env mod (ENV-2 sets the VCA swell), half key follow; VCO-2 range pointer -36 deg.
+- `35-lo-brass` — 35 LO BRASS: two saws at 16', the 24 dB filter opened by ENV-1 at full
+- `36-hi-brass` — 36 HI BRASS: the brass at 8', slower filter
+- `37-s-h-brass` — 37 S/H BRASS: Brass pad with a random (S/H) LFO stepping the resonant 24 dB filter after a delay: VCO-1 saw 16' + VCO-2 saw 16' detuned, full ENV-1 brass sweep; VCO-2 range pointer about -125 deg.
+- `38-synth-brass` — 38 SYNTH BRASS: 12 dB with some resonance, a fast swell
+- `41-chorus-organ` — 41 CHORUS ORGAN: Rotary-ish organ: VCO-1 pulse 16' + VCO-2 pulse 16' detuned (+16 deg), delayed LFO vibrato on VCO-2 only and LFO-PWM, high-res 24 dB filter tracking the keys fully, ENV-2 organ gate (D/S 10); VCO-2 range pointer about -124 deg.
+- `42-bell-organ` — 42 BELL ORGAN: Light organ: VCO-1 tri 16' under VCO-2 pulse set between 4' and 2' (pointer +90 deg; 7.5 deg/st gives +18, read as +19 = 2-2/3' organ fifth), manual PW, ENV-1 decay plucks the 24 dB filter, ENV-2 gate, VCA LFO tremolo.
+- `43-combo-organ` — 43 COMBO ORGAN: Compact organ: VCO-1 tri 16' + VCO-2 sine 4', fast LFO vibrato on both, filter closed but opened fully by ENV-2 gate (D/S 10, env mod 10, full key follow); VCO-2 range pointer +40 deg.
+- `44-chiff-organ` — 44 CHIFF ORGAN: Chiff organ: VCO-1 square 8' with VCO-2 pulse synced to it, VCO-2 set between 4' and 2' (pointer +85 deg; read as +19), ENV-1 short decay at full env mod gives the 12 dB filter chiff, ENV-2 swell on the VCA.
+- `45-pipe-organ` — 45 PIPE ORGAN: Cathedral organ: VCO-1 pulse 16' + VCO-2 saw 2' (pointer +130 deg) mixed toward VCO-2, slow LFO-PWM, closed 24 dB filter opened by ENV-1 at full mod (slow A, long R), ENV-2 slow-ish swell.
+- `46-organ-bass-pedals` — 46 ORGAN BASS PEDALS: Pedal bass: VCO-1 saw 16' + VCO-2 saw at 8' (pointer -42 deg, just past the 8' mark), dark 24 dB filter with some res, no key follow, ENV-1 and ENV-2 both organ gates (D/S 10).
+- `47-drawbar-organ` — 47 DRAWBAR ORGAN: Drawbar organ: VCO-1 pulse 16' (manual PW 7) + VCO-2 saw near 12 o'clock (pointer -1.5 deg, about +5; a 5-1/3' drawbar would be +7), resonant 24 dB filter with full key follow, ENV-2 gate.
+- `48-harmonic-percussion` — 48 HARMONIC PERCUSSION: Hammond-style percussion: SOURCE MIX fully to VCO-2 sine set between 4' and 2' (pointer +86 deg; read as +19 = 2-2/3' third harmonic), ENV-2 decay 5.5 with zero sustain on the VCA, 12 dB filter at 7; VCO-1 square 4' muted by the mix.
+- `51-train-chug` — 51 TRAIN CHUG: VCO-2 noise cross-mods a 16' pulse; LFO (saw, rate 7) chugs the closed VCF and PWM while ENV-2's slow attack opens the filter as the train approaches.
+- `52-train-horn` — 52 TRAIN HORN: Two saws about a fourth apart with light cross mod; a small ENV-1 pitch mod lifts the pitch on attack and lets it fall on release for the doppler drop.
+- `53-jungle-beasts` — 53 JUNGLE BEASTS: VCO-2 in LOW FREQ mode (sine, fast) cross-mods a 16' triangle at full depth; fast random LFO and an inverted ENV-1 sweep VCO-2's rate through a closed, fully resonant 24 dB filter.
+- `54-birds` — 54 BIRDS: VCO-2 as a fast LOW FREQ saw, its rate wobbled by random LFO, cross-mods a 16' triangle at full depth; HPF fully up and a resonant open VCF leave only the chirps.
+- `55-solo-voice` — 55 SOLO VOICE: Two triangle/sine VCOs (4' and 2') through a resonant 12 dB filter; inverted ENV-1 dips both pitch and cutoff for a vocal 'wah', with delayed sine vibrato.
+- `56-choir-voices` — 56 CHOIR VOICES: Two LFO-PWM'd pulses an octave up (4' and VCO-2 near 4') with slight vibrato through a mid, resonant 24 dB filter; slow ENV-1 swells the filter and slow ENV-2 the amp.
+- `57-tomita-chime` — 57 TOMITA CHIME: triangle and sine at 4', inverted ENV-1 bends VCO-2
+- `58-gong` — 58 GONG: An 8' pulse cross-modulated by a sine a few semitones above gives inharmonic metal; ENV-1 (inverted) drives full PWM and the filter, ENV-2 rings out with long release.. Roland plays it in UNISON: turn UNI on
+- `61-starting-up` — 61 STARTING UP: VCO-2 as a LOW FREQ sine cross-mods a 16' saw; slow ENV-1 (A9, R8.5) raises VCO-2's rate and opens a 12 dB filter so the engine spins up while held and winds down on release.
+- `62-poly-rhythms` — 62 POLY RHYTHMS: VCO-2 as a LOW FREQ pulse fully cross-mods a 16' LFO-PWM'd pulse, while the saw LFO also moves VCO-2's rate and sweeps a resonant 12 dB filter at full depth.
+- `63-klingons` — 63 KLINGONS: A 16' triangle fully cross-modulated by a pulse VCO-2; saw LFO and inverted ENV-1 bend VCO-1's pitch while ENV-1 sweeps a resonant 12 dB filter.
+- `64-music-of-the-spheres` — 64 MUSIC OF THE SPHERES: Random (S/H) LFO at full depth steps VCO-1's 16' saw to new pitches while a slow LOW FREQ pulse VCO-2 adds light cross mod; ENV-2 gives a plain sustained organ shape.
+- `65-echo` — 65 ECHO: VCO-2 as a slow LOW FREQ pulse fully cross-mods a 16' saw; an inverted ENV-1 gate sweeps VCO-2's rate, and ENV-2's decay/release make the repeats fade like tape echo.
+- `66-solar-winds` — 66 SOLAR WINDS: Mix fully on VCO-2 noise through a highly resonant, key-tracked 12 dB filter; an inverted ENV-1 sweeps the resonant peak for whistling wind.
+- `67-rhythm-sync` — 67 RHYTHM & SYNC: VCO-2 saw synced to a 16' VCO-1 and heard alone; delayed random (S/H) LFO at full depth steps VCO-2's pitch for stepping sync timbres, with an inverted ENV-1 on the open filter.
+- `68-handclaps` — 68 HANDCLAPS: VCO-2 noise fully cross-modulates a 16' triangle (heard alone) into a noisy burst; a fast ENV-1 snaps the closed 12 dB filter fully open and ENV-2 is a short percussive decay.
+- `71-fat-fifths` — 71 FAT FIFTHS: two LFO-swept pulses a fifth apart, resonant 12 dB
+- `72-fuzzy-fifths` — 72 FUZZY FIFTHS: Warm fifths pad: 8' pulse VCO-1 with LFO PWM against a saw VCO-2 a fifth up, 24 dB filter half open with full ENV-2 sweep and full key follow; VCO-2 range pointer at +4 deg (~+6 st), set +7 per the sheet's note.
+- `73-up-fourth` — 73 UP FOURTH: Fourths stack: 16' pulse VCO-1 (LFO PWM) plus pulse VCO-2 a fourth above it, 12 dB filter low with full ENV-1 sweep and full key follow; VCO-2 pointer at -99 deg (~-8 st), set -7 (16' + fourth) per the note.
+- `74-down-fourth` — 74 DOWN FOURTH: Partner of 73: 8' pulse VCO-1 (LFO PWM) plus pulse VCO-2 a fourth below, 12 dB filter low with full ENV-1 sweep and key follow; VCO-2 pointer at -81 deg (~-6 st), set -5 per the note.
+- `75-horn-fifth` — 75 HORN FIFTH: Brassy fifths: two saws (8' and a fifth up, pointer +9 deg = +7 st), 24 dB filter at 5 with no key follow, full ENV-2 brass swell (A 2.5, S 7.5) on the filter; ENV-1 unused.
+- `76-horn-tritone` — 76 HORN TRITONE: Brass tritone: saw VCO-2 a flat seventh up (pointer +25 deg = +10 st) against saw VCO-1 lifted by full ENV-1 pitch mod (S 2, R 5.5) to the tritone; 24 dB filter swells on ENV-2 as in 75.
+- `77-mellow-blip` — 77 MELLOW BLIP: Warm pitch-slide pluck: two 8' saws, inverted ENV-1 (D 4.5, S 0) bends VCO-2 up into pitch at 1.5, 24 dB filter low at 2 with ENV-2 sweep 7 and full key follow; VCO-2 range pointer at -43 deg (read as 8').
+- `78-hard-blip` — 78 HARD BLIP: Toto brass blip: two 16' saws (VCO-2 pointer -134 deg, past 16'), ENV-1 (D 3, R 4.5) kicks VCO-1 pitch at 3.5 for the blip, 24 dB filter at 3.5 with ENV-2 sweep 7 (A 2, S ~10) and half key follow.
+- `81-clarinet` — 81 CLARINET: Clarinet: SOURCE MIX turned fully to VCO-2 (pointer past 10), an 8' pulse at PWM 0 (square); 24 dB filter at 3 opened by ENV-1 (A 1, D 3, S 3.5) at 7 with key follow 4 and a little LFO; ENV-2 organ-like VCA. VCO-1 (16' square) is silent.
+- `82-flute` — 82 FLUTE: triangle at 4' with a breath of VCO-2's noise, delayed LFO on the filter
+- `83-whistle` — 83 WHISTLE: Whistle: SOURCE MIX fully to VCO-1 (pointer past 0), a 2' triangle with delayed LFO vibrato (2); filter closed at 0 and opened by ENV-1 (S 10) at 8, level 10. VCO-2 is set to 16' noise but is mixed out.
+- `84-cello` — 84 CELLO: saw and pulse at 16', delayed vibrato on VCO-2
+- `85-violin` — 85 VIOLIN: Bowed violin: 8' saw plus 8' pulse detuned sharp (fine +27 deg) with LFO PWM 3.5 and LFO vibrato 1.5 on VCO-2; 12 dB filter at 7 with key follow 3.5, ENV-1 (A 5) bowing swell at 2, slow ENV-2 (A 5); both env key follows on.
+- `86-chime` — 86 CHIME: Metallic chime: cross mod 4.5 from a 4' saw VCO-2 into a 4' triangle VCO-1, mix a little toward VCO-2; 24 dB filter closed with res 5, full ENV-1 sweep (D 3.5, S 7, R 8.5) and full key follow; long ENV-2 release.
+- `87-upright-bass` — 87 UPRIGHT BASS: triangle under a synced pulse, ENV-1 on VCO-2 for the pluck
+- `88-harmonica` — 88 HARMONICA: Blues harp: VCO-2 saw at 4' synced to a square VCO-1, with ENV-1 (A 3.5, D 5, S 5) sweeping VCO-2 pitch at 2.5 for a sync reed bite; 12 dB filter at 5, res 3, HPF 2.5, full key follow; env key follows on. Left third of the sheet is washed out.
+- `cross-bells` — (ours) CROSS MOD: VCO-2's sine a fifth up drives VCO-1's pitch, clangorous bells
 
 ## juno2
 

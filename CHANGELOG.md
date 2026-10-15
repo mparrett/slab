@@ -6,6 +6,19 @@ GitHub are its section here (`tools/release.sh` copies them), so add to
 
 ## Unreleased
 
+- **Juniper-8, a Roland Jupiter-8.** Eight voices of two VCOs with
+  exponential cross mod, VCO-2 synced to VCO-1, and PWM on both pulses. A
+  6 dB HPF feeds the IR3109 filter, with 24 dB and its thinner 12 dB tap.
+  Two envelopes with key follow and an inverting ENV-1, and one LFO
+  shared by every voice, with delay. It ships with all 64 of Roland's
+  factory patches, read off the original patch sheets. See docs/39.
+
+- **C-Beam 80 ships every CS-80 factory preset.** All 22 of Yamaha's
+  presets as their Channel I + II pairings (STRING 3/4, CLAVICHORD, ORGAN,
+  GUITAR and FUNKY 1-4 are new), and the Owner's Manual's ten programming
+  examples, clarinet to timpani, under `manual/`. The presets it shipped
+  with read the charts about 13 % low; they now match them.
+
 - **Verb's rooms and halls can turn dense right away.** A new DENSITY
   switch sets VELVET, which scatters every echo inside the reverb's loop
   [a velvet feedback matrix, Schlecht and Habets 2020]. A hall with no
