@@ -22,6 +22,10 @@ GitHub are its section here (`tools/release.sh` copies them), so add to
   a drum hit or a single-sample spike over the ceiling is turned down
   smoothly instead of being clipped. Latency is unchanged.
 
+- **Machines use about 20% less CPU.** The fy compiler computes repeated
+  expressions once, addresses state fields directly and writes them as
+  soon as they are final. Output is bit-identical.
+
 - **The Extract pack finds uv when Slab is opened from Finder.** Its
   download said uv was missing unless Slab was started from a terminal; it
   now looks in Homebrew's, `~/.local/bin` and `~/.cargo/bin` too.
