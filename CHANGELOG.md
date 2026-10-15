@@ -6,6 +6,11 @@ GitHub are its section here (`tools/release.sh` copies them), so add to
 
 ## Unreleased
 
+## 0.0.14 — 2026-10-15
+
+Thanks to Lost Robot, the author of septabee, for pointing out the
+audio-thread inefficiencies that this release fixes.
+
 - **C-Beam 80, a Yamaha CS-80.** Eight notes of two complete voices each.
   Each voice has a linear-in-Hz VCO, an HPF and an LPF that don't
   self-oscillate, and the IL/AL filter envelope behind CS-80 brass. Velocity
