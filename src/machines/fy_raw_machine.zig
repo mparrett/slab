@@ -7519,6 +7519,61 @@ test "raw DSP2 compressor machine: stereo-linked gain" {
     try testing.expect(r_gain_db > -20.0);
 }
 
+test "limiter2: a transient over the ceiling is ramped down in the lookahead, not clipped" {
+    const inst = try FyRawMachine.create(testing.allocator, "machines/limiter2/limiter2.fy");
+    const mach = inst.machineInterface();
+    defer mach.deinit.?(mach.state, testing.allocator);
+
+    // A quiet 1 kHz bed with a 1-sample spike and a 0.5 ms 3 kHz burst,
+    // both 6 dB over the -0.3 dB ceiling. A lookahead limiter has its gain
+    // down by the time each reaches the output; a clipper pins it there.
+    // The gain it applied (out / delayed in) must move smoothly.
+    const block = 256;
+    const blocks = 40;
+    const total = block * blocks;
+    const ceil: f32 = @floatCast(std.math.pow(f64, 10.0, -0.3 / 20.0));
+    var in_all: [total]f32 = undefined;
+    for (&in_all, 0..) |*x, i| {
+        const t: f64 = @as(f64, @floatFromInt(i)) / 48_000.0;
+        x.* = @floatCast(0.05 * @sin(2.0 * std.math.pi * 1000.0 * t));
+        if (i == 4000) x.* = 2 * ceil;
+        if (i >= 7000 and i < 7024) x.* = @floatCast(2 * ceil * @sin(2.0 * std.math.pi * 3000.0 * @as(f64, @floatFromInt(i - 7000)) / 48_000.0 + 0.5));
+    }
+    var out_all: [total]f32 = undefined;
+    var ctx = std.mem.zeroes(machine.MachineCtx);
+    ctx.sample_rate = 48_000;
+    ctx.block_size = block;
+    ctx.audio_in_count = 2;
+    for (0..blocks) |b| {
+        const in = in_all[b * block ..][0..block];
+        const in_ports = [_][*]const f32{ in, in };
+        ctx.audio_in = @ptrCast(&in_ports[0]);
+        var r: [block]f32 = undefined;
+        testRender(mach, &ctx, out_all[b * block ..][0..block], &r);
+        try testing.expectEqualSlices(f32, out_all[b * block ..][0..block], &r);
+    }
+    const lat = mach.latencySamples();
+    try testing.expect(lat > 0);
+    var peak: f32 = 0;
+    var max_step: f32 = 0;
+    var prev: ?struct { g: f32, n: usize } = null;
+    for (lat..total) |n| {
+        const y = out_all[n];
+        const x = in_all[n - lat];
+        peak = @max(peak, @abs(y));
+        // Near zero crossings out / in is noise; skipped samples count
+        // toward the next step's span.
+        if (@abs(x) < 0.02) continue;
+        const g = y / x;
+        if (prev) |p| max_step = @max(max_step, @abs(g - p.g) / @as(f32, @floatFromInt(n - p.n)));
+        prev = .{ .g = g, .n = n };
+    }
+    try testing.expect(peak <= ceil + 1e-6);
+    // The ramp moves the gain ~0.005 per sample at the default 2 ms
+    // lookahead; a clip jumps ~0.5.
+    try testing.expect(max_step < 0.01);
+}
+
 test "raw DSP2 chorus machine: inverted-LFO stereo spread" {
     const inst = try FyRawMachine.create(testing.allocator, "machines/chorus2/chorus2.fy");
     const mach = inst.machineInterface();

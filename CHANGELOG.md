@@ -6,6 +6,10 @@ GitHub are its section here (`tools/release.sh` copies them), so add to
 
 ## Unreleased
 
+- **The Limiter no longer clips transients.** It now holds the gain
+  reduction a peak needs across the whole lookahead and ramps into it, so
+  a drum hit or a single-sample spike over the ceiling is turned down
+  smoothly instead of being clipped. Latency is unchanged.
 
 - **The Extract pack finds uv when Slab is opened from Finder.** Its
   download said uv was missing unless Slab was started from a terminal; it
