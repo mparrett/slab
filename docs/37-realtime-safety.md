@@ -353,18 +353,9 @@ bit-identical to the previous master.
 
 Known, not yet addressed (each needs its own design):
 
-- **Recording.** Round-trip compensation uses period sizes only (no HAL
-  device/stream latency or safety offset, nor miniaudio's two-period
-  duplex prefill, which is never reset on restart); capture is the mean
-  of all device input channels; overruns drop frames without padding.
-- **Device events.** No listeners for a device dying, a coreaudiod
-  restart or an external sample-rate change; a reroute keeps miniaudio's
-  in-place reinit (no 48 kHz request, no resampling warning).
 - **Resampling.** A device not at 48 kHz uses miniaudio's linear
   resampler (order-4 LPF).
-- **DSP.** limiter2 lacks a lookahead window minimum (transients clip at
-  the ceiling); the sampler's CLEAN engine is not band-limited and its
-  envelope and voice steals click; event overflow can drop note-offs.
+- **Events.** Event overflow can drop note-offs.
 
 ## Declicking and output latency (2026-10-15)
 
@@ -385,3 +376,55 @@ Known, not yet addressed (each needs its own design):
   Callbacks are now variable-size (`noFixedSizedCallback`); the engine
   already chunks any count. This also removes the double render per
   hardware period on a resampled device.
+
+## Recording and device events (2026-10-15)
+
+- **Takes land where they were played.** Placement subtracts each
+  side's HAL latency (device + safety offset + stream + buffer, at open,
+  scaled to 48 kHz), the duplex ring's backlog measured at the take's
+  first block, and PDC. Before, it subtracted two periods: with AirPods
+  (160 ms device latency) a take landed ~150 ms late. A restart resets
+  the ring to its prefill (a `Slab:` patch in `ma_device_start__coreaudio`).
+- **Capture opens at the device's channel count** (up to 32) and a
+  track records its own input or pair; before, miniaudio averaged every
+  input into one (-6 dB, plus input 2's noise on a 2-in interface).
+- **Overruns pad with silence** instead of sliding the rest of the take
+  earlier; a seek, loop wrap or stop ends the take (loops pause for one).
+- **Device events reopen the device**: DeviceIsAlive, nominal rate and
+  coreaudiod restart listeners plus miniaudio's reroute notification set
+  an atomic flag; the UI loop does a full Slab reopen.
+
+## Live latency (2026-10-15)
+
+- **Buffer size is a setting** (settings.json `buffer_frames`, the audio
+  menu): 64 frames is 1.3 ms a side.
+- **The workers follow the device's real period**: `Audio.periodNs`
+  from the device's granted buffer and rate, applied on every reopen
+  (`Pool.setPeriod`). A Bluetooth output that runs 1024 frames had the
+  workers' time constraint and the watchdog's budget at a quarter of it.
+- **Idle UI waits for events**: a key at idle no longer waits up to
+  50 ms for the next 20 FPS frame.
+- **Not changed:** the duplex ring's two-period prefill. Nothing
+  monitors input live, so it only delays captured audio, which take
+  placement measures and removes (docs/07 §Recording). Notes from the
+  UI still start at the block they are drained in (up to one block of
+  jitter); CoreMIDI input does not exist yet.
+
+## Limiter and sampler quality (2026-10-15)
+
+- **limiter2 is a lookahead limiter, not a clipper.** The reduction a
+  sample needs is held at its maximum over the lookahead (two
+  consecutive blocks of L+1 samples cover the window in O(1)), released,
+  and averaged over L+1 samples, so the gain is down by the time a peak
+  leaves the delay. A 1-sample spike 6 dB over moved the gain by 0.48 in
+  one sample (the ceiling clamp); now the steepest step is 0.005.
+- **The sampler's CLEAN engine is band-limited.** A 26-tap windowed sinc
+  whose cutoff follows the read speed, over octave copies built when the
+  keymap loads (kernels/06-voices/sampler.fy, src/keymap.zig
+  `withMips`). A 10 kHz sample played 19 semitones up (30 kHz) folds to
+  18 kHz at -70 dB instead of -19; 36 semitones up, -94 dB. It costs
+  ~26 ns more per sounding voice per sample (6 to 32 ns).
+- **Sampler envelope, chokes and steals ramp.** The RC envelope
+  (env_rc.fy) attacks and releases from where it is; a choke fades from
+  the current level over 4 ms; a note that takes a sounding voice lets
+  the old output decay out over 3 ms instead of stepping.

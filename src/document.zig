@@ -225,6 +225,10 @@ pub fn serialize(
             t.volume(), t.pan(), boolStr(t.mute.load(.monotonic)), boolStr(t.solo.load(.monotonic)),
         });
         try appendRouting(alloc, &out, t);
+        if (!t.isBus() and !std.meta.eql(t.rec_input, @TypeOf(t.rec_input){})) {
+            var ib: [8]u8 = undefined;
+            try appendFmt(alloc, &out, ",\"input\":\"{s}\"", .{t.rec_input.label(&ib)});
+        }
 
         // Instrument: stable id + inline settings, or null.
         try out.appendSlice(alloc, ",\"instrument\":");
@@ -1042,6 +1046,9 @@ fn parseTrack(alloc: std.mem.Allocator, reg: *registry_mod.Registry, to: std.jso
     t.setPan(pan_v);
     t.mute.store(mute, .monotonic);
     t.solo.store(solo, .monotonic);
+    if (strOf(objGet(to, "input"))) |txt| if (@TypeOf(t.rec_input).parse(txt)) |in| {
+        t.rec_input = in;
+    };
     if (strOf(objGet(to, "kind"))) |k| if (std.mem.eql(u8, k, "bus")) {
         t.kind = .bus;
     };
@@ -1428,6 +1435,7 @@ test "project snapshot round-trips tracks clips notes and loop" {
     tracks[0].setVolume(0.625);
     tracks[0].mute.store(true, .monotonic);
     tracks[0].stem = .{ .on = false, .channels = 2 };
+    tracks[0].rec_input = .{ .first = 2, .stereo = true };
     var xs = export_settings.Settings{};
     xs.recipe.container = .flac;
     xs.artist.set("nooga");
@@ -1456,6 +1464,8 @@ test "project snapshot round-trips tracks clips notes and loop" {
     defer for (loaded_buf[0..loaded_count]) |*t| t.deinit(alloc);
 
     try std.testing.expectEqual(@as(usize, 1), loaded_count);
+    try std.testing.expect(std.mem.indexOf(u8, bytes, "\"input\":\"3-4\"") != null);
+    try std.testing.expectEqual(tracks[0].rec_input, loaded_buf[0].rec_input);
     try std.testing.expectEqualStrings("Track 1", loaded_buf[0].name());
     try std.testing.expectEqual(@as(u8, 10), loaded_buf[0].color.r);
     try std.testing.expectEqual(true, loaded_buf[0].mute.load(.monotonic));

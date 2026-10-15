@@ -101,7 +101,7 @@ dsp: cmi-note-on | ctx:Ctx state:CmiState params:CmiParams |
   cnt 1.0 f+  params.rr-count& kk f!i
   zt key ctx.vel 127.0 f* cnt 0.0 zone-find | k |
   k 0.0 f>= | hit |
-  k 0.0 fmax 19.0 f* | c |
+  k 0.0 fmax ZONE-CELLS f* | c |
   hit  zt c f@i  4.0  select | start |
   hit  zt c 1.0 f+ f@i  0.0  select | len |
   ( a zone of rate 0 is voice RAM from a .VC file: it plays at RATE )
