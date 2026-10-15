@@ -72,6 +72,7 @@ by `KernelCtx` / `IoFrame` in the adapter, and checked by the test
   | `legato` | note-on: 1 when a mono voice was still held (slide), or a poly machine's legato note (below) |
   | `pressure`, `slide`, `gain` | note-expr data (docs/22) |
   | `uni`, `phase` | note-on, unison (docs/08 §Unison): the voice's place in its note's group, −1 to 1, and a start phase 0–1. Both 0 for a voice playing alone. A kernel whose oscillators free-run from 0 seeds them from `phase` while they are still exactly 0, which leaves unison-off renders unchanged. |
+  | `clock` | the machine's sample clock: where the block (or smoothing sub-block) starts in `prepare`, `block-prepare` and `derive`; the event's own sample in note hooks. Voices that share one modulator agree on its phase through it: block-prepare carries a phase over the samples since its last call, and a voice counts its samples from the clock at its note-on (docs/38). |
 
 - `Io` holds one sample's lanes: `out-l`, `out-r`, `in-l`, `in-r`,
   `det`. `out-l` is at offset 0, so a stage handed `io` can keep writing
