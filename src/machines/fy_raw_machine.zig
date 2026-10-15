@@ -492,7 +492,7 @@ pub const FyRawMachine = struct {
     // A valid silent target for assets that failed to load, so a kernel's
     // clamped read hits real zeroed memory instead of an empty slice's ptr.
     // Long enough for an interpolator reading around the guard index.
-    asset_silence: [16]f64 align(8) = [_]f64{0} ** 16,
+    asset_silence: [32]f64 align(8) = [_]f64{0} ** 32, // covers the voice's 26-tap read
     // The zone table an empty keymap points at: every slot unused.
     empty_zones: [keymap.MAX_ZONES]keymap.Zone = [_]keymap.Zone{keymap.unused_zone} ** keymap.MAX_ZONES,
     // Each asset's current source path (the manifest default, or what LOAD
@@ -694,7 +694,7 @@ pub const FyRawMachine = struct {
             var pbuf: [768]u8 = undefined;
             const full = std.fmt.bufPrint(&pbuf, "{s}/{s}", .{ dir, req.fileSlice() }) catch continue;
             if (req.keymap) {
-                self.asset_keymap[ai] = keymap.load(alloc, full) catch keymap.Keymap{};
+                self.asset_keymap[ai] = if (keymap.load(alloc, full)) |km| keymap.withMips(alloc, km) else |_| keymap.Keymap{};
                 self.aa_pool[ai] = self.buildAntialias(ai, &self.asset_keymap[ai]) orelse &.{};
                 self.keymapChanged(ai);
             } else {
@@ -838,7 +838,8 @@ pub const FyRawMachine = struct {
         var rb: [storage.MAX_PATH]u8 = undefined;
         const src = storage.resolve(&rb, path);
         const raw = keymap.load(self.alloc, src) catch return false;
-        var loaded = keymap.derive(self.alloc, raw, &self.zone_derive) catch return false;
+        const derived = keymap.derive(self.alloc, raw, &self.zone_derive) catch return false;
+        var loaded = keymap.withMips(self.alloc, derived);
         // Edits follow zones by name: a reloaded or swapped kit keeps the
         // clap you turned down.
         const edits = remapEdits(&self.zone_edits, &self.asset_keymap[ai], &loaded);
@@ -7812,6 +7813,98 @@ test "raw DSP2 sampler machine: asset loads and polyphonic notes sound" {
     inst.asset_retired.collect(inst, FyRawMachine.disposeAsset);
     try testing.expectEqual(@as(usize, 0), inst.asset_retired.len);
     try testing.expectEqual(@as(usize, 1), inst.asset_keymap[0].count);
+}
+
+test "sampler CLEAN: pitched up past Nyquist it stays silent, under it the tone keeps its level" {
+    const inst = try FyRawMachine.create(testing.allocator, "machines/sampler/sampler.fy");
+    const mach = inst.machineInterface();
+    defer mach.deinit.?(mach.state, testing.allocator);
+    keymap_test.mkdirs("alias");
+    const path = keymap_test.dir ++ "/alias/tone.wav";
+    try keymap_test.sine(testing.allocator, path, 10_000, 1.0, 60, null);
+    try testing.expect(inst.loadAssetRuntime(0, path));
+    try testing.expect(inst.asset_keymap[0].zones[0].mips >= 1);
+
+    // RMS over 0.1..0.3 s of a note at `pitch` (root 60).
+    const S = struct {
+        fn level(m: machine.Machine, pitch: f32) f64 {
+            var ev = [_]machine.NoteEvent{.{ .sample_offset = 0, .kind = .note_on, .channel = 0, .note_id = -1, .pitch = pitch, .velocity = 1 }};
+            var off = [_]machine.NoteEvent{.{ .sample_offset = 0, .kind = .note_off, .channel = 0, .note_id = -1, .pitch = pitch, .velocity = 0 }};
+            var ctx = std.mem.zeroes(machine.MachineCtx);
+            ctx.sample_rate = 48_000;
+            ctx.block_size = 256;
+            ctx.note_in = @ptrCast(&ev);
+            ctx.note_in_count = 1;
+            var l: [256]f32 = undefined;
+            var r: [256]f32 = undefined;
+            var e: f64 = 0;
+            var n: f64 = 0;
+            for (0..80) |b| {
+                testRender(m, &ctx, &l, &r);
+                ctx.note_in_count = 0;
+                if (b >= 19 and b < 56) for (l) |x| {
+                    e += @as(f64, x) * x;
+                    n += 1;
+                };
+            }
+            ctx.note_in = @ptrCast(&off);
+            ctx.note_in_count = 1;
+            for (0..40) |_| {
+                testRender(m, &ctx, &l, &r);
+                ctx.note_in_count = 0;
+            }
+            return 10 * std.math.log10(e / n + 1e-30);
+        }
+    };
+    const at_root = S.level(mach, 60);
+    const fifth = S.level(mach, 67); // 15 kHz
+    const over = S.level(mach, 79); // 30 kHz: Hermite folded it to 18 kHz
+    const way_over = S.level(mach, 96); // 80 kHz
+    try testing.expect(@abs(fifth - at_root) < 1.0);
+    try testing.expect(over - at_root < -60);
+    try testing.expect(way_over - at_root < -60);
+}
+
+test "sampler: a ninth note steals a sounding voice without a step" {
+    const inst = try FyRawMachine.create(testing.allocator, "machines/sampler/sampler.fy");
+    const mach = inst.machineInterface();
+    defer mach.deinit.?(mach.state, testing.allocator);
+    keymap_test.mkdirs("steal");
+    const path = keymap_test.dir ++ "/steal/tone.wav";
+    try keymap_test.sine(testing.allocator, path, 110, 2.0, 60, .{ 4800, 4800 + 436 * 4 });
+    try testing.expect(inst.loadAssetRuntime(0, path));
+
+    var ev: [9]machine.NoteEvent = undefined;
+    for (&ev, 0..) |*e, i| e.* = .{ .sample_offset = 0, .kind = .note_on, .channel = 0, .note_id = -1, .pitch = @floatFromInt(48 + i), .velocity = 1 };
+    var ctx = std.mem.zeroes(machine.MachineCtx);
+    ctx.sample_rate = 48_000;
+    ctx.block_size = 128;
+    var l: [128]f32 = undefined;
+    var r: [128]f32 = undefined;
+    var prev: f32 = 0;
+    var steady: f32 = 0;
+    var at_steal: f32 = 0;
+    for (0..120) |b| {
+        ctx.note_in_count = 0;
+        if (b == 0) {
+            ctx.note_in = @ptrCast(&ev);
+            ctx.note_in_count = 8;
+        }
+        if (b == 100) {
+            ctx.note_in = @ptrCast(&ev[8]);
+            ctx.note_in_count = 1;
+        }
+        testRender(mach, &ctx, &l, &r);
+        for (l) |x| {
+            const d = @abs(x - prev);
+            prev = x;
+            if (b >= 60 and b < 100) steady = @max(steady, d);
+            if (b == 100) at_steal = @max(at_steal, d);
+        }
+    }
+    // The steal may not jump further than the chord moves on its own.
+    try testing.expect(steady > 0);
+    try testing.expect(at_steal < 1.5 * steady);
 }
 
 const keymap_test = struct {
