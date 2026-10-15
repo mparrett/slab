@@ -55,8 +55,11 @@ def bootstrap():
     py = os.path.join(venv, "bin", "python")
     if os.path.realpath(sys.executable) == os.path.realpath(py) or os.environ.get("SLAB_EXTRACT_INNER"):
         return
-    uv = shutil.which("uv") or os.path.expanduser("~/.local/bin/uv")
-    if not os.path.exists(uv):
+    # An app started from Finder has launchd's PATH, without Homebrew's or
+    # the installers' bin directories, so look where uv usually lands.
+    candidates = ["/opt/homebrew/bin/uv", "/usr/local/bin/uv", "~/.local/bin/uv", "~/.cargo/bin/uv"]
+    uv = shutil.which("uv") or next((p for p in map(os.path.expanduser, candidates) if os.path.exists(p)), None)
+    if not uv:
         sys.exit("The Extract pack needs uv to set up its Python: brew install uv")
     if not os.path.exists(py):
         log(f"Making a Python {PY_VERSION} for the converter in {venv}")

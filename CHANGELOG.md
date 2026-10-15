@@ -16,6 +16,54 @@ GitHub are its section here (`tools/release.sh` copies them), so add to
   It ships with Yamaha's factory pairings from the Owner's Manual charts
   and four sounds of ours. See docs/38.
 
+- **The Extract pack finds uv when Slab is opened from Finder.** Its
+  download said uv was missing unless Slab was started from a terminal; it
+  now looks in Homebrew's, `~/.local/bin` and `~/.cargo/bin` too.
+- **Starting a pack download can no longer crash Slab.** Clicking Download
+  or Import sometimes quit the app as the import began.
+
+- **Stop lets tails ring.** Stopping releases the notes and lets reverbs
+  and delays ring out instead of cutting everything with a click; press
+  play again and the tails carry on.
+
+- **No clicks from edits while playing.** Mute, solo, track enable and
+  insert bypass fade over a few milliseconds. Adding, removing,
+  reordering or replacing instruments and inserts fades the old chain
+  out and the new one in, and a new instrument picks up held notes.
+  Bypassing a lookahead or oversampled effect keeps its latency, so the
+  rest of the mix no longer jumps in time; any latency change crossfades.
+  Audio clips fade at cut edges and around seeks and loop wraps.
+
+- **5 ms less latency.** Audio reaches the output one block sooner on
+  every path.
+
+- **About 6% less CPU** for the same audio: peak scans run on vectors and
+  are shared between inserts, compensation delays copy in bulk, and
+  machines no longer copy their control tables every block.
+
+- **A blown-up machine can no longer reach your speakers.** A track whose
+  signal turns NaN or infinite (an unstable filter, a division by zero)
+  is silenced for that block and its machines reset, so the fault cannot
+  spread into buses, sends or the master. The output stage never passes
+  a non-finite sample, in any clip mode; the hard clip used to turn one
+  into full-scale DC. Exports write silence there too.
+
+- **No more stuck notes from mute, solo or odd notes.** A track that is
+  unmuted, un-soloed or re-enabled starts clean and picks up the notes
+  sounding at that moment. Notes past a trimmed clip end, zero-length
+  notes and notes shorter than a sample no longer hang.
+
+- **Smooth faders.** Dragging a track or master fader ramps per sample
+  instead of stepping each block.
+
+- **Tempo-synced effects on the master follow the song.** A synced
+  phaser on the master used to restart every block (a buzz); auditioning
+  while stopped now runs synced LFOs too.
+
+- **Audio devices recover.** If the input stalls or is unplugged while a
+  track is armed, playback keeps running with silent input instead of
+  freezing. A device that fails to open is retried about once a second.
+
 - **Adding tracks no longer races playback.** Slicing to a sampler,
   extracting notes, chords or drums, placing stems and placing bounces
   insert tracks with the device stopped, as adding and moving tracks
@@ -59,6 +107,7 @@ Insert chains support up to 128 effects. Limiter delay near whole-sample
 boundaries can differ by one sample from previous rounding. See
 [the realtime safety audit](https://github.com/nooga/slab/blob/v0.0.13/docs/37-realtime-safety.md)
 for details and tests.
+
 
 ## 0.0.12 — 2026-10-12
 

@@ -312,3 +312,76 @@ Still open:
   watchdog below. The block that detects it has already waited.
 - The deadline limits listed above (SMEAR windows, reset cost, chunk-
   granular PDC) are unchanged.
+
+## Third audit: robustness, timing and the device layer (2026-10-15)
+
+Three read-only passes (device layer and miniaudio; DSP robustness; timing
+and declicking). Fixed here:
+
+- **Non-finite containment.** Each track checks its signal after the
+  instrument and clips (before the PDC history, keys and inserts) and
+  after its inserts (`allFinite`: a branch-free `x - x` sum). A fault
+  zeroes the block, resets the track's machines and counts in
+  `Track.faults`. `MasterClip.apply` zeroes any non-finite sample in every
+  mode (the hard clip mapped NaN to +1.0, the soft curve passed NaN and
+  turned inf into NaN); a hit resets the master inserts and subsonic
+  filter (`Engine.output_faults`). Exporters map non-finite to 0. Meters
+  use `@max`, which ignores NaN, so they could not show the fault.
+- **Stuck notes.** Notes past a trimmed clip end, zero-length notes and
+  notes shorter than a sample are skipped or kept off-after-on. A track
+  that was not rendered (muted, soloed out, instrument disabled) is
+  `audio_parked`; when it renders again it resets its machines and
+  chases, since it missed note-offs and its voices froze mid-wave.
+- **Fader ramps.** Track and master gains ramp from the gains applied at
+  the previous chunk's end (`fader_prev`, `master_prev`), as sends did.
+  Automation is unchanged; hand moves and jumps no longer step.
+  `resetRamps` runs when tracks move and at the start of an offline
+  render (sends were not reset there before), so renders stay
+  deterministic.
+- **Master time.** Master inserts receive the chunk's beat, block start
+  and tempo (they received beat 0 every block, which restarted synced
+  LFOs). Auditioning while stopped advances its own beat from the
+  playhead.
+- **Device layer.** miniaudio's duplex playback broke out on an empty
+  input ring, which stopped Slab's render (the transport froze) and left
+  the output buffer unwritten; it now renders with silent input, and any
+  unfilled output is zeroed. A failed device open is retried about once
+  a second instead of only on the next arm change.
+
+Offline renders of `paper_boulevard` and `sweat_geometry` are
+bit-identical to the previous master.
+
+Known, not yet addressed (each needs its own design):
+
+- **Recording.** Round-trip compensation uses period sizes only (no HAL
+  device/stream latency or safety offset, nor miniaudio's two-period
+  duplex prefill, which is never reset on restart); capture is the mean
+  of all device input channels; overruns drop frames without padding.
+- **Device events.** No listeners for a device dying, a coreaudiod
+  restart or an external sample-rate change; a reroute keeps miniaudio's
+  in-place reinit (no 48 kHz request, no resampling warning).
+- **Resampling.** A device not at 48 kHz uses miniaudio's linear
+  resampler (order-4 LPF).
+- **DSP.** limiter2 lacks a lookahead window minimum (transients clip at
+  the ceiling); the sampler's CLEAN engine is not band-limited and its
+  envelope and voice steals click; event overflow can drop note-offs.
+
+## Declicking and output latency (2026-10-15)
+
+- **Stop rings out instead of resetting** (docs/07 §Transport commands).
+  The play→stop transition no longer resets every instrument and insert
+  in one callback: that cut tails with a click and swept every machine's
+  buffers inside the deadline. The graph renders on from the stop with
+  no new events until quiet (bounded at 30 s, then a one-block fade).
+- **Every heard switch ramps** (docs/07 §Declicking): mute/solo/enable
+  gates, bypass crossfades (latent effects keep rendering and keep
+  their latency through per-track dry lines, preallocated and touched
+  on UI), chain switches fade out/in with acknowledgement deferred one
+  chunk, PDC delay changes crossfade, audio clip cut edges and jumps
+  fade over 64 samples.
+- **One block less output latency.** miniaudio's fixed-size callback
+  rendered into an intermediary buffer a block ahead of the device: a
+  full block (5.3 ms at 256 frames) of latency on every output path.
+  Callbacks are now variable-size (`noFixedSizedCallback`); the engine
+  already chunks any count. This also removes the double render per
+  hardware period on a resampled device.

@@ -35,6 +35,8 @@ fn fourcc(comptime s: *const [4]u8) u32 {
     return std.mem.readInt(u32, s, .big);
 }
 
+const REOPEN_FRAMES = 60;
+
 /// The length of one callback block, for real-time scheduling.
 pub fn blockPeriodNs() u64 {
     return @as(u64, requestedBlockFrames()) * std.time.ns_per_s / SAMPLE_RATE;
@@ -65,6 +67,8 @@ pub const Audio = struct {
     has_capture_id: bool = false,
     /// Bumped each time a device starts: its I/O workgroup is new.
     device_gen: u32 = 0,
+    /// UI frames until a failed open is tried again.
+    reopen_wait: u32 = 0,
     callbacks_ui: Callbacks = .{},
     callbacks: handoff.Latest(Callbacks) = .init(.{}),
     callback_ack: std.atomic.Value(u64) = .init(0),
@@ -115,6 +119,10 @@ pub const Audio = struct {
         duplex.sampleRate = SAMPLE_RATE;
         duplex.periodSizeInFrames = requestedBlockFrames();
         duplex.coreaudio.allowNominalSampleRateChange = c.ma.MA_TRUE;
+        // Variable-size callbacks: the engine chunks any count itself. The
+        // fixed-size mode renders into an intermediary buffer a block ahead,
+        // a whole block (5.3 ms at 256) of output latency for nothing.
+        duplex.noFixedSizedCallback = c.ma.MA_TRUE;
         duplex.dataCallback = audioCallback;
         duplex.pUserData = self;
 
@@ -130,13 +138,11 @@ pub const Audio = struct {
         self.warnIfResampling();
     }
 
-    /// The engine renders at 48 kHz in fixed 256-frame callbacks. A device
-    /// left at another rate (MacBook speakers default to 44.1 kHz) makes
-    /// miniaudio resample, and to keep the callbacks fixed-size it sometimes
-    /// asks for two blocks inside one hardware period: a render past half the
-    /// budget then misses the deadline, and since the transport only moves
-    /// with rendered audio, playback drags. Devices are asked to switch to
-    /// 48 kHz at open (allowNominalSampleRateChange); this says when one won't.
+    /// The engine renders at 48 kHz. A device left at another rate (MacBook
+    /// speakers default to 44.1 kHz) makes miniaudio resample, with a
+    /// linear interpolator, and callbacks then vary in length around the
+    /// requested block. Devices are asked to switch to 48 kHz at open
+    /// (allowNominalSampleRateChange); this says when one won't.
     fn warnIfResampling(self: *Audio) void {
         const rate = self.device.playback.internalSampleRate;
         if (rate != SAMPLE_RATE)
@@ -150,6 +156,10 @@ pub const Audio = struct {
         play.sampleRate = SAMPLE_RATE;
         play.periodSizeInFrames = requestedBlockFrames();
         play.coreaudio.allowNominalSampleRateChange = c.ma.MA_TRUE;
+        // Variable-size callbacks: the engine chunks any count itself. The
+        // fixed-size mode renders into an intermediary buffer a block ahead,
+        // a whole block (5.3 ms at 256) of output latency for nothing.
+        play.noFixedSizedCallback = c.ma.MA_TRUE;
         play.dataCallback = audioCallback;
         play.pUserData = self;
         if (c.ma.ma_device_init(&self.context, &play, &self.device) != c.ma.MA_SUCCESS)
@@ -195,10 +205,21 @@ pub const Audio = struct {
 
     /// Open the mic (duplex) or release it (playback-only). Re-opens the
     /// device only on a change; the render/capture hooks persist.
+    /// Called every UI frame: a device that failed to open is retried
+    /// about once a second instead of staying silent until the next arm.
     pub fn setWantCapture(self: *Audio, want: bool) !void {
-        if (want == self.want_capture) return;
+        if (want == self.want_capture and self.initialized) return;
+        if (!self.initialized and want == self.want_capture) {
+            if (self.reopen_wait > 0) {
+                self.reopen_wait -= 1;
+                return;
+            }
+        }
         self.want_capture = want;
-        try self.reopen();
+        self.reopen() catch |err| {
+            self.reopen_wait = REOPEN_FRAMES;
+            return err;
+        };
     }
 
     /// Enumerate capture (input) devices into `out`; returns the count
