@@ -6,6 +6,13 @@ GitHub are its section here (`tools/release.sh` copies them), so add to
 
 ## Unreleased
 
+
+- **The Extract pack finds uv when Slab is opened from Finder.** Its
+  download said uv was missing unless Slab was started from a terminal; it
+  now looks in Homebrew's, `~/.local/bin` and `~/.cargo/bin` too.
+- **Starting a pack download can no longer crash Slab.** Clicking Download
+  or Import sometimes quit the app as the import began.
+
 - **Stop lets tails ring.** Stopping releases the notes and lets reverbs
   and delays ring out instead of cutting everything with a click; press
   play again and the tails carry on.
@@ -91,6 +98,7 @@ Insert chains support up to 128 effects. Limiter delay near whole-sample
 boundaries can differ by one sample from previous rounding. See
 [the realtime safety audit](https://github.com/nooga/slab/blob/v0.0.13/docs/37-realtime-safety.md)
 for details and tests.
+
 
 ## 0.0.12 — 2026-10-12
 
