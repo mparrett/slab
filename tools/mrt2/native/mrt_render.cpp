@@ -201,11 +201,17 @@ int main(int argc, char **argv) {
   engine.reset_state();  // applies the seed rotation
 
   engine.set_text_prompt(prompt);
-  while (engine.get_text_encoder_status() == 1 || engine.get_quantizer_status() == 1)
+  // The worker sets the two statuses one at a time (the encoder's success before the
+  // quantizer starts), so "neither busy" can come before the style tokens exist.
+  // Wait for both to succeed; rendering without them would ignore the prompt.
+  for (int waited_ms = 0;; waited_ms += 10) {
+    const int enc = engine.get_text_encoder_status(), quant = engine.get_quantizer_status();
+    if (enc == 2 && quant == 2) break;
+    if (enc == 3 || quant == 3 || waited_ms > 120000) {
+      std::fprintf(stderr, "prompt encoding failed\n");
+      return 1;
+    }
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
-  if (engine.get_text_encoder_status() == 3 || engine.get_quantizer_status() == 3) {
-    std::fprintf(stderr, "prompt encoding failed\n");
-    return 1;
   }
 
   std::vector<float> interleaved;
