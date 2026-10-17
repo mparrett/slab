@@ -33,9 +33,9 @@ def read(path):
             elif hi==0xc0: progs.setdefault(ch,a)
         tracks.append(dict(name=name,notes=notes,progs=progs,texts=texts))
     return div,tracks,tempos
-def write(path,notes):
-    """notes: (on_sec, off_sec, pitch). One track at 60 BPM, a tick a millisecond, so
-    times in seconds (a song's tempo changes already applied) go straight in."""
+def encode(notes):
+    """notes: (on_sec, off_sec, pitch) -> SMF bytes. One track at 60 BPM, a tick a millisecond,
+    so times in seconds (a song's tempo changes already applied) go straight in."""
     ev=sorted([(round(a*1000),1,p) for a,b,p in notes]+[(max(round(b*1000),round(a*1000)+1),0,p) for a,b,p in notes])
     def vq(v):
         out=[v&0x7f]
@@ -45,8 +45,9 @@ def write(path,notes):
     for t,on,p in ev:  # offs sort before ons at a tick: a repeated pitch sounds again
         trk+=vq(t-last)+bytes([0x90 if on else 0x80,p,100 if on else 0]); last=t
     trk+=b'\x00\xff\x2f\x00'
-    with open(path,'wb') as f:
-        f.write(b'MThd'+struct.pack('>IHHH',6,0,1,1000)+b'MTrk'+struct.pack('>I',len(trk))+trk)
+    return b'MThd'+struct.pack('>IHHH',6,0,1,1000)+b'MTrk'+struct.pack('>I',len(trk))+trk
+def write(path,notes):
+    with open(path,'wb') as f: f.write(encode(notes))
 if __name__=="__main__":
     div,tr,tempos=read(sys.argv[1]); print("div",div,"tempos",tempos[:6])
     for k,t in enumerate(tr):

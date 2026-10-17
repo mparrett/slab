@@ -522,19 +522,28 @@ class Clip:
 
         cache = os.path.join(home_dir(), "Cache", "mrt2")
         os.makedirs(cache, exist_ok=True)
-        mid = os.path.join(cache, "slabkit.mid")
-        smf.write(mid, notes)
-        with open(mid, "rb") as f:
-            key = hashlib.sha256(f.read() + f"\0{prompt}\0{seed}\0{length}".encode()).hexdigest()[:16]
+        midi = smf.encode(notes)
+        key = hashlib.sha256(midi + f"\0{prompt}\0{seed}\0{length}".encode()).hexdigest()[:16]
         wav = os.path.join(cache, f"slabkit-{key}.wav")
         if not os.path.exists(wav):
-            r = subprocess.run([binary, model, os.path.join(lib, "resources"), "-o", wav + ".part", "--midi", mid,
-                                "--seconds", length, "--prompt", prompt, "--seed", str(seed)],
-                               capture_output=True, text=True)
-            if r.returncode:
-                last = (r.stdout + r.stderr).strip().splitlines()[-1:] or ["no output"]
-                raise SlabError(f"{where}: mrt_render failed: {last[0]}")
-            os.replace(wav + ".part", wav)
+            # Files named by the render's inputs and this process: scripts running at
+            # once never hand each other's notes to the renderer.
+            mid = os.path.join(cache, f"slabkit-{key}-{os.getpid()}.mid")
+            part = os.path.join(cache, f"slabkit-{key}-{os.getpid()}.wav.part")
+            with open(mid, "wb") as f:
+                f.write(midi)
+            try:
+                r = subprocess.run([binary, model, os.path.join(lib, "resources"), "-o", part, "--midi", mid,
+                                    "--seconds", length, "--prompt", prompt, "--seed", str(seed)],
+                                   capture_output=True, text=True)
+                if r.returncode:
+                    last = (r.stdout + r.stderr).strip().splitlines()[-1:] or ["no output"]
+                    raise SlabError(f"{where}: mrt_render failed: {last[0]}")
+                os.replace(part, wav)
+            finally:
+                os.remove(mid)
+                if os.path.exists(part):
+                    os.remove(part)
 
         t = song.track(name or f"{self.track.name} MRT2", "sampler", volume=volume, output=self.track.output)
         song.tracks.insert(song.tracks.index(self.track) + 1, song.tracks.pop())
