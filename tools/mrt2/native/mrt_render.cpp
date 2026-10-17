@@ -11,6 +11,7 @@
 #include <magentart/mlx_engine.h>
 
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cmath>
 #include <cstdint>
@@ -219,6 +220,9 @@ int main(int argc, char **argv) {
   std::vector<float> L(kFrameSamples), R(kFrameSamples);
   size_t next = 0;
   int skipped = 0;
+  // The engine keeps one state per pitch, so overlapping notes of a pitch are counted
+  // here and only the last release reaches it.
+  std::array<int, kMidiPitches> held{};
   const auto t0 = std::chrono::steady_clock::now();
   for (int f = 0; f < num_frames; ++f) {
     // Every event that starts inside this frame's 40 ms window conditions this frame.
@@ -226,7 +230,12 @@ int main(int argc, char **argv) {
     for (; next < notes.size() && notes[next].seconds < frame_end; ++next) {
       int pitch = notes[next].pitch + transpose;
       if (pitch < 0 || pitch >= kMidiPitches) { skipped += notes[next].on; continue; }
-      notes[next].on ? engine.set_note_on(pitch) : engine.set_note_off(pitch);
+      if (notes[next].on) {
+        ++held[pitch];
+        engine.set_note_on(pitch);  // a re-strike while held is a new onset
+      } else if (held[pitch] > 0 && --held[pitch] == 0) {
+        engine.set_note_off(pitch);
+      }
     }
     magentart::detail::AutoreleasePool pool;  // MLX leaks Metal temporaries without a drained pool per frame
     if (!engine.generate_frame(L.data(), R.data())) { std::fprintf(stderr, "generate_frame failed at frame %d\n", f); return 1; }
