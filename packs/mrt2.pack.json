@@ -1,0 +1,7 @@
+{"slab": "pack", "schema": 1,
+ "id": "mrt2", "name": "MRT2: Magenta RealTime 2", "version": "1",
+ "license": "CC-BY-4.0 (weights, Google DeepMind); Apache-2.0 (magentart::core)", "redistributable": true, "size": 1840000000,
+ "about": "Google DeepMind's live music model, for Generate > Render with MRT2 on pattern clips (docs/42)",
+ "link": "https://huggingface.co/google/magenta-realtime-2",
+ "get": {"download": [{"url": "https://huggingface.co/google/magenta-realtime-2/tree/010aa0dcb0dfd27b24f0ad07b4dad63e8f9521cc"}]},
+ "import": "mrt2"}
