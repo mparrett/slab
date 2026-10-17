@@ -140,10 +140,12 @@ pub const Job = struct {
         var cb: [storage.MAX_PATH]u8 = undefined;
         const cache = std.fmt.bufPrint(&cb, "{s}/Cache/mrt2", .{home}) catch return "NO HOME FOLDER";
         storage.makeParents(cache);
-        const log = std.fmt.bufPrint(&self.log, "{s}/render.log", .{cache}) catch return "NO HOME FOLDER";
+        // Clip uids restart in each slab process: the pid keeps two windows apart.
+        const own_pid = getpid();
+        const log = std.fmt.bufPrint(&self.log, "{s}/render-{d}.log", .{ cache, own_pid }) catch return "NO HOME FOLDER";
         self.log_len = log.len;
         var mb: [storage.MAX_PATH]u8 = undefined;
-        const mid = std.fmt.bufPrint(&mb, "{s}/{d}.mid", .{ cache, clip.uid }) catch return "PATH TOO LONG";
+        const mid = std.fmt.bufPrint(&mb, "{s}/{d}-{d}.mid", .{ cache, clip.uid, own_pid }) catch return "PATH TOO LONG";
 
         var db: [storage.MAX_PATH]u8 = undefined;
         const dir = storage.recordingsDir(&db);
@@ -291,6 +293,7 @@ extern fn posix_spawn_file_actions_addopen(fa: *SpawnActions, fd: c_int, path: [
 extern fn posix_spawn_file_actions_adddup2(fa: *SpawnActions, fd: c_int, newfd: c_int) c_int;
 extern fn waitpid(pid: c_int, status: *c_int, options: c_int) c_int;
 extern fn kill(pid: c_int, sig: c_int) c_int;
+extern fn getpid() c_int;
 extern var environ: [*:null]?[*:0]const u8;
 extern fn access(path: [*:0]const u8, mode: c_int) c_int;
 extern fn open(path: [*:0]const u8, flags: c_int, ...) c_int;
