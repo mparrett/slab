@@ -113,7 +113,7 @@ zig-out/bin/slab songs/paper_boulevard.slab  # open a saved project
 zig build test         # run unit tests
 ```
 
-Requires zig >= 0.16 (see `build.zig.zon`). macOS on Apple Silicon only
+Requires zig 0.16; 0.17 fails (nooga/slab#3). macOS on Apple Silicon only
 — fy's JIT uses `MAP_JIT` + `pthread_jit_write_protect_np`.
 
 ## Coding conventions

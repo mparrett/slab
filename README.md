@@ -128,7 +128,8 @@ in [fy](fy/), a small concatenative language that lives in this repo.
 
 ### Build from source
 
-You need [Zig](https://ziglang.org) 0.16 or later and raylib
+You need [Zig](https://ziglang.org) 0.16 (0.17 does not build yet, see
+[#3](https://github.com/nooga/slab/issues/3)) and raylib
 (`brew install raylib`).
 
 ```bash
